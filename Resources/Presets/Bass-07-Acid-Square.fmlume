@@ -260,7 +260,7 @@
       "mappings": [
         {
           "targetParamId": "filter.resonance",
-          "amount": 0.25,
+          "amount": 0.119999997,
           "curve": "linear",
           "polarity": "bipolar",
           "min": 0,
@@ -268,7 +268,7 @@
         },
         {
           "targetParamId": "filter.drive",
-          "amount": 0.5,
+          "amount": 0.300000012,
           "curve": "linear",
           "polarity": "bipolar",
           "min": 0,
@@ -636,7 +636,7 @@
     ]
   },
   "output": {
-    "levelDb": -10
+    "levelDb": -10.1000004
   },
   "metadata": {}
 }

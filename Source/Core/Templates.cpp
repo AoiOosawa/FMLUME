@@ -535,7 +535,7 @@ Preset makeCategoryPreset (Category c)
     // re-measure when a template above changes.
     // Arp uses the Pluck value (not its own arpeggiated measurement, +1.1) so that it is not too
     // loud once the arpeggiator is switched off and chords sound together.
-    static const float kTemplateLevelDb[] = { -0.5f, -4.3f, -3.9f, 1.3f, 0.6f, -5.9f, -2.1f, -0.5f, -4.8f, -3.3f, -4.6f };
+    static const float kTemplateLevelDb[] = { -0.5f, -4.2f, -3.9f, 1.2f, 0.5f, -5.6f, -2.1f, -0.5f, -4.8f, -3.3f, -4.6f };
     static_assert (std::size (kTemplateLevelDb) == (size_t) Category::Count, "every Category needs a template level");
     d.out.levelDb = kTemplateLevelDb[std::min<int> ((int) c, (int) Category::Count - 1)];
 

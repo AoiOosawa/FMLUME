@@ -28,6 +28,7 @@ static int usage()
         "  --morph <0..1>             enable morph and set the amount\n"
         "  --quality <eco|standard|high>  --sr <hz>  --block <frames>  --bpm <bpm>  --gain <dB>\n"
         "  --arp / --gate             enable arpeggiator / trance gate\n"
+        "  --no-arp                   switch the preset's arpeggiator and chord mode off (to hear the bare voice)\n"
         "  --out <file.wav>           write 32-bit float stereo WAV\n"
         "  --dump-preset <file>       write the loaded patch as .fmlume and exit\n"
         "  --validate <file.fmlume>   validate a preset file and exit (0 = valid)\n");
@@ -45,7 +46,7 @@ int main (int argc, char** argv)
     bool hostFromPreset = true, gainSet = false;
     std::vector<std::pair<int, float>> macros;
     float morph = -1.0f;
-    bool arp = false, gate = false;
+    bool arp = false, gate = false, noArp = false;
 
     for (int i = 1; i < argc; ++i)
     {
@@ -79,6 +80,7 @@ int main (int argc, char** argv)
         }
         else if (std::strcmp (argv[i], "--arp") == 0) arp = true;
         else if (std::strcmp (argv[i], "--gate") == 0) gate = true;
+        else if (std::strcmp (argv[i], "--no-arp") == 0) noArp = true;
         else return usage();
     }
 
@@ -128,6 +130,7 @@ int main (int argc, char** argv)
     if (morph >= 0.0f) { host.morphEnabled = true; host.morphAmount = morph; }
     host.arpEnabled = host.arpEnabled || arp;
     host.gateEnabled = host.gateEnabled || gate;
+    if (noArp) { host.arpEnabled = false; preset.data.perf.chord.type = ChordType::Off; }
 
     MidiSequence seq;
     if (! midiPath.empty())

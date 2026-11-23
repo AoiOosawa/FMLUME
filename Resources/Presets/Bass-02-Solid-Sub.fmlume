@@ -20,13 +20,13 @@
         "fixedHz": 440,
         "detuneCents": 0,
         "level": 0.800000012,
-        "velocityToLevel": 0.5,
-        "velocityToIndex": 0.300000012,
+        "velocityToLevel": 0.100000001,
+        "velocityToIndex": 0.100000001,
         "keyTracking": 1,
         "env": {
-          "a": 0.00100000005,
-          "d": 0.25,
-          "s": 0.200000003,
+          "a": 0.0120000001,
+          "d": 0.300000012,
+          "s": 0.5,
           "r": 0.119999997
         },
         "phaseOffset": 0,
@@ -42,13 +42,13 @@
         "fixedHz": 440,
         "detuneCents": 0,
         "level": 0.899999976,
-        "velocityToLevel": 0.5,
-        "velocityToIndex": 0.300000012,
+        "velocityToLevel": 0.100000001,
+        "velocityToIndex": 0.100000001,
         "keyTracking": 1,
         "env": {
-          "a": 0.00100000005,
-          "d": 0.349999994,
-          "s": 0.300000012,
+          "a": 0.0120000001,
+          "d": 0.300000012,
+          "s": 1,
           "r": 0.119999997
         },
         "phaseOffset": 0,
@@ -68,10 +68,10 @@
         "velocityToIndex": 0.300000012,
         "keyTracking": 1,
         "env": {
-          "a": 0.00300000003,
-          "d": 0.800000012,
-          "s": 0.899999976,
-          "r": 0.150000006
+          "a": 0.0120000001,
+          "d": 0.300000012,
+          "s": 1,
+          "r": 0.159999996
         },
         "phaseOffset": 0,
         "keySync": true,
@@ -90,15 +90,15 @@
         "velocityToIndex": 0.300000012,
         "keyTracking": 1,
         "env": {
-          "a": 0.00300000003,
+          "a": 0.00100000005,
           "d": 0.800000012,
-          "s": 0.949999988,
-          "r": 0.150000006
+          "s": 0.800000012,
+          "r": 0.119999997
         },
         "phaseOffset": 0,
         "keySync": true,
         "feedback": 0,
-        "carrierGain": 0.800000012
+        "carrierGain": 0
       },
       {
         "enabled": false,
@@ -149,17 +149,17 @@
       {
         "from": 0,
         "to": 1,
-        "index": 0.5
+        "index": 0.200000003
       },
       {
         "from": 1,
         "to": 2,
-        "index": 0.800000012
+        "index": 0.449999988
       }
     ],
     "filter": {
-      "type": "off",
-      "cutoff": 20000,
+      "type": "LP12",
+      "cutoff": 380,
       "resonance": 0,
       "drive": 0
     },
@@ -218,6 +218,14 @@
           "max": 1
         },
         {
+          "targetParamId": "filter.cutoff",
+          "amount": 0.300000012,
+          "curve": "linear",
+          "polarity": "bipolar",
+          "min": 0,
+          "max": 1
+        },
+        {
           "targetParamId": "master.level",
           "amount": -0.0500000007,
           "curve": "linear",
@@ -241,14 +249,6 @@
           "max": 1
         },
         {
-          "targetParamId": "op4.attack",
-          "amount": 0.349999994,
-          "curve": "linear",
-          "polarity": "bipolar",
-          "min": 0,
-          "max": 1
-        },
-        {
           "targetParamId": "op1.attack",
           "amount": 0.200000003,
           "curve": "linear",
@@ -258,6 +258,14 @@
         },
         {
           "targetParamId": "op2.attack",
+          "amount": 0.200000003,
+          "curve": "linear",
+          "polarity": "bipolar",
+          "min": 0,
+          "max": 1
+        },
+        {
+          "targetParamId": "op4.attack",
           "amount": 0.200000003,
           "curve": "linear",
           "polarity": "bipolar",
@@ -280,14 +288,6 @@
           "max": 1
         },
         {
-          "targetParamId": "op4.release",
-          "amount": 0.300000012,
-          "curve": "linear",
-          "polarity": "bipolar",
-          "min": 0,
-          "max": 1
-        },
-        {
           "targetParamId": "op1.release",
           "amount": 0.300000012,
           "curve": "linear",
@@ -297,6 +297,14 @@
         },
         {
           "targetParamId": "op2.release",
+          "amount": 0.300000012,
+          "curve": "linear",
+          "polarity": "bipolar",
+          "min": 0,
+          "max": 1
+        },
+        {
+          "targetParamId": "op4.release",
           "amount": 0.300000012,
           "curve": "linear",
           "polarity": "bipolar",
@@ -313,14 +321,6 @@
         {
           "targetParamId": "op1.feedback",
           "amount": 0.400000006,
-          "curve": "linear",
-          "polarity": "bipolar",
-          "min": 0,
-          "max": 1
-        },
-        {
-          "targetParamId": "op4.detune",
-          "amount": 0.0599999987,
           "curve": "linear",
           "polarity": "bipolar",
           "min": 0,
@@ -719,7 +719,7 @@
     ]
   },
   "output": {
-    "levelDb": -0.200000003
+    "levelDb": 0.300000012
   },
   "metadata": {}
 }

@@ -27,7 +27,7 @@
           "a": 0.00999999978,
           "d": 1,
           "s": 0.600000024,
-          "r": 0.800000012
+          "r": 0.5
         },
         "phaseOffset": 0,
         "keySync": true,
@@ -36,7 +36,7 @@
       },
       {
         "enabled": true,
-        "waveform": "sine",
+        "waveform": "saw",
         "pitchMode": "ratio",
         "ratio": 1,
         "fixedHz": 440,
@@ -48,8 +48,8 @@
         "env": {
           "a": 0.00999999978,
           "d": 1,
-          "s": 0.800000012,
-          "r": 0.800000012
+          "s": 0.899999976,
+          "r": 0.5
         },
         "phaseOffset": 0,
         "keySync": true,
@@ -71,7 +71,7 @@
           "a": 0.00999999978,
           "d": 1,
           "s": 0.5,
-          "r": 0.800000012
+          "r": 0.5
         },
         "phaseOffset": 0,
         "keySync": true,
@@ -80,7 +80,7 @@
       },
       {
         "enabled": true,
-        "waveform": "sine",
+        "waveform": "saw",
         "pitchMode": "ratio",
         "ratio": 1,
         "fixedHz": 440,
@@ -92,8 +92,8 @@
         "env": {
           "a": 0.00999999978,
           "d": 1,
-          "s": 0.800000012,
-          "r": 0.800000012
+          "s": 0.899999976,
+          "r": 0.5
         },
         "phaseOffset": 0,
         "keySync": true,
@@ -149,18 +149,18 @@
       {
         "from": 0,
         "to": 1,
-        "index": 1.5
+        "index": 0.400000006
       },
       {
         "from": 2,
         "to": 3,
-        "index": 1.20000005
+        "index": 0.300000012
       }
     ],
     "filter": {
-      "type": "LP12",
-      "cutoff": 5200,
-      "resonance": 0.150000006,
+      "type": "LP24",
+      "cutoff": 3000,
+      "resonance": 0.25,
       "drive": 0
     },
     "lfo": [
@@ -516,9 +516,9 @@
   "performance": {
     "polyphony": 16,
     "unison": {
-      "count": 2,
-      "detuneCents": 12,
-      "spread": 80
+      "count": 3,
+      "detuneCents": 15,
+      "spread": 90
     },
     "mono": false,
     "legato": false,
@@ -644,10 +644,10 @@
         "enabled": true,
         "params": {
           "size": 0.600000024,
-          "decay": 3.5,
+          "decay": 3,
           "preDelay": 15,
           "damping": 0.5,
-          "wet": 0.300000012
+          "wet": 0.25999999
         }
       }
     ],
@@ -751,7 +751,7 @@
     ]
   },
   "output": {
-    "levelDb": -2.4000001
+    "levelDb": -0.800000012
   },
   "metadata": {}
 }

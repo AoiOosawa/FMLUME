@@ -36,7 +36,7 @@
       },
       {
         "enabled": true,
-        "waveform": "sine",
+        "waveform": "saw",
         "pitchMode": "ratio",
         "ratio": 1,
         "fixedHz": 440,
@@ -46,10 +46,10 @@
         "velocityToIndex": 0.300000012,
         "keyTracking": 1,
         "env": {
-          "a": 0.600000024,
+          "a": 0.150000006,
           "d": 2,
-          "s": 0.850000024,
-          "r": 1.79999995
+          "s": 0.899999976,
+          "r": 1.60000002
         },
         "phaseOffset": 0,
         "keySync": true,
@@ -80,7 +80,7 @@
       },
       {
         "enabled": true,
-        "waveform": "sine",
+        "waveform": "saw",
         "pitchMode": "ratio",
         "ratio": 1,
         "fixedHz": 440,
@@ -90,10 +90,10 @@
         "velocityToIndex": 0.300000012,
         "keyTracking": 1,
         "env": {
-          "a": 0.699999988,
+          "a": 0.200000003,
           "d": 2,
-          "s": 0.850000024,
-          "r": 2
+          "s": 0.899999976,
+          "r": 1.60000002
         },
         "phaseOffset": 0,
         "keySync": true,
@@ -149,19 +149,19 @@
       {
         "from": 0,
         "to": 1,
-        "index": 2
+        "index": 0.300000012
       },
       {
         "from": 2,
         "to": 3,
-        "index": 1.60000002
+        "index": 0.25
       }
     ],
     "filter": {
       "type": "LP24",
-      "cutoff": 600,
-      "resonance": 0.300000012,
-      "drive": 0
+      "cutoff": 380,
+      "resonance": 0.5,
+      "drive": 0.100000001
     },
     "lfo": [
       {
@@ -182,10 +182,10 @@
       }
     ],
     "modEnv": {
-      "a": 2.20000005,
+      "a": 1.79999995,
       "d": 3,
-      "s": 0.600000024,
-      "r": 2
+      "s": 0.5,
+      "r": 1.60000002
     },
     "pitchBendRange": 2
   },
@@ -456,7 +456,7 @@
     {
       "source": "modEnv",
       "target": "filter.cutoff",
-      "depth": 0.349999994,
+      "depth": 0.5,
       "curve": "linear",
       "enabled": true
     },
@@ -509,8 +509,8 @@
     "polyphony": 16,
     "unison": {
       "count": 2,
-      "detuneCents": 12,
-      "spread": 80
+      "detuneCents": 14,
+      "spread": 85
     },
     "mono": false,
     "legato": false,
@@ -636,10 +636,10 @@
         "enabled": true,
         "params": {
           "size": 0.600000024,
-          "decay": 4,
+          "decay": 3,
           "preDelay": 15,
           "damping": 0.5,
-          "wet": 0.349999994
+          "wet": 0.280000001
         }
       }
     ],
@@ -743,7 +743,7 @@
     ]
   },
   "output": {
-    "levelDb": -6.0999999
+    "levelDb": -7.80000019
   },
   "metadata": {}
 }

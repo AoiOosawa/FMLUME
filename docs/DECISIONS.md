@@ -316,3 +316,25 @@
 - 公開前に確かめたこと: 追跡中のファイルに個人のパス、メールアドレス、トークンなどが入っていないこと。
 - 行っていないこと: リポジトリの公開、GitHub Pages、署名と公証、GitHub Releases。AGPL-3.0 で配布する時点では、リポジトリを公開する必要がある。
 
+
+## D-051 ボイス合算の直後に DC カットを入れる（2026-11-23）
+- 経緯: ファクトリー音色のスクリーニング（`scripts/audition.py`）で、19 音色の出力に直流成分が見つかった。最大は Epic Low Brass で、発音中の DC が RMS とほぼ同じ大きさ（比 0.97）。1:1 の位相変調とオペレーターのフィードバックは原理的に DC を生む（ハードウェア FM 音源は出力が AC 結合なので問題にならない）。
+- 害: ヘッドルームを消費する、発音・消音時にクリック/ポップになる、後段の Drive / Compressor が偏って動く、音量の自動補正（ピークと RMS）が実際の音量とずれる。
+- 採用: `SynthEngine` で、各サイド（A / B）のボイス合算・デシメーションの後、フィルターと FX の前に 1 次のハイパス（5 Hz）を入れる。27.5 Hz（A0）での減衰は約 0.15 dB。オペレーター間の変調信号には手を入れない（音色が変わるため）。
+- 影響: 音色は可聴域では変わらない。DC が乗っていた音色は音量補正値が変わるため、`fmlume-presetgen` で再生成（152 音色中 61 の `output.levelDb` が変化）。カテゴリーテンプレートの音量（`kTemplateLevelDb`）も E.Piano / Bass / Lead / Pad を再測定値に更新。プリセットの形式とパラメーター ID は変更なし。
+- 同時に: Acid Square の Growl マクロ（レゾナンスとドライブ）が最大で +16.6 dB になっていたため量を半分にした（+8.8 dB）。
+
+## D-052 「他と似すぎ」と指摘された 22 音色を構造から作り直す（2026-11-23）
+- 経緯: 試聴ページ（`build/audition/index.html`）での利用者の評価で、21 音色が同じカテゴリの別の音色と「似すぎ」、Glocken Spark が「グロッケンらしくない」と指摘された。原因は、多くの音色がカテゴリの雛形（`makeCategoryPreset`）の数値を少し変えただけで作られていたこと。
+- 対象: Starlight Arp / Pendulum Arp / Acid Steps Arp / One Key Dream Keys / Solid Sub / Slap Pop / Tubular Tower / Glocken Spark / Celesta Drops / Fanfare Stack / Low Bones / Soft Suitcase / Dyno Bark / Reed Bite / Night Lounge / Phase Seventy / Glass Pad / Vox Humana / Evolving Motion / Soft Sweep / Nylon Fingers / Concert Harp。
+- 方針: 数値の微調整ではなく、倍音の作り（オペレーターの比率と結線）、波形、フィルター、エンベロープ、特徴的な FX のどれかを相手の音色と変える。例: Glocken Spark は金属棒の振動モード（1 : 2.76 : 5.4）を持つ加算的な構成、Reed Bite は比率 2 の変調で奇数倍音だけにする、Vox Humana は 3 倍音と 5 倍音付近にフォルマントを置く、Acid Steps Arp と Soft Sweep はノコギリ波＋共振フィルター、Fanfare Stack は 5 度上のセクションを重ねる。
+- 名前・カテゴリ・並び順・プリセット ID は変更なし。プリセットの形式も変更なし。
+- 確認: `fmlume-presetgen` の検査は問題 0 件、`ctest` 4/4 通過。スペクトル距離は目安として測ったが、利用者が似ていると感じた組でも値が 2〜17 dB とばらつき、聴感と一致しないことが分かったので合否の基準にはしていない。**作り直した音が意図どおり聞こえるか、互いに十分違うかは、利用者の試聴で未確認。**
+- 併せて `fmlume-render` に `--no-arp`（アルペジエーターとコードを切って素の音を聴く）を追加。
+
+## D-053 2 回目の試聴の指摘 4 件（2026-11-23）
+- Soft Stairs Arp「小さい」: 自動の音量補正（ピークと RMS）は、純音に近い暗い音を実際より大きく見積もる。`fmlume-presetgen` に耳での補正表 `kLevelByEar` を設け、この音色を +4 dB した。今後も試聴で決めた補正はこの表に足す。
+- Pendulum Arp（Starlight Arp と似ている）: 矩形波＋閉じていく 24 dB フィルターの、空洞感のある木質の音に変更。
+- One Key Sus Runner（One Key Minor 7 と似ている）: デチューンした 2 つのノコギリ波＋フィルターエンベロープの、押しの強いプラックに変更。
+- Gate Dreams Arp（Ripple Pad Arp と似ている）: ノコギリ波の明るいパッドに変更し、ゲートの切れ目がはっきり出るようにした。
+- 再試聴は未実施。

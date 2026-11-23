@@ -24,21 +24,21 @@
         "velocityToIndex": 0.300000012,
         "keyTracking": 1,
         "env": {
-          "a": 0.800000012,
+          "a": 0.300000012,
           "d": 2,
-          "s": 0.699999988,
-          "r": 1.79999995
+          "s": 0.800000012,
+          "r": 1.20000005
         },
         "phaseOffset": 0,
         "keySync": true,
-        "feedback": 0.300000012,
+        "feedback": 0,
         "carrierGain": 0
       },
       {
         "enabled": true,
         "waveform": "sine",
         "pitchMode": "ratio",
-        "ratio": 1,
+        "ratio": 3,
         "fixedHz": 440,
         "detuneCents": -6,
         "level": 1,
@@ -46,21 +46,21 @@
         "velocityToIndex": 0.300000012,
         "keyTracking": 1,
         "env": {
-          "a": 0.5,
+          "a": 0.349999994,
           "d": 2,
           "s": 0.899999976,
-          "r": 1.5
+          "r": 1.39999998
         },
         "phaseOffset": 0,
         "keySync": true,
         "feedback": 0,
-        "carrierGain": 1
+        "carrierGain": 0.550000012
       },
       {
         "enabled": true,
         "waveform": "sine",
         "pitchMode": "ratio",
-        "ratio": 2,
+        "ratio": 1,
         "fixedHz": 440,
         "detuneCents": 0,
         "level": 0.5,
@@ -68,10 +68,10 @@
         "velocityToIndex": 0.300000012,
         "keyTracking": 1,
         "env": {
-          "a": 1.20000005,
-          "d": 2.5,
-          "s": 0.600000024,
-          "r": 2
+          "a": 0.300000012,
+          "d": 2,
+          "s": 0.699999988,
+          "r": 1.20000005
         },
         "phaseOffset": 0,
         "keySync": true,
@@ -90,32 +90,32 @@
         "velocityToIndex": 0.300000012,
         "keyTracking": 1,
         "env": {
-          "a": 0.600000024,
+          "a": 0.300000012,
           "d": 2,
           "s": 0.899999976,
-          "r": 1.5
+          "r": 1.39999998
         },
         "phaseOffset": 0,
         "keySync": true,
         "feedback": 0,
-        "carrierGain": 0.899999976
+        "carrierGain": 1
       },
       {
-        "enabled": false,
+        "enabled": true,
         "waveform": "sine",
         "pitchMode": "ratio",
         "ratio": 1,
         "fixedHz": 440,
         "detuneCents": 0,
-        "level": 1,
+        "level": 0.600000024,
         "velocityToLevel": 0.5,
         "velocityToIndex": 0.300000012,
         "keyTracking": 1,
         "env": {
-          "a": 0.00999999978,
-          "d": 0.5,
-          "s": 0.600000024,
-          "r": 0.300000012
+          "a": 0.349999994,
+          "d": 2,
+          "s": 0.800000012,
+          "r": 1.20000005
         },
         "phaseOffset": 0,
         "keySync": true,
@@ -123,10 +123,10 @@
         "carrierGain": 0
       },
       {
-        "enabled": false,
+        "enabled": true,
         "waveform": "sine",
         "pitchMode": "ratio",
-        "ratio": 1,
+        "ratio": 5,
         "fixedHz": 440,
         "detuneCents": 0,
         "level": 1,
@@ -134,33 +134,38 @@
         "velocityToIndex": 0.300000012,
         "keyTracking": 1,
         "env": {
-          "a": 0.00999999978,
-          "d": 0.5,
-          "s": 0.600000024,
-          "r": 0.300000012
+          "a": 0.400000006,
+          "d": 2,
+          "s": 0.850000024,
+          "r": 1.39999998
         },
         "phaseOffset": 0,
         "keySync": true,
         "feedback": 0,
-        "carrierGain": 0
+        "carrierGain": 0.140000001
       }
     ],
     "edges": [
       {
         "from": 0,
         "to": 1,
-        "index": 2.20000005
+        "index": 1.60000002
       },
       {
         "from": 2,
         "to": 3,
-        "index": 1.60000002
+        "index": 0.899999976
+      },
+      {
+        "from": 4,
+        "to": 5,
+        "index": 1.20000005
       }
     ],
     "filter": {
-      "type": "BP12",
-      "cutoff": 1100,
-      "resonance": 0.449999988,
+      "type": "LP12",
+      "cutoff": 4200,
+      "resonance": 0.100000001,
       "drive": 0
     },
     "lfo": [
@@ -175,7 +180,7 @@
       {
         "shape": "sine",
         "sync": false,
-        "rateHz": 0.129999995,
+        "rateHz": 5.30000019,
         "division": "1/8",
         "phase": 0,
         "retrig": false
@@ -211,6 +216,14 @@
         },
         {
           "targetParamId": "edge.3.4.index",
+          "amount": 0.219999999,
+          "curve": "linear",
+          "polarity": "bipolar",
+          "min": 0,
+          "max": 1
+        },
+        {
+          "targetParamId": "edge.5.6.index",
           "amount": 0.219999999,
           "curve": "linear",
           "polarity": "bipolar",
@@ -257,6 +270,14 @@
           "max": 1
         },
         {
+          "targetParamId": "op6.attack",
+          "amount": 0.349999994,
+          "curve": "linear",
+          "polarity": "bipolar",
+          "min": 0,
+          "max": 1
+        },
+        {
           "targetParamId": "op1.attack",
           "amount": 0.200000003,
           "curve": "linear",
@@ -266,6 +287,14 @@
         },
         {
           "targetParamId": "op3.attack",
+          "amount": 0.200000003,
+          "curve": "linear",
+          "polarity": "bipolar",
+          "min": 0,
+          "max": 1
+        },
+        {
+          "targetParamId": "op5.attack",
           "amount": 0.200000003,
           "curve": "linear",
           "polarity": "bipolar",
@@ -296,6 +325,14 @@
           "max": 1
         },
         {
+          "targetParamId": "op6.release",
+          "amount": 0.300000012,
+          "curve": "linear",
+          "polarity": "bipolar",
+          "min": 0,
+          "max": 1
+        },
+        {
           "targetParamId": "op1.release",
           "amount": 0.300000012,
           "curve": "linear",
@@ -305,6 +342,14 @@
         },
         {
           "targetParamId": "op3.release",
+          "amount": 0.300000012,
+          "curve": "linear",
+          "polarity": "bipolar",
+          "min": 0,
+          "max": 1
+        },
+        {
+          "targetParamId": "op5.release",
           "amount": 0.300000012,
           "curve": "linear",
           "polarity": "bipolar",
@@ -329,6 +374,14 @@
         {
           "targetParamId": "op4.detune",
           "amount": 0.0599999987,
+          "curve": "linear",
+          "polarity": "bipolar",
+          "min": 0,
+          "max": 1
+        },
+        {
+          "targetParamId": "op6.detune",
+          "amount": -0.0599999987,
           "curve": "linear",
           "polarity": "bipolar",
           "min": 0,
@@ -464,16 +517,16 @@
     {
       "source": "lfo2",
       "target": "filter.cutoff",
-      "depth": 0.0500000007,
+      "depth": 0,
       "curve": "linear",
       "enabled": true
     },
     {
-      "source": "none",
-      "target": "",
-      "depth": 0,
+      "source": "lfo2",
+      "target": "pitch",
+      "depth": 0.00499999989,
       "curve": "linear",
-      "enabled": false
+      "enabled": true
     },
     {
       "source": "none",
@@ -751,7 +804,7 @@
     ]
   },
   "output": {
-    "levelDb": 4.5
+    "levelDb": -6
   },
   "metadata": {}
 }

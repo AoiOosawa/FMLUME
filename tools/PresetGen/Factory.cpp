@@ -60,11 +60,23 @@ std::vector<Preset> buildFactory()
 
     // ---- Pluck: the classic arpeggio voices
     { B b (C::Pluck); b.name ("Starlight Arp").tags ({ "Arp", "Bright", "Modern" }).desc ("Sparkling 16th-note arpeggio over two octaves with a dotted echo.", "hold a chord; velocity sets brightness.");
-      b.poly (8).arp (A::Up, 12, 0.5f, 2).env (2, 0.001f, 0.45f, 0.0f, 0.25f).edge (1, 2, 2.2f).delaySync (0.3f, 10, 0.45f).reverb (0.2f, 2.2f); addArp (b); }
+      b.clear().op (1, 7.0f, 0.8f, 0.001f, 0.18f, 0.0f, 0.15f)             // glass strike
+       .op (2, 1.0f, 1.0f, 0.001f, 0.9f, 0.0f, 0.6f, 0.8f)
+       .op (3, 4.0f, 1.0f, 0.001f, 0.35f, 0.0f, 0.3f, 0.3f).det (3, 5.0f)    // high twinkle
+       .op (4, 2.0f, 0.5f, 0.001f, 0.5f, 0.0f, 0.4f)
+       .edge (1, 2, 1.3f).edge (4, 3, 0.7f).vel (1, 0.3f, 0.7f).filter (FT::LP12, 14000.0f, 0.05f)
+       .m (5, { { E (1, 2), 0.3f }, { O (1, kOpEnvD), -0.15f } }).m (6, { { O (2, kOpEnvD), 0.2f }, { E (4, 3), 0.2f } })
+       .m (7, { { pc::filterCutoff, -0.3f }, { O (2, kOpEnvD), -0.15f }, { O (3, kOpEnvD), -0.15f } }).m (8, { { FX (F::Reverb, 4), 0.35f }, { FX (F::Delay, 5), 0.3f } })
+       .poly (8).arp (A::Up, 12, 0.5f, 2).delaySync (0.3f, 10, 0.45f).reverb (0.22f, 2.4f); addArp (b); }
     { B b (C::Pluck); b.name ("Cascade Arp").tags ({ "Arp", "Bright", "Cinematic" }).desc ("Falling triplet arpeggio across three octaves, like water over glass.", "hold three or four notes.");
       b.poly (8).arp (A::Down, 14, 0.6f, 3).ratio (1, 4.0f).edge (1, 2, 1.6f).env (2, 0.001f, 0.6f, 0.0f, 0.4f).delaySync (0.26f, 9, 0.5f).reverb (0.3f, 3.2f, 0.7f); addArp (b); }
-    { B b (C::Pluck); b.name ("Pendulum Arp").tags ({ "Arp", "Warm", "Soft" }).desc ("Up-and-down 16ths with a light swing; mellow and round.", "even velocity; the swing does the groove.");
-      b.poly (8).arp (A::UpDown, 12, 0.55f, 2).swing (0.22f).ratio (1, 2.0f).edge (1, 2, 1.5f).filter (FT::LP12, 5200.0f, 0.2f).env (2, 0.001f, 0.55f, 0.0f, 0.3f).chorus (0.25f).delaySync (0.2f, 9, 0.35f).reverb (0.18f); addArp (b); }
+    { B b (C::Pluck); b.name ("Pendulum Arp").tags ({ "Arp", "Warm", "Soft" }).desc ("Up-and-down 16ths with a light swing; hollow, woody and round.", "even velocity; the swing does the groove.");
+      b.clear().op (1, 1.0f, 1.0f, 0.002f, 0.5f, 0.0f, 0.3f, 1.0f).wave (1, W::Pulse)              // hollow, woody: a square through a closing filter
+       .op (2, 2.0f, 0.5f, 0.002f, 0.25f, 0.0f, 0.2f, 0.2f).wave (2, W::Triangle)
+       .filter (FT::LP24, 900.0f, 0.3f).modEnv (0.001f, 0.22f, 0.0f, 0.18f).mod (0, S::ModEnv, pc::filterCutoff, 0.28f).mod (1, S::Velocity, pc::filterCutoff, 0.1f)
+       .m (5, { { DEPTH (0), 0.2f }, { pc::modEnvD, -0.2f } }).m (6, { { O (1, kOpEnvD), 0.25f }, { O (2, kOpCarrierGain), 0.3f } })
+       .m (7, { { pc::filterCutoff, -0.2f }, { O (1, kOpEnvD), -0.15f } }).m (8, { { FX (F::Reverb, 4), 0.35f }, { FX (F::Delay, 5), 0.3f } })
+       .poly (8).arp (A::UpDown, 12, 0.55f, 2).swing (0.22f).chorus (0.25f).delaySync (0.2f, 9, 0.35f).reverb (0.18f); addArp (b); }
     { B b (C::Pluck); b.name ("Dice Arp").tags ({ "Arp", "Modern", "Punchy" }).desc ("Random-order 16ths: a generative pattern from any held chord.", "hold four or more notes for the most variety.");
       b.poly (8).arp (A::Random, 12, 0.45f, 2).ratio (1, 5.0f).edge (1, 2, 2.0f).env (1, 0.001f, 0.08f, 0.0f, 0.06f).env (2, 0.001f, 0.35f, 0.0f, 0.2f).delaySync (0.3f, 10, 0.5f, 0.9f).reverb (0.16f); addArp (b); }
     { B b (C::Pluck); b.name ("One Key Minor 7").tags ({ "Arp", "Modern", "Warm" }).desc ("One key plays a running minor-seventh arpeggio.", "play single keys; change key to change the harmony.");
@@ -72,7 +84,11 @@ std::vector<Preset> buildFactory()
     { B b (C::Pluck); b.name ("One Key Major 7").tags ({ "Arp", "Bright", "Soft" }).desc ("One key plays a dreamy major-seventh triplet arpeggio.", "single keys, lightly.");
       b.poly (8).chord (CH::Maj7).arp (A::UpDown, 11, 0.7f, 2).ratio (1, 2.0f).edge (1, 2, 1.4f).env (2, 0.001f, 0.9f, 0.0f, 0.5f).chorus (0.3f).delaySync (0.24f, 9, 0.4f).reverb (0.3f, 3.0f); addArp (b); }
     { B b (C::Pluck); b.name ("One Key Sus Runner").tags ({ "Arp", "Bright", "Punchy" }).desc ("One key plays a driving sus4 arpeggio in 16ths over three octaves.", "single keys; great over a moving bass note.");
-      b.poly (8).chord (CH::Sus4).arp (A::Up, 12, 0.4f, 3).ratio (1, 3.0f).edge (1, 2, 2.8f).env (2, 0.001f, 0.3f, 0.0f, 0.18f).delaySync (0.22f, 10, 0.4f).reverb (0.14f); addArp (b); }
+      b.clear().op (1, 1.0f, 1.0f, 0.001f, 0.28f, 0.0f, 0.16f, 1.0f).op (2, 1.0f, 1.0f, 0.001f, 0.28f, 0.0f, 0.16f, 0.9f).wave (1, W::Saw).wave (2, W::Saw).det (1, -8.0f).det (2, 8.0f)   // driving saw pluck
+       .filter (FT::LP24, 1100.0f, 0.3f).modEnv (0.001f, 0.14f, 0.0f, 0.12f).mod (0, S::ModEnv, pc::filterCutoff, 0.4f).mod (1, S::Velocity, pc::filterCutoff, 0.12f).chorus (0.2f)
+       .m (5, { { DEPTH (0), 0.2f }, { pc::modEnvD, -0.2f } }).m (6, { { O (1, kOpEnvD), 0.25f }, { O (2, kOpEnvD), 0.25f } })
+       .m (7, { { pc::filterCutoff, -0.25f } }).m (8, { { FX (F::Reverb, 4), 0.35f }, { FX (F::Delay, 5), 0.3f } })
+       .poly (8).chord (CH::Sus4).arp (A::Up, 12, 0.4f, 3).delaySync (0.22f, 10, 0.4f).reverb (0.14f); addArp (b); }
 
     // ---- Bell
     { B b (C::Bell); b.name ("Glass Rain Arp").tags ({ "Arp", "Bright", "Cinematic" }).desc ("Random bell drops over three octaves in a long hall.", "hold a chord and let it rain.");
@@ -90,8 +106,11 @@ std::vector<Preset> buildFactory()
     { B b (C::Bass); b.name ("Octave Bass Arp").tags ({ "Arp", "Retro", "Punchy" }).desc ("The classic octave-jump disco bass in eighths.", "hold one note; it alternates with the octave above.");
       b.poly (4).arp (A::Up, 9, 0.5f, 2).env (3, 0.001f, 0.3f, 0.5f, 0.1f).edge (2, 3, 2.0f).out (4, 0.3f); addArp (b); }
     { B b (C::Bass); b.name ("Acid Steps Arp").tags ({ "Arp", "Retro", "Modern" }).desc ("Squelchy resonant sequence that follows the order you play.", "press notes one by one; Brightness opens the squelch.");
-      b.poly (4).arp (A::AsPlayed, 12, 0.35f, 1).swing (0.15f).fb (1, 0.9f).edge (1, 2, 2.4f).edge (2, 3, 3.0f).filter (FT::LP24, 1400.0f, 0.75f, 0.3f).mod (2, S::ModEnv, pc::filterCutoff, 0.35f).modEnv (0.001f, 0.16f, 0.0f, 0.1f)
-       .env (3, 0.001f, 0.22f, 0.2f, 0.07f).drive (0.3f).delaySync (0.14f, 10, 0.35f); addArp (b); }
+      b.clear().op (1, 1.0f, 1.0f, 0.001f, 0.3f, 0.6f, 0.07f, 1.0f).wave (1, W::Saw)
+       .filter (FT::LP24, 320.0f, 0.78f, 0.35f).modEnv (0.001f, 0.16f, 0.0f, 0.1f)
+       .mod (0, S::ModEnv, pc::filterCutoff, 0.4f).mod (1, S::Velocity, pc::filterCutoff, 0.15f)
+       .m (5, { { pc::filterRes, 0.12f }, { pc::filterDrive, 0.3f } }).m (6, { { DEPTH (0), 0.2f }, { pc::modEnvD, -0.2f } }).m (7, { { FX (F::EQ, 0), 0.25f }, { pc::filterCutoff, -0.1f } }).mu (8, { { FX (F::Drive, 0), 0.6f } })
+       .poly (4).arp (A::AsPlayed, 12, 0.35f, 1).swing (0.15f).drive (0.3f).delaySync (0.14f, 10, 0.35f); addArp (b); }
     { B b (C::Bass); b.name ("One Key Bass Riff").tags ({ "Arp", "Punchy", "Warm" }).desc ("One key plays a rolling minor bass riff.", "single low keys.");
       b.poly (4).chord (CH::Minor).arp (A::UpDown, 12, 0.5f, 1).env (3, 0.001f, 0.3f, 0.4f, 0.1f).edge (2, 3, 1.8f).out (4, 0.25f); addArp (b); }
 
@@ -114,7 +133,11 @@ std::vector<Preset> buildFactory()
     { B b (C::EPiano); b.name ("Tine Waves Arp").tags ({ "Arp", "Warm", "Soft" }).desc ("Electric-piano arpeggio rolling up and down in eighths.", "hold wide chords with both hands.");
       b.poly (12).arp (A::UpDown, 9, 0.95f, 2).chorus (0.35f).delaySync (0.18f, 10, 0.35f).reverb (0.22f, 2.4f); addArp (b); }
     { B b (C::EPiano); b.name ("One Key Dream Keys").tags ({ "Arp", "Warm", "Cinematic" }).desc ("One key plays a slow minor-seventh electric-piano arpeggio.", "single keys; let each harmony ring.");
-      b.poly (12).chord (CH::Min7).arp (A::Up, 9, 1.0f, 2).env (2, 0.002f, 2.6f, 0.0f, 0.8f).env (4, 0.002f, 3.0f, 0.0f, 0.9f).chorus (0.3f).delaySync (0.22f, 10, 0.4f).reverb (0.3f, 3.2f); addArp (b); }
+      b.poly (12).chord (CH::Min7).arp (A::Up, 9, 1.0f, 2)
+       .ratio (1, 5.0f).level (1, 0.3f).edge (1, 2, 0.3f).ratio (2, 2.0f).out (2, 0.35f).env (2, 0.01f, 3.0f, 0.0f, 1.2f)   // the tine becomes a soft octave
+       .edge (3, 4, 0.8f).vel (3, 0.3f, 0.3f).env (3, 0.01f, 2.0f, 0.2f, 1.0f).env (4, 0.012f, 3.4f, 0.1f, 1.2f)
+       .out (5, 0.2f).ratio (5, 3.0f).env (5, 0.01f, 1.6f, 0.0f, 0.9f)
+       .filter (FT::LP12, 3200.0f, 0.1f).phaser (0.3f, 0.2f, 0.6f, 0.3f).chorus (0.3f).delaySync (0.22f, 10, 0.4f).reverb (0.36f, 3.6f); addArp (b); }
     { B b (C::Keys); b.name ("Clav Groove Arp").tags ({ "Arp", "Punchy", "Retro" }).desc ("Funky swung 16ths that follow the order of your fingers.", "press notes one by one, then hold; play with the swing.");
       b.poly (8).arp (A::AsPlayed, 12, 0.4f, 1).swing (0.35f).ratio (1, 3.0f).edge (1, 2, 2.4f).env (1, 0.001f, 0.2f, 0.0f, 0.1f).env (2, 0.001f, 0.4f, 0.0f, 0.12f).env (4, 0.001f, 0.3f, 0.0f, 0.12f).phaser (0.25f, 0.5f); addArp (b); }
     { B b (C::Keys); b.name ("Organ Pulse Arp").tags ({ "Arp", "Retro", "Warm" }).desc ("Pulsing organ eighths, the minimal-music arpeggio.", "hold big chords and change one note at a time.");
@@ -124,8 +147,10 @@ std::vector<Preset> buildFactory()
     { B b (C::Pad); b.name ("Ripple Pad Arp").tags ({ "Arp", "Soft", "Cinematic" }).desc ("Soft overlapping notes rippling upward: an arpeggio that behaves like a pad.", "hold chords for a long time.");
       b.poly (16).arp (A::Up, 9, 1.0f, 2).env (1, 0.02f, 1.2f, 0.4f, 1.2f).env (2, 0.02f, 1.4f, 0.5f, 1.4f).env (3, 0.03f, 1.4f, 0.4f, 1.4f).env (4, 0.02f, 1.4f, 0.5f, 1.4f).delaySync (0.22f, 10, 0.45f).reverb (0.38f, 4.5f, 0.8f); addArp (b); }
     { B b (C::Pad); b.name ("Gate Dreams Arp").tags ({ "Arp", "Modern", "Cinematic" }).desc ("Slow arpeggio chopped by the trance gate: two rhythms at once.", "hold a chord; switch the gate pattern in Rhythm for new grooves.");
-      b.poly (16).arp (A::UpDown, 9, 1.0f, 2).env (1, 0.01f, 1.0f, 0.6f, 0.8f).env (2, 0.01f, 1.0f, 0.8f, 0.8f).env (3, 0.01f, 1.0f, 0.5f, 0.8f).env (4, 0.01f, 1.0f, 0.8f, 0.8f)
-       .gate (12, { 1, 0, 1, 1, 1, 0, 1, 1, 1, 0, 1, 1, 1, 0, 1, 1 }).delaySync (0.25f, 10, 0.45f).reverb (0.3f, 3.5f); addArp (b); }
+      b.poly (16).arp (A::UpDown, 9, 1.0f, 2).wave (2, W::Saw).wave (4, W::Saw).edge (1, 2, 0.4f).edge (3, 4, 0.3f)                            // bright saw pad, so the gate bites
+       .env (1, 0.01f, 1.0f, 0.6f, 0.5f).env (2, 0.01f, 1.0f, 0.9f, 0.5f).env (3, 0.01f, 1.0f, 0.5f, 0.5f).env (4, 0.01f, 1.0f, 0.9f, 0.5f)
+       .filter (FT::LP24, 3000.0f, 0.25f).uni (3, 15.0f, 90.0f)
+       .gate (12, { 1, 0, 1, 1, 1, 0, 1, 1, 1, 0, 1, 1, 1, 0, 1, 1 }).delaySync (0.25f, 10, 0.45f).reverb (0.26f, 3.0f); addArp (b); }
     { B b (C::Brass); b.name ("Brass Stabs Arp").tags ({ "Arp", "Punchy", "Retro" }).desc ("One key fires descending major brass stabs in eighths.", "single keys, played hard.");
       b.poly (8).chord (CH::Major).arp (A::Down, 9, 0.4f, 1).env (2, 0.01f, 0.25f, 0.5f, 0.1f).env (4, 0.01f, 0.25f, 0.4f, 0.1f).reverb (0.2f, 1.8f); addArp (b); }
     { B b (C::SFX); b.name ("Zap Sequence Arp").tags ({ "Arp", "Modern", "Metallic" }).desc ("Random metallic zaps over four octaves; instant sci-fi computer.", "hold any cluster of notes.");
@@ -138,26 +163,36 @@ std::vector<Preset> buildFactory()
     // ============================================================================ E.Piano
     { B b (C::EPiano); b.name ("Classic Tines").tags ({ "Retro", "Warm" }).desc ("The reference FM electric piano: glassy tine over a round body.", "soft = mellow, hard = barking tine."); add (b); }
     { B b (C::EPiano); b.name ("Soft Suitcase").tags ({ "Soft", "Warm" }).desc ("Mellow ballad piano with gentle stereo tremolo.", "stays round even when played hard.");
-      b.edge (1, 2, 0.8f).edge (3, 4, 1.3f).env (2, 0.003f, 2.8f, 0.0f, 0.5f).env (4, 0.003f, 3.4f, 0.0f, 0.5f).mod (0, S::LFO1, pc::pan, 0.35f).lfo (1, 3.2f).chorus (0.3f).reverb (0.2f, 2.2f).eq (1.5f, 0.0f, -2.5f); add (b); }
+      b.ratio (1, 7.0f).edge (1, 2, 0.3f).vel (1, 0.3f, 0.5f).edge (3, 4, 0.9f).vel (3, 0.3f, 0.45f).env (2, 0.003f, 2.8f, 0.0f, 0.5f).env (4, 0.004f, 3.6f, 0.0f, 0.55f)
+       .filter (FT::LP12, 2400.0f, 0.05f).mod (0, S::LFO1, pc::level, -0.24f).lfo (1, 4.6f).m (8, {}).mu (8, { { DEPTH (0), -0.3f } })
+       .chorus (0.0f).reverb (0.2f, 2.2f).eq (2.5f, 0.0f, -2.0f); add (b); }
     { B b (C::EPiano); b.name ("Bright DX Keys").tags ({ "Bright", "Retro", "Punchy" }).desc ("Cutting 80s pop electric piano with a bell layer.", "velocity opens the tine dramatically.");
       b.edge (1, 2, 2.3f).edge (3, 4, 2.5f).out (5, 0.25f).vel (1, 0.5f, 0.9f).chorus (0.35f, 0.5f, 0.8f).eq (0.0f, 0.0f, 3.0f); add (b); }
     { B b (C::EPiano); b.name ("Dyno Bark").tags ({ "Punchy", "Retro" }).desc ("Hard-hitting piano that growls when you dig in.", "wide dynamic range; hit hard for bark.");
-      b.edge (3, 4, 3.2f).vel (3, 0.5f, 0.95f).fb (3, 0.25f).level (1, 0.4f).drive (0.22f, 0.7f).comp (-20.0f, 3.0f, 3.0f); add (b); }
+      b.ratio (1, 3.0f).edge (1, 2, 0.9f).env (1, 0.001f, 0.35f, 0.0f, 0.2f).env (2, 0.002f, 1.2f, 0.0f, 0.3f)
+       .edge (3, 4, 2.8f).vel (3, 0.5f, 0.95f).fb (3, 0.35f).env (4, 0.002f, 1.5f, 0.0f, 0.3f)
+       .filter (FT::LP12, 4200.0f, 0.1f).eq (0.0f, 5.0f, -3.0f, 1400.0f).drive (0.3f, 0.7f).comp (-20.0f, 3.0f, 3.0f).chorus (0.0f); add (b); }
     { B b (C::EPiano); b.name ("Glass Tines").tags ({ "Bright", "Cinematic" }).desc ("Crystalline upper tines for arpeggios and intros.", "light touch for sparkle.");
       b.ratio (1, 10.0f).edge (1, 2, 1.8f).out (5, 0.35f).ratio (5, 6.0f).env (5, 0.001f, 1.4f, 0.0f, 0.8f).reverb (0.32f, 3.5f).chorus (0.25f); add (b); }
     { B b (C::EPiano); b.name ("Reed Bite").tags ({ "Retro", "Punchy", "Warm" }).desc ("Reed-style electric piano with a nasal edge and amplitude tremolo.", "harder playing adds bite.");
-      b.level (1, 0.2f).edge (3, 4, 2.6f).fb (3, 0.55f).env (4, 0.002f, 1.6f, 0.1f, 0.25f).env (2, 0.002f, 1.2f, 0.0f, 0.25f)
-       .mod (0, S::LFO1, pc::level, -0.12f).lfo (1, 5.5f).m (8, {}).mu (8, { { DEPTH (0), -0.3f } }).chorus (0.1f); add (b); }
+      b.ratio (1, 2.0f).edge (1, 2, 1.2f).env (1, 0.001f, 0.5f, 0.2f, 0.2f).vel (1, 0.3f, 0.6f).env (2, 0.003f, 1.1f, 0.15f, 0.2f)       // ratio-2 modulators: odd harmonics, hollow and nasal
+       .ratio (3, 2.0f).edge (3, 4, 2.0f).fb (3, 0.4f).env (3, 0.002f, 0.9f, 0.3f, 0.2f).env (4, 0.003f, 1.3f, 0.15f, 0.22f)
+       .eq (-3.0f, 5.0f, -1.0f, 1000.0f).mod (0, S::LFO1, pc::level, -0.22f).lfo (1, 5.6f).m (8, {}).mu (8, { { DEPTH (0), -0.3f } }).chorus (0.0f); add (b); }
     { B b (C::EPiano); b.name ("Wide Tremolo EP").tags ({ "Warm", "Retro" }).desc ("Stereo auto-pan piano for slow chords.", "even response.");
       b.mod (0, S::LFO1, pc::pan, 0.6f).lfo (1, 4.0f).edge (1, 2, 1.1f).chorus (0.2f).reverb (0.22f, 2.8f); add (b); }
     { B b (C::EPiano); b.name ("Night Lounge").tags ({ "Soft", "Warm", "Cinematic" }).desc ("Dark, intimate late-night piano.", "soft playing recommended.");
-      b.edge (1, 2, 0.6f).edge (3, 4, 1.1f).env (2, 0.008f, 2.6f, 0.0f, 0.6f).env (4, 0.008f, 3.2f, 0.0f, 0.6f).eq (2.0f, 0.0f, -4.0f).reverb (0.35f, 3.2f, 0.7f, 0.7f).chorus (0.15f); add (b); }
+      b.ratio (1, 1.0f).edge (1, 2, 0.35f).vel (1, 0.2f, 0.3f).env (1, 0.005f, 1.2f, 0.1f, 0.5f).env (2, 0.008f, 3.0f, 0.0f, 0.7f)
+       .edge (3, 4, 0.6f).vel (3, 0.2f, 0.4f).env (4, 0.02f, 3.6f, 0.0f, 0.7f).wave (2, W::Triangle).wave (4, W::Triangle)
+       .out (5, 0.22f).ratio (5, 2.0f).env (5, 0.01f, 2.4f, 0.0f, 0.8f)
+       .filter (FT::LP12, 1400.0f, 0.1f).mod (1, S::LFO2, pc::pitch, 0.003f).lfo (2, 0.45f)
+       .eq (2.5f, 0.0f, -3.0f).reverb (0.38f, 3.4f, 0.7f, 0.7f).chorus (0.12f); add (b); }
     { B b (C::EPiano); b.name ("Clav Hybrid").tags ({ "Punchy", "Modern" }).desc ("Percussive, funky hybrid between clavinet and electric piano.", "short notes; velocity adds snap.");
       b.ratio (1, 3.0f).edge (1, 2, 2.6f).env (1, 0.001f, 0.18f, 0.0f, 0.1f).env (2, 0.001f, 0.9f, 0.0f, 0.15f).ratio (3, 2.0f).edge (3, 4, 2.2f).env (4, 0.001f, 1.0f, 0.0f, 0.15f).phaser (0.25f, 0.6f); add (b); }
     { B b (C::EPiano); b.name ("Tine Pad Layer").tags ({ "Soft", "Cinematic" }).desc ("Electric piano that blooms into a soft sustained layer.", "hold chords and let them ring.");
       b.env (2, 0.03f, 4.0f, 0.35f, 1.4f).env (4, 0.05f, 4.5f, 0.4f, 1.6f).env (3, 0.05f, 3.0f, 0.4f, 1.2f).edge (3, 4, 1.4f).chorus (0.45f, 0.5f, 0.4f).reverb (0.42f, 4.5f); add (b); }
     { B b (C::EPiano); b.name ("Phase Seventy").tags ({ "Retro", "Warm" }).desc ("Phaser-drenched 70s electric piano.", "medium velocity keeps the phaser sweet.");
-      b.phaser (0.5f, 0.35f, 0.7f, 0.4f).edge (1, 2, 1.0f).edge (3, 4, 1.9f).chorus (0.0f); add (b); }
+      b.ratio (1, 9.0f).edge (1, 2, 1.0f).edge (3, 4, 2.5f).fb (3, 0.15f).env (2, 0.002f, 1.6f, 0.0f, 0.3f).env (4, 0.002f, 2.0f, 0.0f, 0.32f)
+       .phaser (0.75f, 0.55f, 0.9f, 0.65f).drive (0.12f, 0.6f).chorus (0.0f).fxOff (F::Reverb); add (b); }
     { B b (C::EPiano); b.name ("Lo-Fi Tape Keys").tags ({ "Retro", "Warm", "Modern" }).desc ("Dusty, band-limited piano for lo-fi beats.", "even response; pitch wobble is built in.");
       b.crush (10.0f, 3.0f, 0.5f).eq (2.0f, 1.0f, -7.0f).drive (0.18f, 0.4f).mod (1, S::LFO2, pc::pitch, 0.006f).lfo (2, 0.7f).edge (1, 2, 0.9f); add (b); }
 
@@ -182,9 +217,27 @@ std::vector<Preset> buildFactory()
        .chorus (0.35f, 0.45f, 0.5f).reverb (0.16f, 1.8f, 0.5f, 0.4f); add (b); }
     { B b (C::Bell); b.name ("Crystal Bell").tags ({ "Bright", "Metallic" }).desc ("Clear inharmonic bell with a long natural tail.", "soft = pure, hard = more clang."); add (b); }
     { B b (C::Bell); b.name ("Tubular Tower").tags ({ "Metallic", "Cinematic" }).desc ("Orchestral tubular bell with a slow, heavy decay.", "play single notes firmly.");
-      b.ratio (1, 3.5f).edge (1, 3, 3.0f).edge (2, 3, 0.4f).env (3, 0.001f, 7.0f, 0.0f, 4.0f).env (1, 0.001f, 4.5f, 0.0f, 3.0f).env (5, 0.001f, 6.0f, 0.0f, 4.0f).edge (4, 5, 1.2f).reverb (0.38f, 5.0f, 0.8f); add (b); }
+      b.clear().op (1, 3.5f, 0.9f, 0.001f, 2.5f, 0.0f, 2.0f)               // clang
+       .op (2, 2.0f, 1.0f, 0.001f, 7.0f, 0.0f, 4.0f, 1.0f)                 // strike tone
+       .op (3, 3.0f, 1.0f, 0.001f, 5.0f, 0.0f, 3.5f, 0.55f).det (3, 4.0f)
+       .op (4, 4.2f, 1.0f, 0.001f, 3.0f, 0.0f, 2.5f, 0.4f)
+       .op (5, 1.0f, 1.0f, 0.02f, 8.0f, 0.0f, 4.5f, 0.3f)                  // hum
+       .op (6, 5.4f, 1.0f, 0.001f, 1.2f, 0.0f, 1.0f, 0.25f)
+       .edge (1, 2, 1.1f).edge (1, 3, 0.6f).vel (1, 0.2f, 0.6f).vel (6, 0.7f, 0.0f)
+       .mod (0, S::LFO1, E (1, 2), 0.0f).lfo (1, 0.7f).mod (1, S::LFO2, pc::pitch, 0.0f).lfo (2, 5.2f)
+       .m (5, { { E (1, 2), 0.25f }, { E (1, 3), 0.2f }, { O (6, kOpCarrierGain), 0.3f } }).m (6, { { FX (F::Chorus, 3), 0.5f } }).mu (6, { { DEPTH (1), 0.004f } })
+       .m (7, { { O (2, kOpEnvD), 0.3f }, { O (3, kOpEnvD), 0.3f }, { O (5, kOpEnvD), 0.3f }, { O (2, kOpEnvR), 0.3f }, { O (3, kOpEnvR), 0.3f }, { O (5, kOpEnvR), 0.3f } })
+       .mu (8, { { DEPTH (0), 0.12f } }).eq (1.5f, 0.0f, -3.0f).reverb (0.38f, 5.0f, 0.8f); add (b); }
     { B b (C::Bell); b.name ("Glocken Spark").tags ({ "Bright", "Metallic", "Punchy" }).desc ("Small bright glockenspiel for melodies and doubling.", "light touch.");
-      b.ratio (1, 5.19f).ratio (2, 9.23f).edge (1, 3, 1.4f).edge (2, 3, 0.6f).env (3, 0.001f, 1.6f, 0.0f, 1.0f).env (5, 0.001f, 1.2f, 0.0f, 0.8f).out (5, 0.4f).ratio (5, 2.0f); add (b); }
+      b.clear().op (1, 14.0f, 0.8f, 0.001f, 0.05f, 0.0f, 0.05f)            // hard mallet click
+       .op (2, 2.0f, 1.0f, 0.001f, 1.5f, 0.0f, 1.0f, 1.0f)                 // bar fundamental (sounds an octave up, like the instrument)
+       .op (3, 5.52f, 1.0f, 0.001f, 0.55f, 0.0f, 0.5f, 0.4f)               // second bar mode (2.76x)
+       .op (4, 10.8f, 1.0f, 0.001f, 0.22f, 0.0f, 0.2f, 0.22f)              // third bar mode (5.4x)
+       .edge (1, 2, 1.0f).vel (1, 0.3f, 0.8f).vel (3, 0.5f, 0.0f).vel (4, 0.7f, 0.0f)
+       .mod (0, S::LFO1, pc::level, 0.0f).lfo (1, 6.0f).mod (1, S::LFO2, pc::pitch, 0.0f).lfo (2, 5.2f)
+       .m (5, { { O (3, kOpCarrierGain), 0.3f }, { O (4, kOpCarrierGain), 0.3f }, { E (1, 2), 0.25f } }).m (6, { { FX (F::Chorus, 3), 0.5f } }).mu (6, { { DEPTH (1), 0.004f } })
+       .m (7, { { O (2, kOpEnvD), 0.3f }, { O (2, kOpEnvR), 0.3f }, { O (3, kOpEnvD), 0.3f } }).mu (8, { { DEPTH (0), -0.2f } })
+       .reverb (0.18f, 1.6f, 0.45f, 0.3f); add (b); }
     { B b (C::Bell); b.name ("Music Box").tags ({ "Soft", "Bright" }).desc ("Delicate wind-up music box.", "gentle, even velocity.");
       b.ratio (1, 4.0f).ratio (2, 8.0f).edge (1, 3, 1.1f).edge (2, 3, 0.3f).env (3, 0.001f, 1.1f, 0.0f, 0.7f).env (1, 0.001f, 0.25f, 0.0f, 0.2f).out (5, 0.0f).level (4, 0.3f).reverb (0.25f, 1.8f).m (5, { { E (1, 3), 0.2f }, { E (2, 3), 0.25f } }).mod (0, S::LFO1, E (1, 3), 0.0f); add (b); }
     { B b (C::Bell); b.name ("Temple Gong").tags ({ "Metallic", "Cinematic" }).desc ("Low, complex gong that swells after the strike.", "strike hard and let it ring.");
@@ -194,7 +247,15 @@ std::vector<Preset> buildFactory()
       b.ratio (1, 4.0f).edge (1, 3, 0.9f).edge (2, 3, 0.0f).level (4, 0.25f).env (3, 0.002f, 3.2f, 0.0f, 1.2f).env (5, 0.002f, 3.0f, 0.0f, 1.2f).mod (0, S::LFO1, pc::level, -0.18f).lfo (1, 5.0f)
        .m (8, {}).mu (8, { { DEPTH (0), -0.3f } }).m (5, { { E (1, 3), 0.2f }, { E (4, 5), 0.2f } }); add (b); }
     { B b (C::Bell); b.name ("Celesta Drops").tags ({ "Soft", "Bright" }).desc ("Round celesta for fairy-tale melodies.", "soft to medium.");
-      b.ratio (1, 5.0f).edge (1, 3, 0.8f).edge (2, 3, 0.15f).env (3, 0.002f, 1.5f, 0.0f, 0.9f).env (1, 0.001f, 0.4f, 0.0f, 0.3f).out (5, 0.3f).ratio (5, 2.0f).env (5, 0.002f, 0.9f, 0.0f, 0.6f).level (4, 0.3f); add (b); }
+      b.clear().op (1, 3.0f, 0.8f, 0.001f, 0.09f, 0.0f, 0.08f)             // felt hammer
+       .op (2, 1.0f, 1.0f, 0.002f, 1.1f, 0.0f, 0.6f, 0.9f)
+       .op (3, 2.0f, 1.0f, 0.002f, 0.7f, 0.0f, 0.45f, 0.55f).det (3, 3.0f)
+       .op (4, 4.0f, 1.0f, 0.001f, 0.3f, 0.0f, 0.25f, 0.18f)
+       .edge (1, 2, 0.9f).edge (1, 3, 0.5f).vel (1, 0.3f, 0.6f)
+       .mod (0, S::LFO1, pc::level, 0.0f).lfo (1, 6.0f).mod (1, S::LFO2, pc::pitch, 0.0f).lfo (2, 5.2f)
+       .m (5, { { E (1, 2), 0.25f }, { E (1, 3), 0.2f }, { O (4, kOpCarrierGain), 0.3f } }).m (6, { { FX (F::Chorus, 3), 0.5f } }).mu (6, { { DEPTH (1), 0.004f } })
+       .m (7, { { O (2, kOpEnvD), 0.3f }, { O (3, kOpEnvD), 0.3f }, { O (2, kOpEnvR), 0.3f }, { O (3, kOpEnvR), 0.3f } }).mu (8, { { DEPTH (0), -0.2f } })
+       .filter (FT::LP12, 6000.0f, 0.0f).chorus (0.12f).reverb (0.22f, 1.8f, 0.5f); add (b); }
     { B b (C::Bell); b.name ("Ice Chimes").tags ({ "Bright", "Metallic", "Cinematic" }).desc ("Frozen high chimes with echo and long reverb.", "sparse notes work best.");
       b.ratio (1, 7.07f).ratio (2, 9.23f).ratio (4, 5.19f).edge (1, 3, 1.6f).edge (2, 3, 1.2f).edge (4, 5, 1.8f).reverb (0.45f, 5.5f).delay (0.22f, 380.0f, 0.45f, 0.8f).eq (-2.0f, 0.0f, 3.0f); add (b); }
     { B b (C::Bell); b.name ("Wood Bell").tags ({ "Warm", "Punchy" }).desc ("Mallet on wood: short, woody and pitched.", "velocity controls the click.");
@@ -211,13 +272,22 @@ std::vector<Preset> buildFactory()
     // ============================================================================ Bass
     { B b (C::Bass); b.name ("FM Bass One").tags ({ "Punchy", "Retro" }).desc ("The all-round FM bass: tight attack, solid fundamental.", "harder = brighter attack."); add (b); }
     { B b (C::Bass); b.name ("Solid Sub").tags ({ "Warm", "Modern" }).desc ("Clean sub bass with just enough harmonics to be heard.", "even; use Weight for more sub.");
-      b.edge (1, 2, 0.5f).edge (2, 3, 0.8f).fb (1, 0.0f).out (4, 0.8f).env (3, 0.003f, 0.8f, 0.9f, 0.15f).env (4, 0.003f, 0.8f, 0.95f, 0.15f).fxOff (F::Chorus); add (b); }
+      b.fb (1, 0.0f).edge (1, 2, 0.2f).edge (2, 3, 0.45f).vel (1, 0.1f, 0.1f).vel (2, 0.1f, 0.1f)
+       .env (1, 0.012f, 0.3f, 0.5f, 0.12f).env (2, 0.012f, 0.3f, 1.0f, 0.12f).env (3, 0.012f, 0.3f, 1.0f, 0.16f)
+       .filter (FT::LP12, 380.0f, 0.0f).fxOff (F::Chorus); add (b); }
     { B b (C::Bass); b.name ("Growl Machine").tags ({ "Modern", "Punchy" }).desc ("Aggressive growling bass for drops and riffs.", "velocity drives the growl.");
       b.fb (1, 0.95f).edge (1, 2, 3.2f).edge (2, 3, 3.6f).vel (1, 0.3f, 0.8f).vel (2, 0.3f, 0.8f).env (1, 0.001f, 0.6f, 0.5f, 0.12f).env (2, 0.001f, 0.5f, 0.6f, 0.12f).drive (0.3f, 0.5f).out (4, 0.4f); add (b); }
     { B b (C::Bass); b.name ("Rubber Band").tags ({ "Punchy", "Retro" }).desc ("Bouncy, elastic bass with a quick wah-like decay.", "short notes; velocity adds twang.");
       b.env (2, 0.001f, 0.11f, 0.05f, 0.08f).env (1, 0.001f, 0.08f, 0.0f, 0.08f).edge (2, 3, 3.4f).edge (1, 2, 2.0f).env (3, 0.001f, 0.5f, 0.5f, 0.1f); add (b); }
     { B b (C::Bass); b.name ("Slap Pop").tags ({ "Punchy", "Bright" }).desc ("Slap-style bass with a snappy, metallic pop.", "hard hits pop, soft notes thump.");
-      b.ratio (1, 3.0f).fb (1, 0.2f).edge (1, 2, 2.4f).edge (2, 3, 2.8f).vel (1, 0.5f, 0.95f).vel (2, 0.5f, 0.9f).env (1, 0.001f, 0.06f, 0.0f, 0.05f).env (2, 0.001f, 0.2f, 0.1f, 0.1f).env (3, 0.001f, 0.7f, 0.3f, 0.12f).comp (-18.0f, 4.0f, 3.0f); add (b); }
+      b.clear().op (1, 5.0f, 1.0f, 0.001f, 0.045f, 0.0f, 0.04f)            // metallic pop
+       .op (2, 1.0f, 0.9f, 0.001f, 0.3f, 0.45f, 0.1f).fb (2, 0.6f)
+       .op (3, 1.0f, 1.0f, 0.001f, 0.8f, 0.3f, 0.1f, 1.0f)
+       .op (4, 2.0f, 1.0f, 0.001f, 0.25f, 0.15f, 0.08f, 0.5f)              // octave snap
+       .op (5, 0.5f, 1.0f, 0.001f, 0.8f, 0.8f, 0.12f, 0.0f)                // sub (Weight)
+       .edge (1, 3, 3.2f).edge (2, 3, 2.3f).edge (1, 4, 2.0f).edge (2, 4, 1.2f).vel (1, 0.5f, 0.95f).vel (2, 0.4f, 0.7f).vel (4, 0.7f, 0.0f)
+       .m (5, { { E (2, 3), 0.25f }, { O (2, kOpEnvS), 0.3f } }).m (6, { { E (1, 3), 0.25f }, { O (4, kOpCarrierGain), 0.3f } })
+       .mu (7, { { O (5, kOpCarrierGain), 0.7f } }).mu (8, { { FX (F::Drive, 0), 0.6f } }).comp (-18.0f, 4.0f, 3.0f); add (b); }
     { B b (C::Bass); b.name ("Detuned Reese").tags ({ "Modern", "Warm" }).desc ("Thick detuned saw bass that phases against itself.", "even; hold long notes.");
       b.clear().op (1, 1.0f, 1.0f, 0.005f, 0.5f, 1.0f, 0.2f, 1.0f).op (2, 1.0f, 1.0f, 0.005f, 0.5f, 1.0f, 0.2f, 1.0f).op (3, 0.5f, 0.8f, 0.005f, 0.5f, 1.0f, 0.2f, 0.6f)
        .wave (1, W::Saw).wave (2, W::Saw).det (1, -14.0f).det (2, 14.0f).filter (FT::LP24, 520.0f, 0.2f, 0.2f).mod (0, S::LFO1, pc::filterCutoff, 0.04f).lfo (1, 0.15f).mono (true, 0.04f)
@@ -225,7 +295,7 @@ std::vector<Preset> buildFactory()
     { B b (C::Bass); b.name ("Acid Square").tags ({ "Retro", "Punchy", "Bright" }).desc ("Resonant square-wave acid line.", "accented notes open the filter (velocity).");
       b.clear().op (1, 1.0f, 1.0f, 0.001f, 0.4f, 0.7f, 0.08f, 1.0f).wave (1, W::Pulse).filter (FT::LP24, 380.0f, 0.75f, 0.3f).modEnv (0.001f, 0.22f, 0.0f, 0.1f)
        .mod (0, S::ModEnv, pc::filterCutoff, 0.32f).mod (1, S::Velocity, pc::filterCutoff, 0.18f).mono (true, 0.06f)
-       .m (5, { { pc::filterRes, 0.25f }, { pc::filterDrive, 0.5f } }).m (6, { { DEPTH (0), 0.2f }, { pc::modEnvD, -0.2f } }).m (7, { { FX (F::EQ, 0), 0.25f }, { pc::filterCutoff, -0.1f } }).mu (8, { { FX (F::Drive, 0), 0.6f } }); add (b); }
+       .m (5, { { pc::filterRes, 0.12f }, { pc::filterDrive, 0.3f } }).m (6, { { DEPTH (0), 0.2f }, { pc::modEnvD, -0.2f } }).m (7, { { FX (F::EQ, 0), 0.25f }, { pc::filterCutoff, -0.1f } }).mu (8, { { FX (F::Drive, 0), 0.6f } }); add (b); }
     { B b (C::Bass); b.name ("Organ Bass").tags ({ "Warm", "Retro" }).desc ("Round, sustained organ-style house bass.", "even; no velocity snap.");
       b.ratio (1, 2.0f).fb (1, 0.0f).edge (1, 2, 0.9f).edge (2, 3, 1.2f).env (1, 0.002f, 0.4f, 0.8f, 0.1f).env (2, 0.002f, 0.4f, 0.8f, 0.1f).env (3, 0.002f, 0.4f, 0.95f, 0.1f).vel (1, 0.2f, 0.1f).vel (2, 0.2f, 0.1f).out (4, 0.5f); add (b); }
     { B b (C::Bass); b.name ("Tempo Wobble").tags ({ "Modern", "Punchy" }).desc ("Tempo-synced wobble bass (1/8 notes).", "hold notes; Growl changes the wobble tone.");
@@ -275,7 +345,9 @@ std::vector<Preset> buildFactory()
     // ============================================================================ Pad
     { B b (C::Pad); b.name ("Warm FM Pad").tags ({ "Warm", "Soft" }).desc ("Slow, warm pad with gentle internal movement.", "even; hold chords."); add (b); }
     { B b (C::Pad); b.name ("Glass Pad").tags ({ "Bright", "Cinematic" }).desc ("Glassy digital pad with shimmering upper partials.", "soft attack; hold.");
-      b.ratio (1, 3.0f).ratio (3, 4.0f).edge (1, 2, 0.9f).edge (3, 4, 0.7f).filter (FT::LP12, 9000.0f, 0.1f).reverb (0.42f, 5.0f).eq (0.0f, 0.0f, 2.5f); add (b); }
+      b.ratio (1, 7.0f).edge (1, 2, 1.3f).env (1, 0.05f, 2.5f, 0.3f, 2.0f).env (2, 0.12f, 2.0f, 0.8f, 2.2f)
+       .ratio (3, 5.0f).ratio (4, 2.0f).edge (3, 4, 1.0f).env (3, 0.05f, 3.0f, 0.25f, 2.0f).env (4, 0.15f, 2.0f, 0.75f, 2.4f).out (4, 0.6f)
+       .filter (FT::HP12, 220.0f, 0.05f).uni (2, 7.0f, 50.0f).chorus (0.35f).reverb (0.42f, 5.0f).eq (-1.0f, 0.0f, 2.5f); add (b); }
     { B b (C::Pad); b.name ("Dark Drone").tags ({ "Cinematic", "Warm" }).desc ("Low, brooding drone bed.", "hold low notes; Movement adds unrest.");
       b.ratio (1, 0.5f).ratio (3, 1.0f).edge (1, 2, 2.2f).edge (3, 4, 1.8f).filter (FT::LP24, 900.0f, 0.25f).env (2, 1.5f, 3.0f, 0.9f, 3.0f).env (4, 1.8f, 3.0f, 0.9f, 3.0f).mod (1, S::LFO2, pc::filterCutoff, 0.08f).reverb (0.45f, 8.0f, 0.9f, 0.7f); add (b); }
     { B b (C::Pad); b.name ("Analog Strings").tags ({ "Warm", "Retro" }).desc ("Ensemble string machine built from detuned saws.", "even; velocity is gentle.");
@@ -284,14 +356,21 @@ std::vector<Preset> buildFactory()
        .m (5, { { pc::filterCutoff, -0.3f }, { O (3, kOpCarrierGain), -0.3f } }).m (6, { { FX (F::Chorus, 3), 0.5f }, { FX (F::Chorus, 2), 0.3f } })
        .m (7, { { pc::lfo1Rate, 0.25f } }).mu (7, { { DEPTH (0), 0.12f }, { DEPTH (1), 0.3f } }).m (8, { { FX (F::EQ, 5), 0.25f }, { FX (F::Reverb, 4), 0.3f } }); add (b); }
     { B b (C::Pad); b.name ("Vox Humana").tags ({ "Soft", "Cinematic", "Warm" }).desc ("Choir-like pad with a vocal formant.", "even; sing-along chords.");
-      b.fb (1, 0.3f).edge (1, 2, 2.2f).edge (3, 4, 1.6f).filter (FT::BP12, 1100.0f, 0.45f).mod (1, S::LFO2, pc::filterCutoff, 0.05f).env (2, 0.5f, 2.0f, 0.9f, 1.5f).env (4, 0.6f, 2.0f, 0.9f, 1.5f).reverb (0.4f, 4.5f).chorus (0.35f); add (b); }
+      b.fb (1, 0.0f).ratio (2, 3.0f).edge (1, 2, 1.6f).env (1, 0.3f, 2.0f, 0.8f, 1.2f).env (2, 0.35f, 2.0f, 0.9f, 1.4f).out (2, 0.55f)        // formant around the 3rd harmonic
+       .ratio (3, 1.0f).edge (3, 4, 0.9f).env (3, 0.3f, 2.0f, 0.7f, 1.2f).env (4, 0.3f, 2.0f, 0.9f, 1.4f).out (4, 1.0f)                      // the sung fundamental
+       .op (5, 1.0f, 0.6f, 0.35f, 2.0f, 0.8f, 1.2f).op (6, 5.0f, 1.0f, 0.4f, 2.0f, 0.85f, 1.4f, 0.14f).edge (5, 6, 1.2f)                      // upper formant
+       .filter (FT::LP12, 4200.0f, 0.1f).mod (2, S::LFO2, pc::pitch, 0.005f).lfo (2, 5.3f).reverb (0.4f, 4.5f).chorus (0.35f); add (b); }
     { B b (C::Pad); b.name ("Evolving Motion").tags ({ "Modern", "Cinematic" }).desc ("Constantly shifting pad: two slow LFOs and a phaser.", "hold for at least a few bars.");
-      b.mod (0, S::LFO1, E (1, 2), 0.14f).mod (1, S::LFO2, pc::filterCutoff, 0.14f).mod (2, S::LFO1, pc::pan, 0.25f).lfo (1, 0.17f, LfoShape::Triangle).lfo (2, 0.09f).phaser (0.4f, 0.12f, 0.8f, 0.4f).reverb (0.4f, 5.0f); add (b); }
+      b.ratio (1, 2.0f).edge (1, 2, 1.1f).ratio (3, 3.0f).ratio (4, 2.0f).edge (3, 4, 0.9f).out (4, 0.55f)
+       .mod (0, S::LFO1, E (1, 2), 0.4f).mod (1, S::LFO2, pc::filterCutoff, 0.2f).mod (2, S::LFO1, pc::pan, 0.35f).mod (3, S::LFO2, E (3, 4), 0.45f)
+       .lfo (1, 0.17f, LfoShape::Triangle).lfo (2, 0.09f).filter (FT::LP12, 3600.0f, 0.3f)
+       .phaser (0.45f, 0.12f, 0.8f, 0.5f).delay (0.2f, 520.0f, 0.45f, 0.8f).reverb (0.4f, 5.0f); add (b); }
     { B b (C::Pad); b.name ("Shimmer Air").tags ({ "Bright", "Cinematic", "Soft" }).desc ("Airy high pad with a very long reverb.", "sparse voicings in the upper register.");
       b.ratio (3, 4.0f).edge (3, 4, 0.9f).filter (FT::HP12, 320.0f, 0.1f).eq (-3.0f, 0.0f, 5.0f).reverb (0.55f, 8.0f, 0.9f, 0.3f).chorus (0.4f)
        .m (5, { { E (1, 2), -0.15f }, { E (3, 4), -0.15f }, { FX (F::EQ, 5), -0.3f } }); add (b); }
     { B b (C::Pad); b.name ("Soft Sweep").tags ({ "Warm", "Retro" }).desc ("Pad whose filter opens slowly on every chord.", "even; the sweep restarts on each new note.");
-      b.filter (FT::LP24, 600.0f, 0.3f).modEnv (2.2f, 3.0f, 0.6f, 2.0f).mod (1, S::ModEnv, pc::filterCutoff, 0.35f).edge (1, 2, 2.0f).edge (3, 4, 1.6f)
+      b.wave (2, W::Saw).wave (4, W::Saw).edge (1, 2, 0.3f).edge (3, 4, 0.25f).env (2, 0.15f, 2.0f, 0.9f, 1.6f).env (4, 0.2f, 2.0f, 0.9f, 1.6f)
+       .filter (FT::LP24, 380.0f, 0.5f, 0.1f).modEnv (1.8f, 3.0f, 0.5f, 1.6f).mod (1, S::ModEnv, pc::filterCutoff, 0.5f).uni (2, 14.0f, 85.0f).reverb (0.28f, 3.0f)
        .m (7, { { pc::modEnvA, 0.25f } }).mu (7, { { DEPTH (0), 0.12f } }).mname (7, "Sweep"); add (b); }
     { B b (C::Pad); b.name ("Wide Hollow").tags ({ "Retro", "Soft" }).desc ("Hollow triangle/pulse pad with wide stereo.", "even.");
       b.wave (2, W::Triangle).wave (4, W::Pulse).out (4, 0.45f).edge (1, 2, 0.8f).edge (3, 4, 0.4f).filter (FT::LP12, 3200.0f, 0.15f).uni (3, 14.0f, 100.0f).chorus (0.4f); add (b); }
@@ -306,9 +385,23 @@ std::vector<Preset> buildFactory()
     // ============================================================================ Pluck
     { B b (C::Pluck); b.name ("Classic Pluck").tags ({ "Bright", "Punchy" }).desc ("Clean digital pluck for arps and melodies.", "velocity = snap."); add (b); }
     { B b (C::Pluck); b.name ("Nylon Fingers").tags ({ "Warm", "Soft" }).desc ("Soft nylon-string style pluck.", "soft = round, hard = more string noise.");
-      b.ratio (1, 1.0f).edge (1, 2, 1.6f).env (1, 0.001f, 0.25f, 0.0f, 0.2f).edge (3, 2, 0.6f).env (2, 0.002f, 1.4f, 0.0f, 0.5f).filter (FT::LP12, 5200.0f).reverb (0.2f, 1.8f).fxOff (F::Delay); add (b); }
+      b.clear().op (1, 1.0f, 0.9f, 0.001f, 0.14f, 0.05f, 0.12f)            // string brightness that dies quickly
+       .op (2, 1.0f, 1.0f, 0.002f, 1.7f, 0.0f, 0.5f, 1.0f)
+       .op (3, 3.0f, 0.5f, 0.001f, 0.04f, 0.0f, 0.04f)                     // finger noise
+       .op (4, 2.0f, 1.0f, 0.002f, 0.5f, 0.0f, 0.3f, 0.22f)
+       .edge (1, 2, 2.3f).edge (3, 2, 0.6f).vel (1, 0.3f, 0.6f).vel (3, 0.2f, 0.8f).filter (FT::LP12, 2800.0f, 0.1f)
+       .m (5, { { E (1, 2), 0.25f }, { E (3, 2), 0.3f } }).m (6, { { O (2, kOpEnvD), 0.2f }, { FX (F::EQ, 0), 0.2f } })
+       .m (7, { { pc::filterCutoff, -0.3f }, { O (2, kOpEnvD), -0.15f } }).m (8, { { FX (F::Reverb, 4), 0.35f }, { FX (F::Delay, 5), 0.3f } })
+       .eq (2.0f, 0.0f, -1.0f).reverb (0.2f, 1.8f).fxOff (F::Delay); add (b); }
     { B b (C::Pluck); b.name ("Concert Harp").tags ({ "Soft", "Cinematic", "Warm" }).desc ("Resonant harp with a long ringing decay.", "glissandi and arpeggios.");
-      b.ratio (1, 2.0f).edge (1, 2, 1.8f).env (1, 0.001f, 0.3f, 0.0f, 0.3f).env (2, 0.002f, 2.4f, 0.0f, 1.4f).edge (3, 2, 0.5f).reverb (0.35f, 3.2f).delay (0.0f, 350.0f); add (b); }
+      b.clear().op (1, 2.0f, 0.8f, 0.001f, 0.4f, 0.0f, 0.35f)              // hollow, odd-harmonic string
+       .op (2, 1.0f, 1.0f, 0.002f, 3.2f, 0.0f, 1.6f, 1.0f)
+       .op (3, 4.0f, 0.6f, 0.001f, 0.07f, 0.0f, 0.06f)                     // nail
+       .op (4, 2.0f, 1.0f, 0.002f, 1.3f, 0.0f, 0.9f, 0.4f).det (4, 3.0f)
+       .edge (1, 2, 1.5f).edge (3, 4, 0.9f).vel (1, 0.3f, 0.6f).vel (3, 0.2f, 0.7f).filter (FT::LP12, 7000.0f, 0.05f).uni (2, 5.0f, 70.0f)
+       .m (5, { { E (1, 2), 0.25f }, { E (3, 4), 0.3f } }).m (6, { { O (2, kOpEnvD), 0.2f }, { O (4, kOpCarrierGain), 0.3f } })
+       .m (7, { { pc::filterCutoff, -0.3f }, { O (2, kOpEnvD), -0.15f }, { O (2, kOpEnvR), -0.2f } }).m (8, { { FX (F::Reverb, 4), 0.35f }, { FX (F::Delay, 5), 0.3f } })
+       .reverb (0.36f, 3.4f).delay (0.0f, 350.0f); add (b); }
     { B b (C::Pluck); b.name ("Silk Koto").tags ({ "Bright", "Metallic" }).desc ("Sharp, bright plucked string with a quick bend-like attack.", "hard notes snap.");
       b.ratio (1, 3.0f).edge (1, 2, 3.6f).env (1, 0.001f, 0.09f, 0.0f, 0.08f).env (2, 0.001f, 1.1f, 0.0f, 0.5f).ratio (3, 2.0f).edge (3, 2, 1.2f).modEnv (0.001f, 0.05f, 0.0f, 0.05f).mod (0, S::ModEnv, pc::pitch, 0.012f).reverb (0.22f, 2.0f); add (b); }
     { B b (C::Pluck); b.name ("Synth Pluck").tags ({ "Modern", "Punchy", "Bright" }).desc ("Saw pluck with a fast filter envelope.", "velocity opens the filter.");
@@ -345,9 +438,13 @@ std::vector<Preset> buildFactory()
        .filter (FT::LP24, 900.0f, 0.2f, 0.1f).modEnv (0.05f, 0.5f, 0.55f, 0.2f).mod (0, S::ModEnv, pc::filterCutoff, 0.3f).mod (1, S::Velocity, pc::filterCutoff, 0.12f).chorus (0.2f)
        .m (5, { { DEPTH (0), 0.2f }, { pc::filterRes, 0.3f } }).m (6, { { pc::filterCutoff, 0.15f }, { FX (F::EQ, 0), 0.2f } }).m (7, { { pc::modEnvA, 0.3f }, { O (1, kOpEnvA), 0.2f } }).m (8, { { FX (F::Chorus, 3), 0.5f }, { O (2, kOpDetune), 0.06f } }); add (b); }
     { B b (C::Brass); b.name ("Fanfare Stack").tags ({ "Bright", "Cinematic" }).desc ("Big unison fanfare brass.", "play hard for full power.");
-      b.uni (3, 10.0f, 80.0f).chorus (0.25f).reverb (0.3f, 3.0f).edge (1, 2, 3.0f).out (4, 0.6f); add (b); }
+      b.op (5, 1.5f, 1.0f, 0.05f, 0.3f, 0.85f, 0.2f, 0.5f).op (6, 1.5f, 0.8f, 0.07f, 0.5f, 0.7f, 0.2f).fb (6, 0.5f).edge (6, 5, 2.2f).vel (6, 0.0f, 0.7f)   // a second section a fifth above
+       .edge (1, 2, 3.0f).out (4, 0.7f).env (1, 0.09f, 0.6f, 0.75f, 0.25f).uni (3, 12.0f, 85.0f).chorus (0.25f).reverb (0.32f, 3.2f).eq (0.0f, 0.0f, 2.0f); add (b); }
     { B b (C::Brass); b.name ("Low Bones").tags ({ "Warm", "Cinematic" }).desc ("Dark trombone section for low parts.", "play below middle C.");
-      b.fb (1, 0.55f).edge (1, 2, 2.2f).ratio (4, 1.0f).edge (3, 4, 1.0f).env (1, 0.08f, 0.6f, 0.7f, 0.2f).env (2, 0.06f, 0.3f, 0.9f, 0.22f).eq (3.0f, 0.0f, -3.5f).reverb (0.28f, 2.6f); add (b); }
+      b.fb (1, 0.45f).edge (1, 2, 1.7f).env (1, 0.14f, 0.7f, 0.65f, 0.22f).env (2, 0.07f, 0.3f, 0.95f, 0.24f)
+       .ratio (3, 1.0f).ratio (4, 1.0f).det (4, -9.0f).edge (3, 4, 1.1f).env (3, 0.16f, 0.8f, 0.5f, 0.22f).env (4, 0.08f, 0.3f, 0.9f, 0.24f).out (4, 0.8f)
+       .filter (FT::LP12, 1100.0f, 0.12f).modEnv (0.09f, 0.5f, 0.45f, 0.2f).mod (0, S::ModEnv, pc::filterCutoff, 0.22f).mod (1, S::Velocity, pc::filterCutoff, 0.14f)
+       .eq (3.0f, 0.0f, -2.0f).reverb (0.28f, 2.6f); add (b); }
     { B b (C::Brass); b.name ("Sforzando").tags ({ "Punchy", "Bright", "Cinematic" }).desc ("Hard accent that quickly drops back: fp brass.", "always played with force.");
       b.env (1, 0.01f, 0.22f, 0.35f, 0.15f).env (3, 0.01f, 0.25f, 0.3f, 0.15f).edge (1, 2, 3.8f).fb (1, 0.9f).env (2, 0.01f, 0.4f, 0.75f, 0.18f); add (b); }
     { B b (C::Brass); b.name ("Mellow Flugel").tags ({ "Soft", "Warm" }).desc ("Rounded flugelhorn solo voice.", "soft; gentle vibrato built in.");

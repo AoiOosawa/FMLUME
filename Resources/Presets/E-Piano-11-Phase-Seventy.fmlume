@@ -16,7 +16,7 @@
         "enabled": true,
         "waveform": "sine",
         "pitchMode": "ratio",
-        "ratio": 14,
+        "ratio": 9,
         "fixedHz": 440,
         "detuneCents": 0,
         "level": 0.550000012,
@@ -47,9 +47,9 @@
         "keyTracking": 1,
         "env": {
           "a": 0.00200000009,
-          "d": 2.20000005,
+          "d": 1.60000002,
           "s": 0,
-          "r": 0.349999994
+          "r": 0.300000012
         },
         "phaseOffset": 0,
         "keySync": true,
@@ -75,7 +75,7 @@
         },
         "phaseOffset": 0,
         "keySync": true,
-        "feedback": 0,
+        "feedback": 0.150000006,
         "carrierGain": 0
       },
       {
@@ -91,9 +91,9 @@
         "keyTracking": 1,
         "env": {
           "a": 0.00200000009,
-          "d": 2.79999995,
+          "d": 2,
           "s": 0,
-          "r": 0.400000006
+          "r": 0.319999993
         },
         "phaseOffset": 0,
         "keySync": true,
@@ -154,7 +154,7 @@
       {
         "from": 2,
         "to": 3,
-        "index": 1.89999998
+        "index": 2.5
       }
     ],
     "filter": {
@@ -561,7 +561,7 @@
         "type": "drive",
         "enabled": true,
         "params": {
-          "gain": 0,
+          "gain": 0.119999997,
           "tone": 0.600000024,
           "wet": 1,
           "trim": 0
@@ -582,10 +582,10 @@
         "type": "phaser",
         "enabled": true,
         "params": {
-          "rate": 0.349999994,
-          "depth": 0.699999988,
-          "feedback": 0.400000006,
-          "wet": 0.5
+          "rate": 0.550000012,
+          "depth": 0.899999976,
+          "feedback": 0.649999976,
+          "wet": 0.75
         }
       },
       {
@@ -639,7 +639,7 @@
           "decay": 2.5,
           "preDelay": 15,
           "damping": 0.5,
-          "wet": 0.119999997
+          "wet": 0
         }
       }
     ],
@@ -743,7 +743,7 @@
     ]
   },
   "output": {
-    "levelDb": -2.0999999
+    "levelDb": -0
   },
   "metadata": {}
 }

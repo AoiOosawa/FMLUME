@@ -24,14 +24,14 @@
         "velocityToIndex": 0.699999988,
         "keyTracking": 1,
         "env": {
-          "a": 0.0799999982,
-          "d": 0.600000024,
-          "s": 0.699999988,
-          "r": 0.200000003
+          "a": 0.140000001,
+          "d": 0.699999988,
+          "s": 0.649999976,
+          "r": 0.219999999
         },
         "phaseOffset": 0,
         "keySync": true,
-        "feedback": 0.550000012,
+        "feedback": 0.449999988,
         "carrierGain": 0
       },
       {
@@ -46,10 +46,10 @@
         "velocityToIndex": 0.300000012,
         "keyTracking": 1,
         "env": {
-          "a": 0.0599999987,
+          "a": 0.0700000003,
           "d": 0.300000012,
-          "s": 0.899999976,
-          "r": 0.219999999
+          "s": 0.949999988,
+          "r": 0.239999995
         },
         "phaseOffset": 0,
         "keySync": true,
@@ -68,10 +68,10 @@
         "velocityToIndex": 0.300000012,
         "keyTracking": 1,
         "env": {
-          "a": 0.0799999982,
-          "d": 0.600000024,
-          "s": 0.600000024,
-          "r": 0.200000003
+          "a": 0.159999996,
+          "d": 0.800000012,
+          "s": 0.5,
+          "r": 0.219999999
         },
         "phaseOffset": 0,
         "keySync": true,
@@ -84,21 +84,21 @@
         "pitchMode": "ratio",
         "ratio": 1,
         "fixedHz": 440,
-        "detuneCents": 4,
+        "detuneCents": -9,
         "level": 1,
         "velocityToLevel": 0.5,
         "velocityToIndex": 0.300000012,
         "keyTracking": 1,
         "env": {
-          "a": 0.0500000007,
+          "a": 0.0799999982,
           "d": 0.300000012,
-          "s": 0.800000012,
-          "r": 0.180000007
+          "s": 0.899999976,
+          "r": 0.239999995
         },
         "phaseOffset": 0,
         "keySync": true,
         "feedback": 0,
-        "carrierGain": 0.5
+        "carrierGain": 0.800000012
       },
       {
         "enabled": false,
@@ -149,18 +149,18 @@
       {
         "from": 0,
         "to": 1,
-        "index": 2.20000005
+        "index": 1.70000005
       },
       {
         "from": 2,
         "to": 3,
-        "index": 1
+        "index": 1.10000002
       }
     ],
     "filter": {
-      "type": "off",
-      "cutoff": 20000,
-      "resonance": 0,
+      "type": "LP12",
+      "cutoff": 1100,
+      "resonance": 0.119999997,
       "drive": 0
     },
     "lfo": [
@@ -182,10 +182,10 @@
       }
     ],
     "modEnv": {
-      "a": 0.00999999978,
+      "a": 0.0900000036,
       "d": 0.5,
-      "s": 0.600000024,
-      "r": 0.300000012
+      "s": 0.449999988,
+      "r": 0.200000003
     },
     "pitchBendRange": 2
   },
@@ -212,6 +212,14 @@
         {
           "targetParamId": "edge.3.4.index",
           "amount": 0.219999999,
+          "curve": "linear",
+          "polarity": "bipolar",
+          "min": 0,
+          "max": 1
+        },
+        {
+          "targetParamId": "filter.cutoff",
+          "amount": 0.300000012,
           "curve": "linear",
           "polarity": "bipolar",
           "min": 0,
@@ -431,18 +439,18 @@
   ],
   "matrix": [
     {
-      "source": "none",
-      "target": "",
-      "depth": 0,
+      "source": "modEnv",
+      "target": "filter.cutoff",
+      "depth": 0.219999999,
       "curve": "linear",
-      "enabled": false
+      "enabled": true
     },
     {
-      "source": "none",
-      "target": "",
-      "depth": 0,
+      "source": "velocity",
+      "target": "filter.cutoff",
+      "depth": 0.140000001,
       "curve": "linear",
-      "enabled": false
+      "enabled": true
     },
     {
       "source": "none",
@@ -537,7 +545,7 @@
           "midGain": 0,
           "midFreq": 1000,
           "midQ": 0.899999976,
-          "highGain": -3.5,
+          "highGain": -2,
           "highFreq": 6000
         }
       },
@@ -727,7 +735,7 @@
     ]
   },
   "output": {
-    "levelDb": -5.0999999
+    "levelDb": -6.80000019
   },
   "metadata": {}
 }

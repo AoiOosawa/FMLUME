@@ -16,18 +16,18 @@
         "enabled": true,
         "waveform": "sine",
         "pitchMode": "ratio",
-        "ratio": 3,
+        "ratio": 7,
         "fixedHz": 440,
         "detuneCents": 0,
         "level": 0.800000012,
-        "velocityToLevel": 0.5,
+        "velocityToLevel": 0.300000012,
         "velocityToIndex": 0.699999988,
         "keyTracking": 1,
         "env": {
           "a": 0.00100000005,
-          "d": 0.119999997,
+          "d": 0.180000007,
           "s": 0,
-          "r": 0.100000001
+          "r": 0.150000006
         },
         "phaseOffset": 0,
         "keySync": true,
@@ -47,53 +47,53 @@
         "keyTracking": 1,
         "env": {
           "a": 0.00100000005,
-          "d": 0.449999988,
+          "d": 0.899999976,
           "s": 0,
-          "r": 0.25
+          "r": 0.600000024
         },
         "phaseOffset": 0,
         "keySync": true,
         "feedback": 0,
-        "carrierGain": 1
+        "carrierGain": 0.800000012
       },
       {
         "enabled": true,
         "waveform": "sine",
         "pitchMode": "ratio",
-        "ratio": 1,
+        "ratio": 4,
         "fixedHz": 440,
-        "detuneCents": 0,
-        "level": 0.600000024,
-        "velocityToLevel": 0.5,
-        "velocityToIndex": 0.300000012,
-        "keyTracking": 1,
-        "env": {
-          "a": 0.00100000005,
-          "d": 0.400000006,
-          "s": 0,
-          "r": 0.200000003
-        },
-        "phaseOffset": 0,
-        "keySync": true,
-        "feedback": 0,
-        "carrierGain": 0
-      },
-      {
-        "enabled": false,
-        "waveform": "sine",
-        "pitchMode": "ratio",
-        "ratio": 1,
-        "fixedHz": 440,
-        "detuneCents": 0,
+        "detuneCents": 5,
         "level": 1,
         "velocityToLevel": 0.5,
         "velocityToIndex": 0.300000012,
         "keyTracking": 1,
         "env": {
-          "a": 0.00999999978,
-          "d": 0.5,
-          "s": 0.600000024,
+          "a": 0.00100000005,
+          "d": 0.349999994,
+          "s": 0,
           "r": 0.300000012
+        },
+        "phaseOffset": 0,
+        "keySync": true,
+        "feedback": 0,
+        "carrierGain": 0.300000012
+      },
+      {
+        "enabled": true,
+        "waveform": "sine",
+        "pitchMode": "ratio",
+        "ratio": 2,
+        "fixedHz": 440,
+        "detuneCents": 0,
+        "level": 0.5,
+        "velocityToLevel": 0.5,
+        "velocityToIndex": 0.300000012,
+        "keyTracking": 1,
+        "env": {
+          "a": 0.00100000005,
+          "d": 0.5,
+          "s": 0,
+          "r": 0.400000006
         },
         "phaseOffset": 0,
         "keySync": true,
@@ -149,18 +149,18 @@
       {
         "from": 0,
         "to": 1,
-        "index": 2.20000005
+        "index": 1.29999995
       },
       {
-        "from": 2,
-        "to": 1,
-        "index": 1
+        "from": 3,
+        "to": 2,
+        "index": 0.699999988
       }
     ],
     "filter": {
       "type": "LP12",
-      "cutoff": 9000,
-      "resonance": 0,
+      "cutoff": 14000,
+      "resonance": 0.0500000007,
       "drive": 0
     },
     "lfo": [
@@ -210,7 +210,7 @@
           "max": 1
         },
         {
-          "targetParamId": "edge.3.2.index",
+          "targetParamId": "edge.4.3.index",
           "amount": 0.219999999,
           "curve": "linear",
           "polarity": "bipolar",
@@ -249,6 +249,14 @@
           "max": 1
         },
         {
+          "targetParamId": "op3.attack",
+          "amount": 0.349999994,
+          "curve": "linear",
+          "polarity": "bipolar",
+          "min": 0,
+          "max": 1
+        },
+        {
           "targetParamId": "op1.attack",
           "amount": 0.200000003,
           "curve": "linear",
@@ -257,7 +265,7 @@
           "max": 1
         },
         {
-          "targetParamId": "op3.attack",
+          "targetParamId": "op4.attack",
           "amount": 0.200000003,
           "curve": "linear",
           "polarity": "bipolar",
@@ -288,6 +296,22 @@
           "max": 1
         },
         {
+          "targetParamId": "op3.release",
+          "amount": 0.300000012,
+          "curve": "linear",
+          "polarity": "bipolar",
+          "min": 0,
+          "max": 1
+        },
+        {
+          "targetParamId": "op3.decay",
+          "amount": 0.200000003,
+          "curve": "linear",
+          "polarity": "bipolar",
+          "min": 0,
+          "max": 1
+        },
+        {
           "targetParamId": "op1.release",
           "amount": 0.300000012,
           "curve": "linear",
@@ -296,7 +320,7 @@
           "max": 1
         },
         {
-          "targetParamId": "op3.release",
+          "targetParamId": "op4.release",
           "amount": 0.300000012,
           "curve": "linear",
           "polarity": "bipolar",
@@ -319,7 +343,15 @@
           "max": 1
         },
         {
-          "targetParamId": "op3.level",
+          "targetParamId": "op3.detune",
+          "amount": 0.0599999987,
+          "curve": "linear",
+          "polarity": "bipolar",
+          "min": 0,
+          "max": 1
+        },
+        {
+          "targetParamId": "op4.level",
           "amount": 0.25,
           "curve": "linear",
           "polarity": "bipolar",
@@ -335,7 +367,7 @@
       "mappings": [
         {
           "targetParamId": "edge.1.2.index",
-          "amount": 0.25,
+          "amount": 0.300000012,
           "curve": "linear",
           "polarity": "bipolar",
           "min": 0,
@@ -357,7 +389,7 @@
       "defaultValue": 0.5,
       "mappings": [
         {
-          "targetParamId": "edge.3.2.index",
+          "targetParamId": "op2.decay",
           "amount": 0.200000003,
           "curve": "linear",
           "polarity": "bipolar",
@@ -365,7 +397,7 @@
           "max": 1
         },
         {
-          "targetParamId": "op2.decay",
+          "targetParamId": "edge.4.3.index",
           "amount": 0.200000003,
           "curve": "linear",
           "polarity": "bipolar",
@@ -389,6 +421,14 @@
         },
         {
           "targetParamId": "op2.decay",
+          "amount": -0.150000006,
+          "curve": "linear",
+          "polarity": "bipolar",
+          "min": 0,
+          "max": 1
+        },
+        {
+          "targetParamId": "op3.decay",
           "amount": -0.150000006,
           "curve": "linear",
           "polarity": "bipolar",
@@ -612,10 +652,10 @@
         "enabled": true,
         "params": {
           "size": 0.600000024,
-          "decay": 2.20000005,
+          "decay": 2.4000001,
           "preDelay": 15,
           "damping": 0.5,
-          "wet": 0.200000003
+          "wet": 0.219999999
         }
       }
     ],
@@ -719,7 +759,7 @@
     ]
   },
   "output": {
-    "levelDb": 0.699999988
+    "levelDb": 0.800000012
   },
   "metadata": {}
 }

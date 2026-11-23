@@ -16,18 +16,18 @@
         "enabled": true,
         "waveform": "sine",
         "pitchMode": "ratio",
-        "ratio": 14,
+        "ratio": 1,
         "fixedHz": 440,
         "detuneCents": 0,
         "level": 0.550000012,
-        "velocityToLevel": 0.5,
-        "velocityToIndex": 0.800000012,
+        "velocityToLevel": 0.200000003,
+        "velocityToIndex": 0.300000012,
         "keyTracking": 1,
         "env": {
-          "a": 0.00100000005,
-          "d": 0.25,
-          "s": 0,
-          "r": 0.200000003
+          "a": 0.00499999989,
+          "d": 1.20000005,
+          "s": 0.100000001,
+          "r": 0.5
         },
         "phaseOffset": 0,
         "keySync": true,
@@ -36,7 +36,7 @@
       },
       {
         "enabled": true,
-        "waveform": "sine",
+        "waveform": "triangle",
         "pitchMode": "ratio",
         "ratio": 1,
         "fixedHz": 440,
@@ -47,9 +47,9 @@
         "keyTracking": 1,
         "env": {
           "a": 0.00800000038,
-          "d": 2.5999999,
+          "d": 3,
           "s": 0,
-          "r": 0.600000024
+          "r": 0.699999988
         },
         "phaseOffset": 0,
         "keySync": true,
@@ -64,8 +64,8 @@
         "fixedHz": 440,
         "detuneCents": 0,
         "level": 0.75,
-        "velocityToLevel": 0.5,
-        "velocityToIndex": 0.699999988,
+        "velocityToLevel": 0.200000003,
+        "velocityToIndex": 0.400000006,
         "keyTracking": 1,
         "env": {
           "a": 0.00200000009,
@@ -80,7 +80,7 @@
       },
       {
         "enabled": true,
-        "waveform": "sine",
+        "waveform": "triangle",
         "pitchMode": "ratio",
         "ratio": 1,
         "fixedHz": 440,
@@ -90,10 +90,10 @@
         "velocityToIndex": 0.300000012,
         "keyTracking": 1,
         "env": {
-          "a": 0.00800000038,
-          "d": 3.20000005,
+          "a": 0.0199999996,
+          "d": 3.5999999,
           "s": 0,
-          "r": 0.600000024
+          "r": 0.699999988
         },
         "phaseOffset": 0,
         "keySync": true,
@@ -104,7 +104,7 @@
         "enabled": true,
         "waveform": "sine",
         "pitchMode": "ratio",
-        "ratio": 4,
+        "ratio": 2,
         "fixedHz": 440,
         "detuneCents": 0,
         "level": 0.800000012,
@@ -112,15 +112,15 @@
         "velocityToIndex": 0.300000012,
         "keyTracking": 1,
         "env": {
-          "a": 0.00100000005,
-          "d": 0.899999976,
+          "a": 0.00999999978,
+          "d": 2.4000001,
           "s": 0,
-          "r": 0.5
+          "r": 0.800000012
         },
         "phaseOffset": 0,
         "keySync": true,
         "feedback": 0,
-        "carrierGain": 0
+        "carrierGain": 0.219999999
       },
       {
         "enabled": false,
@@ -149,18 +149,18 @@
       {
         "from": 0,
         "to": 1,
-        "index": 0.600000024
+        "index": 0.349999994
       },
       {
         "from": 2,
         "to": 3,
-        "index": 1.10000002
+        "index": 0.600000024
       }
     ],
     "filter": {
-      "type": "off",
-      "cutoff": 20000,
-      "resonance": 0,
+      "type": "LP12",
+      "cutoff": 1400,
+      "resonance": 0.100000001,
       "drive": 0
     },
     "lfo": [
@@ -175,10 +175,10 @@
       {
         "shape": "sine",
         "sync": false,
-        "rateHz": 2,
+        "rateHz": 0.449999988,
         "division": "1/8",
         "phase": 0,
-        "retrig": true
+        "retrig": false
       }
     ],
     "modEnv": {
@@ -218,6 +218,14 @@
           "max": 1
         },
         {
+          "targetParamId": "filter.cutoff",
+          "amount": 0.300000012,
+          "curve": "linear",
+          "polarity": "bipolar",
+          "min": 0,
+          "max": 1
+        },
+        {
           "targetParamId": "master.level",
           "amount": -0.0500000007,
           "curve": "linear",
@@ -249,6 +257,14 @@
           "max": 1
         },
         {
+          "targetParamId": "op5.attack",
+          "amount": 0.349999994,
+          "curve": "linear",
+          "polarity": "bipolar",
+          "min": 0,
+          "max": 1
+        },
+        {
           "targetParamId": "op1.attack",
           "amount": 0.200000003,
           "curve": "linear",
@@ -258,14 +274,6 @@
         },
         {
           "targetParamId": "op3.attack",
-          "amount": 0.200000003,
-          "curve": "linear",
-          "polarity": "bipolar",
-          "min": 0,
-          "max": 1
-        },
-        {
-          "targetParamId": "op5.attack",
           "amount": 0.200000003,
           "curve": "linear",
           "polarity": "bipolar",
@@ -312,6 +320,22 @@
           "max": 1
         },
         {
+          "targetParamId": "op5.release",
+          "amount": 0.300000012,
+          "curve": "linear",
+          "polarity": "bipolar",
+          "min": 0,
+          "max": 1
+        },
+        {
+          "targetParamId": "op5.decay",
+          "amount": 0.200000003,
+          "curve": "linear",
+          "polarity": "bipolar",
+          "min": 0,
+          "max": 1
+        },
+        {
           "targetParamId": "op1.release",
           "amount": 0.300000012,
           "curve": "linear",
@@ -321,14 +345,6 @@
         },
         {
           "targetParamId": "op3.release",
-          "amount": 0.300000012,
-          "curve": "linear",
-          "polarity": "bipolar",
-          "min": 0,
-          "max": 1
-        },
-        {
-          "targetParamId": "op5.release",
           "amount": 0.300000012,
           "curve": "linear",
           "polarity": "bipolar",
@@ -353,6 +369,14 @@
         {
           "targetParamId": "op4.detune",
           "amount": 0.0599999987,
+          "curve": "linear",
+          "polarity": "bipolar",
+          "min": 0,
+          "max": 1
+        },
+        {
+          "targetParamId": "op5.detune",
+          "amount": -0.0599999987,
           "curve": "linear",
           "polarity": "bipolar",
           "min": 0,
@@ -454,11 +478,11 @@
       "enabled": true
     },
     {
-      "source": "none",
-      "target": "",
-      "depth": 0,
+      "source": "lfo2",
+      "target": "pitch",
+      "depth": 0.00300000003,
       "curve": "linear",
-      "enabled": false
+      "enabled": true
     },
     {
       "source": "none",
@@ -548,12 +572,12 @@
         "type": "eq",
         "enabled": true,
         "params": {
-          "lowGain": 2,
+          "lowGain": 2.5,
           "lowFreq": 120,
           "midGain": 0,
           "midFreq": 1000,
           "midQ": 0.899999976,
-          "highGain": -4,
+          "highGain": -3,
           "highFreq": 6000
         }
       },
@@ -574,7 +598,7 @@
           "rate": 0.600000024,
           "depth": 0.400000006,
           "width": 0.800000012,
-          "wet": 0.150000006,
+          "wet": 0.119999997,
           "voices": 2
         }
       },
@@ -636,10 +660,10 @@
         "enabled": true,
         "params": {
           "size": 0.699999988,
-          "decay": 3.20000005,
+          "decay": 3.4000001,
           "preDelay": 15,
           "damping": 0.699999988,
-          "wet": 0.349999994
+          "wet": 0.379999995
         }
       }
     ],
@@ -743,7 +767,7 @@
     ]
   },
   "output": {
-    "levelDb": -4.5999999
+    "levelDb": -2.9000001
   },
   "metadata": {}
 }

@@ -175,6 +175,10 @@ int main (int argc, char** argv)
         // blend of peak and RMS targets keeps percussive and sustained sounds comparable
         float trim = 0.5f * (-6.0f - peakDb) + 0.5f * (-20.0f - rmsDb);
         trim = std::min (trim, -3.0f - peakDb);
+        // Corrections by ear on top of the measured trim (listening pass, docs/DECISIONS.md D-053):
+        // pure, dull tones measure as loud as bright ones but sound quieter.
+        static const std::pair<const char*, float> kLevelByEar[] = { { "Soft Stairs Arp", 4.0f } };
+        for (auto& kv : kLevelByEar) if (p.meta.displayName == kv.first) trim += kv.second;
         d.out.levelDb = std::round (clampf (trim, -18.0f, 12.0f) * 10.0f) / 10.0f;
 
         // Every macro must be audible in at least one direction.

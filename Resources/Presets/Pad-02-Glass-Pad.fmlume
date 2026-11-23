@@ -16,7 +16,7 @@
         "enabled": true,
         "waveform": "sine",
         "pitchMode": "ratio",
-        "ratio": 3,
+        "ratio": 7,
         "fixedHz": 440,
         "detuneCents": 0,
         "level": 0.600000024,
@@ -24,10 +24,10 @@
         "velocityToIndex": 0.300000012,
         "keyTracking": 1,
         "env": {
-          "a": 0.800000012,
-          "d": 2,
-          "s": 0.699999988,
-          "r": 1.79999995
+          "a": 0.0500000007,
+          "d": 2.5,
+          "s": 0.300000012,
+          "r": 2
         },
         "phaseOffset": 0,
         "keySync": true,
@@ -46,10 +46,10 @@
         "velocityToIndex": 0.300000012,
         "keyTracking": 1,
         "env": {
-          "a": 0.600000024,
+          "a": 0.119999997,
           "d": 2,
-          "s": 0.850000024,
-          "r": 1.79999995
+          "s": 0.800000012,
+          "r": 2.20000005
         },
         "phaseOffset": 0,
         "keySync": true,
@@ -60,7 +60,7 @@
         "enabled": true,
         "waveform": "sine",
         "pitchMode": "ratio",
-        "ratio": 4,
+        "ratio": 5,
         "fixedHz": 440,
         "detuneCents": 0,
         "level": 0.5,
@@ -68,9 +68,9 @@
         "velocityToIndex": 0.300000012,
         "keyTracking": 1,
         "env": {
-          "a": 1.20000005,
-          "d": 2.5,
-          "s": 0.600000024,
+          "a": 0.0500000007,
+          "d": 3,
+          "s": 0.25,
           "r": 2
         },
         "phaseOffset": 0,
@@ -82,7 +82,7 @@
         "enabled": true,
         "waveform": "sine",
         "pitchMode": "ratio",
-        "ratio": 1,
+        "ratio": 2,
         "fixedHz": 440,
         "detuneCents": 6,
         "level": 1,
@@ -90,15 +90,15 @@
         "velocityToIndex": 0.300000012,
         "keyTracking": 1,
         "env": {
-          "a": 0.699999988,
+          "a": 0.150000006,
           "d": 2,
-          "s": 0.850000024,
-          "r": 2
+          "s": 0.75,
+          "r": 2.4000001
         },
         "phaseOffset": 0,
         "keySync": true,
         "feedback": 0,
-        "carrierGain": 0.899999976
+        "carrierGain": 0.600000024
       },
       {
         "enabled": false,
@@ -149,18 +149,18 @@
       {
         "from": 0,
         "to": 1,
-        "index": 0.899999976
+        "index": 1.29999995
       },
       {
         "from": 2,
         "to": 3,
-        "index": 0.699999988
+        "index": 1
       }
     ],
     "filter": {
-      "type": "LP12",
-      "cutoff": 9000,
-      "resonance": 0.100000001,
+      "type": "HP12",
+      "cutoff": 220,
+      "resonance": 0.0500000007,
       "drive": 0
     },
     "lfo": [
@@ -517,8 +517,8 @@
     "polyphony": 16,
     "unison": {
       "count": 2,
-      "detuneCents": 12,
-      "spread": 80
+      "detuneCents": 7,
+      "spread": 50
     },
     "mono": false,
     "legato": false,
@@ -556,7 +556,7 @@
         "type": "eq",
         "enabled": true,
         "params": {
-          "lowGain": 0,
+          "lowGain": -1,
           "lowFreq": 120,
           "midGain": 0,
           "midFreq": 1000,
@@ -582,7 +582,7 @@
           "rate": 0.600000024,
           "depth": 0.400000006,
           "width": 0.800000012,
-          "wet": 0.300000012,
+          "wet": 0.349999994,
           "voices": 2
         }
       },
@@ -751,7 +751,7 @@
     ]
   },
   "output": {
-    "levelDb": -6.30000019
+    "levelDb": -3.79999995
   },
   "metadata": {}
 }

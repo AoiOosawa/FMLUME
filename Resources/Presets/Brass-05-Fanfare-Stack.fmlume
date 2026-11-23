@@ -24,10 +24,10 @@
         "velocityToIndex": 0.699999988,
         "keyTracking": 1,
         "env": {
-          "a": 0.0599999987,
-          "d": 0.5,
-          "s": 0.699999988,
-          "r": 0.200000003
+          "a": 0.0900000036,
+          "d": 0.600000024,
+          "s": 0.75,
+          "r": 0.25
         },
         "phaseOffset": 0,
         "keySync": true,
@@ -98,13 +98,13 @@
         "phaseOffset": 0,
         "keySync": true,
         "feedback": 0,
-        "carrierGain": 0.600000024
+        "carrierGain": 0.699999988
       },
       {
-        "enabled": false,
+        "enabled": true,
         "waveform": "sine",
         "pitchMode": "ratio",
-        "ratio": 1,
+        "ratio": 1.5,
         "fixedHz": 440,
         "detuneCents": 0,
         "level": 1,
@@ -112,36 +112,36 @@
         "velocityToIndex": 0.300000012,
         "keyTracking": 1,
         "env": {
-          "a": 0.00999999978,
-          "d": 0.5,
-          "s": 0.600000024,
-          "r": 0.300000012
+          "a": 0.0500000007,
+          "d": 0.300000012,
+          "s": 0.850000024,
+          "r": 0.200000003
         },
         "phaseOffset": 0,
         "keySync": true,
         "feedback": 0,
-        "carrierGain": 0
+        "carrierGain": 0.5
       },
       {
-        "enabled": false,
+        "enabled": true,
         "waveform": "sine",
         "pitchMode": "ratio",
-        "ratio": 1,
+        "ratio": 1.5,
         "fixedHz": 440,
         "detuneCents": 0,
-        "level": 1,
-        "velocityToLevel": 0.5,
-        "velocityToIndex": 0.300000012,
+        "level": 0.800000012,
+        "velocityToLevel": 0,
+        "velocityToIndex": 0.699999988,
         "keyTracking": 1,
         "env": {
-          "a": 0.00999999978,
+          "a": 0.0700000003,
           "d": 0.5,
-          "s": 0.600000024,
-          "r": 0.300000012
+          "s": 0.699999988,
+          "r": 0.200000003
         },
         "phaseOffset": 0,
         "keySync": true,
-        "feedback": 0,
+        "feedback": 0.5,
         "carrierGain": 0
       }
     ],
@@ -155,6 +155,11 @@
         "from": 2,
         "to": 3,
         "index": 1.39999998
+      },
+      {
+        "from": 5,
+        "to": 4,
+        "index": 2.20000005
       }
     ],
     "filter": {
@@ -218,6 +223,14 @@
           "max": 1
         },
         {
+          "targetParamId": "edge.6.5.index",
+          "amount": 0.219999999,
+          "curve": "linear",
+          "polarity": "bipolar",
+          "min": 0,
+          "max": 1
+        },
+        {
           "targetParamId": "master.level",
           "amount": -0.0500000007,
           "curve": "linear",
@@ -249,6 +262,14 @@
           "max": 1
         },
         {
+          "targetParamId": "op5.attack",
+          "amount": 0.349999994,
+          "curve": "linear",
+          "polarity": "bipolar",
+          "min": 0,
+          "max": 1
+        },
+        {
           "targetParamId": "op1.attack",
           "amount": 0.200000003,
           "curve": "linear",
@@ -258,6 +279,14 @@
         },
         {
           "targetParamId": "op3.attack",
+          "amount": 0.200000003,
+          "curve": "linear",
+          "polarity": "bipolar",
+          "min": 0,
+          "max": 1
+        },
+        {
+          "targetParamId": "op6.attack",
           "amount": 0.200000003,
           "curve": "linear",
           "polarity": "bipolar",
@@ -288,6 +317,14 @@
           "max": 1
         },
         {
+          "targetParamId": "op5.release",
+          "amount": 0.300000012,
+          "curve": "linear",
+          "polarity": "bipolar",
+          "min": 0,
+          "max": 1
+        },
+        {
           "targetParamId": "op1.release",
           "amount": 0.300000012,
           "curve": "linear",
@@ -297,6 +334,14 @@
         },
         {
           "targetParamId": "op3.release",
+          "amount": 0.300000012,
+          "curve": "linear",
+          "polarity": "bipolar",
+          "min": 0,
+          "max": 1
+        },
+        {
+          "targetParamId": "op6.release",
           "amount": 0.300000012,
           "curve": "linear",
           "polarity": "bipolar",
@@ -321,6 +366,14 @@
         {
           "targetParamId": "op4.detune",
           "amount": 0.0599999987,
+          "curve": "linear",
+          "polarity": "bipolar",
+          "min": 0,
+          "max": 1
+        },
+        {
+          "targetParamId": "op5.detune",
+          "amount": -0.0599999987,
           "curve": "linear",
           "polarity": "bipolar",
           "min": 0,
@@ -493,8 +546,8 @@
     "polyphony": 16,
     "unison": {
       "count": 3,
-      "detuneCents": 10,
-      "spread": 80
+      "detuneCents": 12,
+      "spread": 85
     },
     "mono": false,
     "legato": false,
@@ -537,7 +590,7 @@
           "midGain": 0,
           "midFreq": 1000,
           "midQ": 0.899999976,
-          "highGain": 0,
+          "highGain": 2,
           "highFreq": 6000
         }
       },
@@ -620,10 +673,10 @@
         "enabled": true,
         "params": {
           "size": 0.600000024,
-          "decay": 3,
+          "decay": 3.20000005,
           "preDelay": 15,
           "damping": 0.5,
-          "wet": 0.300000012
+          "wet": 0.319999993
         }
       }
     ],
@@ -727,7 +780,7 @@
     ]
   },
   "output": {
-    "levelDb": -6
+    "levelDb": -4.5
   },
   "metadata": {}
 }

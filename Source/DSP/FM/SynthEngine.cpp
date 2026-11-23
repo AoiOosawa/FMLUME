@@ -131,6 +131,23 @@ struct SynthEngine::Impl
     // ---- processing
     Halfband<kDecimK2> dec2[2][2];
     Halfband<kDecimK1> dec1[2][2];
+    // DC blocker on the summed voices of each side (before the filter and the effects), like the
+    // AC-coupled output of a hardware FM synth: 1:1 phase modulation and operator feedback
+    // produce a real DC component (docs/DECISIONS.md D-051).
+    struct DcBlock
+    {
+        float x1 = 0.0f, y1 = 0.0f;
+        void reset() { x1 = y1 = 0.0f; }
+        void process (float* buf, int n, float r)
+        {
+            float x = x1, y = y1;
+            for (int i = 0; i < n; ++i) { const float in = buf[i]; y = in - x + r * y; x = in; buf[i] = y; }
+            x1 = x;
+            y1 = std::fabs (y) < 1.0e-20f ? 0.0f : y;
+        }
+    };
+    static constexpr double kDcBlockHz = 5.0;
+    DcBlock dcBlock[2][2];
     StereoFilter filter[2];
     TranceGate gate;
     FxChain fx;
@@ -192,7 +209,7 @@ struct SynthEngine::Impl
             modEnv[s] = EnvState {};
             modEnvVal[s] = 0.0f;
             filter[s].reset();
-            for (int ch = 0; ch < 2; ++ch) { dec2[s][ch].reset(); dec1[s][ch].reset(); }
+            for (int ch = 0; ch < 2; ++ch) { dec2[s][ch].reset(); dec1[s][ch].reset(); dcBlock[s][ch].reset(); }
         }
         gate.reset();
         fx.reset();
@@ -212,7 +229,7 @@ struct SynthEngine::Impl
         isr = sr * os;
         owner.activeQuality.store (quality <= 0 ? 0 : (quality == 1 ? 1 : 2));
         for (int s = 0; s < 2; ++s)
-            for (int ch = 0; ch < 2; ++ch) { dec2[s][ch].reset(); dec1[s][ch].reset(); }
+            for (int ch = 0; ch < 2; ++ch) { dec2[s][ch].reset(); dec1[s][ch].reset(); dcBlock[s][ch].reset(); }
         snapNext = true;
     }
 
@@ -980,6 +997,8 @@ struct SynthEngine::Impl
                             out[i] = dec2[s][ch].decimate (x0, x1);
                         }
                 }
+                const float dcR = (float) (1.0 - kTwoPi * kDcBlockHz / sr);
+                for (int ch = 0; ch < 2; ++ch) dcBlock[s][ch].process (hostBuf[s][ch], len, dcR);
                 filter[s].process (hostBuf[s][0], hostBuf[s][1], len);
             }
         }
