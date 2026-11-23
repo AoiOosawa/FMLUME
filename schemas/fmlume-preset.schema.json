@@ -1,0 +1,1550 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://fmlume.invalid/schemas/fmlume-preset.schema.json",
+  "title": "FMLUME preset (.fmlume), schemaVersion 1",
+  "description": "Structural schema. Rules a JSON Schema cannot express are enforced by the loader: the operator graph must be acyclic with no self or duplicate edges; at least one enabled operator needs carrierGain > 0 and level > 0; fx.processors must contain each effect type exactly once; macro targets must be continuous parameters; mapping min <= max. See docs/PRESET_SCHEMA.md.",
+  "type": "object",
+  "properties": {
+    "schemaVersion": {
+      "const": 1
+    },
+    "pluginVersion": {
+      "type": "string"
+    },
+    "patchId": {
+      "type": "string"
+    },
+    "displayName": {
+      "type": "string"
+    },
+    "author": {
+      "type": "string"
+    },
+    "category": {
+      "enum": [
+        "Arp",
+        "E.Piano",
+        "Bell",
+        "Bass",
+        "Lead",
+        "Pad",
+        "Poly",
+        "Pluck",
+        "Brass",
+        "Keys",
+        "SFX"
+      ]
+    },
+    "tags": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "maxItems": 64
+    },
+    "description": {
+      "type": "string"
+    },
+    "createdAt": {
+      "type": "string"
+    },
+    "modifiedAt": {
+      "type": "string"
+    },
+    "favorite": {
+      "type": "boolean"
+    },
+    "engineA": {
+      "$ref": "#/$defs/EnginePatch"
+    },
+    "engineB": {
+      "oneOf": [
+        {
+          "type": "null"
+        },
+        {
+          "$ref": "#/$defs/EnginePatch"
+        }
+      ]
+    },
+    "morph": {
+      "type": "object",
+      "properties": {
+        "enabled": {
+          "type": "boolean"
+        },
+        "mode": {
+          "enum": [
+            "auto",
+            "compatible",
+            "dual"
+          ]
+        },
+        "amount": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 1
+        }
+      },
+      "required": [
+        "enabled",
+        "mode",
+        "amount"
+      ],
+      "additionalProperties": false
+    },
+    "macros": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/Macro"
+      },
+      "minItems": 8,
+      "maxItems": 8
+    },
+    "matrix": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/ModSlot"
+      },
+      "minItems": 8,
+      "maxItems": 8
+    },
+    "macrosB": {
+      "oneOf": [
+        {
+          "type": "null"
+        },
+        {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/Macro"
+          },
+          "minItems": 8,
+          "maxItems": 8
+        }
+      ]
+    },
+    "matrixB": {
+      "oneOf": [
+        {
+          "type": "null"
+        },
+        {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/ModSlot"
+          },
+          "minItems": 8,
+          "maxItems": 8
+        }
+      ]
+    },
+    "performance": {
+      "type": "object",
+      "properties": {
+        "polyphony": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 32
+        },
+        "unison": {
+          "type": "object",
+          "properties": {
+            "count": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 8
+            },
+            "detuneCents": {
+              "type": "number",
+              "minimum": 0,
+              "maximum": 50
+            },
+            "spread": {
+              "type": "number",
+              "minimum": 0,
+              "maximum": 100
+            }
+          },
+          "required": [
+            "count",
+            "detuneCents",
+            "spread"
+          ],
+          "additionalProperties": false
+        },
+        "mono": {
+          "type": "boolean"
+        },
+        "legato": {
+          "type": "boolean"
+        },
+        "portamento": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 2
+        },
+        "arp": {
+          "type": "object",
+          "properties": {
+            "enabled": {
+              "type": "boolean"
+            },
+            "mode": {
+              "enum": [
+                "up",
+                "down",
+                "upDown",
+                "random",
+                "asPlayed"
+              ]
+            },
+            "octaveMode": {
+              "enum": [
+                "range",
+                "up",
+                "down",
+                "upDown"
+              ]
+            },
+            "rate": {
+              "enum": [
+                "1/4",
+                "1/4.",
+                "1/4T",
+                "1/8",
+                "1/8.",
+                "1/8T",
+                "1/16",
+                "1/16.",
+                "1/16T",
+                "1/32",
+                "1/32.",
+                "1/32T"
+              ]
+            },
+            "gate": {
+              "type": "number",
+              "minimum": 0.05,
+              "maximum": 1
+            },
+            "octaves": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 4
+            },
+            "swing": {
+              "type": "number",
+              "minimum": 0,
+              "maximum": 0.6
+            },
+            "resetOnStop": {
+              "type": "boolean"
+            }
+          },
+          "required": [
+            "enabled",
+            "mode",
+            "rate",
+            "gate",
+            "octaves",
+            "swing",
+            "resetOnStop"
+          ],
+          "additionalProperties": false
+        },
+        "chord": {
+          "type": "object",
+          "properties": {
+            "type": {
+              "enum": [
+                "off",
+                "major",
+                "minor",
+                "sus2",
+                "sus4",
+                "dim",
+                "aug",
+                "7",
+                "m7",
+                "maj7"
+              ]
+            },
+            "voicing": {
+              "enum": [
+                "root",
+                "1st",
+                "2nd"
+              ]
+            },
+            "octave": {
+              "type": "integer",
+              "minimum": -2,
+              "maximum": 2
+            },
+            "strumMs": {
+              "type": "number",
+              "minimum": 0,
+              "maximum": 100
+            }
+          },
+          "required": [
+            "type",
+            "voicing",
+            "octave",
+            "strumMs"
+          ],
+          "additionalProperties": false
+        },
+        "tranceGate": {
+          "type": "object",
+          "properties": {
+            "enabled": {
+              "type": "boolean"
+            },
+            "steps": {
+              "type": "array",
+              "items": {
+                "type": "number",
+                "minimum": 0,
+                "maximum": 1
+              },
+              "minItems": 16,
+              "maxItems": 16
+            },
+            "rate": {
+              "enum": [
+                "1/4",
+                "1/4.",
+                "1/4T",
+                "1/8",
+                "1/8.",
+                "1/8T",
+                "1/16",
+                "1/16.",
+                "1/16T",
+                "1/32",
+                "1/32.",
+                "1/32T",
+                "1/64"
+              ]
+            },
+            "swing": {
+              "type": "number",
+              "minimum": 0,
+              "maximum": 0.6
+            },
+            "smoothMs": {
+              "type": "number",
+              "minimum": 0,
+              "maximum": 30
+            },
+            "mix": {
+              "type": "number",
+              "minimum": 0,
+              "maximum": 1
+            },
+            "stereo": {
+              "type": "boolean"
+            },
+            "stepsRight": {
+              "type": "array",
+              "items": {
+                "type": "number",
+                "minimum": 0,
+                "maximum": 1
+              },
+              "minItems": 16,
+              "maxItems": 16
+            },
+            "width": {
+              "type": "number",
+              "minimum": 0,
+              "maximum": 1
+            }
+          },
+          "required": [
+            "enabled",
+            "steps",
+            "rate",
+            "swing",
+            "smoothMs",
+            "mix"
+          ],
+          "additionalProperties": false
+        }
+      },
+      "required": [
+        "polyphony",
+        "unison",
+        "mono",
+        "legato",
+        "portamento",
+        "arp",
+        "chord",
+        "tranceGate"
+      ],
+      "additionalProperties": false
+    },
+    "fx": {
+      "type": "object",
+      "properties": {
+        "order": {
+          "type": "array",
+          "items": {
+            "enum": [
+              "eq",
+              "drive",
+              "chorus",
+              "phaser",
+              "flanger",
+              "compressor",
+              "bitcrusher",
+              "delay",
+              "reverb"
+            ]
+          },
+          "minItems": 9,
+          "maxItems": 9,
+          "uniqueItems": true
+        },
+        "bypassAll": {
+          "type": "boolean"
+        },
+        "processors": {
+          "type": "array",
+          "items": {
+            "oneOf": [
+              {
+                "type": "object",
+                "properties": {
+                  "type": {
+                    "const": "eq"
+                  },
+                  "enabled": {
+                    "type": "boolean"
+                  },
+                  "params": {
+                    "type": "object",
+                    "properties": {
+                      "lowGain": {
+                        "type": "number",
+                        "minimum": -18,
+                        "maximum": 18
+                      },
+                      "lowFreq": {
+                        "type": "number",
+                        "minimum": 40,
+                        "maximum": 600
+                      },
+                      "midGain": {
+                        "type": "number",
+                        "minimum": -18,
+                        "maximum": 18
+                      },
+                      "midFreq": {
+                        "type": "number",
+                        "minimum": 200,
+                        "maximum": 8000
+                      },
+                      "midQ": {
+                        "type": "number",
+                        "minimum": 0.3,
+                        "maximum": 8
+                      },
+                      "highGain": {
+                        "type": "number",
+                        "minimum": -18,
+                        "maximum": 18
+                      },
+                      "highFreq": {
+                        "type": "number",
+                        "minimum": 1500,
+                        "maximum": 16000
+                      }
+                    },
+                    "required": [
+                      "lowGain",
+                      "lowFreq",
+                      "midGain",
+                      "midFreq",
+                      "midQ",
+                      "highGain",
+                      "highFreq"
+                    ],
+                    "additionalProperties": false
+                  }
+                },
+                "required": [
+                  "type",
+                  "enabled",
+                  "params"
+                ],
+                "additionalProperties": false
+              },
+              {
+                "type": "object",
+                "properties": {
+                  "type": {
+                    "const": "drive"
+                  },
+                  "enabled": {
+                    "type": "boolean"
+                  },
+                  "params": {
+                    "type": "object",
+                    "properties": {
+                      "gain": {
+                        "type": "number",
+                        "minimum": 0,
+                        "maximum": 1
+                      },
+                      "tone": {
+                        "type": "number",
+                        "minimum": 0,
+                        "maximum": 1
+                      },
+                      "wet": {
+                        "type": "number",
+                        "minimum": 0,
+                        "maximum": 1
+                      },
+                      "trim": {
+                        "type": "number",
+                        "minimum": -24,
+                        "maximum": 12
+                      }
+                    },
+                    "required": [
+                      "gain",
+                      "tone",
+                      "wet",
+                      "trim"
+                    ],
+                    "additionalProperties": false
+                  }
+                },
+                "required": [
+                  "type",
+                  "enabled",
+                  "params"
+                ],
+                "additionalProperties": false
+              },
+              {
+                "type": "object",
+                "properties": {
+                  "type": {
+                    "const": "chorus"
+                  },
+                  "enabled": {
+                    "type": "boolean"
+                  },
+                  "params": {
+                    "type": "object",
+                    "properties": {
+                      "rate": {
+                        "type": "number",
+                        "minimum": 0.05,
+                        "maximum": 8
+                      },
+                      "depth": {
+                        "type": "number",
+                        "minimum": 0,
+                        "maximum": 1
+                      },
+                      "width": {
+                        "type": "number",
+                        "minimum": 0,
+                        "maximum": 1
+                      },
+                      "wet": {
+                        "type": "number",
+                        "minimum": 0,
+                        "maximum": 1
+                      },
+                      "voices": {
+                        "type": "number",
+                        "minimum": 1,
+                        "maximum": 4
+                      }
+                    },
+                    "required": [
+                      "rate",
+                      "depth",
+                      "width",
+                      "wet",
+                      "voices"
+                    ],
+                    "additionalProperties": false
+                  }
+                },
+                "required": [
+                  "type",
+                  "enabled",
+                  "params"
+                ],
+                "additionalProperties": false
+              },
+              {
+                "type": "object",
+                "properties": {
+                  "type": {
+                    "const": "phaser"
+                  },
+                  "enabled": {
+                    "type": "boolean"
+                  },
+                  "params": {
+                    "type": "object",
+                    "properties": {
+                      "rate": {
+                        "type": "number",
+                        "minimum": 0.02,
+                        "maximum": 10
+                      },
+                      "depth": {
+                        "type": "number",
+                        "minimum": 0,
+                        "maximum": 1
+                      },
+                      "feedback": {
+                        "type": "number",
+                        "minimum": 0,
+                        "maximum": 0.9
+                      },
+                      "wet": {
+                        "type": "number",
+                        "minimum": 0,
+                        "maximum": 1
+                      }
+                    },
+                    "required": [
+                      "rate",
+                      "depth",
+                      "feedback",
+                      "wet"
+                    ],
+                    "additionalProperties": false
+                  }
+                },
+                "required": [
+                  "type",
+                  "enabled",
+                  "params"
+                ],
+                "additionalProperties": false
+              },
+              {
+                "type": "object",
+                "properties": {
+                  "type": {
+                    "const": "flanger"
+                  },
+                  "enabled": {
+                    "type": "boolean"
+                  },
+                  "params": {
+                    "type": "object",
+                    "properties": {
+                      "rate": {
+                        "type": "number",
+                        "minimum": 0.02,
+                        "maximum": 10
+                      },
+                      "depth": {
+                        "type": "number",
+                        "minimum": 0,
+                        "maximum": 1
+                      },
+                      "feedback": {
+                        "type": "number",
+                        "minimum": 0,
+                        "maximum": 0.9
+                      },
+                      "wet": {
+                        "type": "number",
+                        "minimum": 0,
+                        "maximum": 1
+                      }
+                    },
+                    "required": [
+                      "rate",
+                      "depth",
+                      "feedback",
+                      "wet"
+                    ],
+                    "additionalProperties": false
+                  }
+                },
+                "required": [
+                  "type",
+                  "enabled",
+                  "params"
+                ],
+                "additionalProperties": false
+              },
+              {
+                "type": "object",
+                "properties": {
+                  "type": {
+                    "const": "compressor"
+                  },
+                  "enabled": {
+                    "type": "boolean"
+                  },
+                  "params": {
+                    "type": "object",
+                    "properties": {
+                      "threshold": {
+                        "type": "number",
+                        "minimum": -60,
+                        "maximum": 0
+                      },
+                      "ratio": {
+                        "type": "number",
+                        "minimum": 1,
+                        "maximum": 20
+                      },
+                      "attack": {
+                        "type": "number",
+                        "minimum": 0.1,
+                        "maximum": 200
+                      },
+                      "release": {
+                        "type": "number",
+                        "minimum": 5,
+                        "maximum": 2000
+                      },
+                      "makeup": {
+                        "type": "number",
+                        "minimum": 0,
+                        "maximum": 24
+                      },
+                      "wet": {
+                        "type": "number",
+                        "minimum": 0,
+                        "maximum": 1
+                      }
+                    },
+                    "required": [
+                      "threshold",
+                      "ratio",
+                      "attack",
+                      "release",
+                      "makeup",
+                      "wet"
+                    ],
+                    "additionalProperties": false
+                  }
+                },
+                "required": [
+                  "type",
+                  "enabled",
+                  "params"
+                ],
+                "additionalProperties": false
+              },
+              {
+                "type": "object",
+                "properties": {
+                  "type": {
+                    "const": "bitcrusher"
+                  },
+                  "enabled": {
+                    "type": "boolean"
+                  },
+                  "params": {
+                    "type": "object",
+                    "properties": {
+                      "bits": {
+                        "type": "number",
+                        "minimum": 4,
+                        "maximum": 16
+                      },
+                      "downsample": {
+                        "type": "number",
+                        "minimum": 1,
+                        "maximum": 32
+                      },
+                      "wet": {
+                        "type": "number",
+                        "minimum": 0,
+                        "maximum": 1
+                      }
+                    },
+                    "required": [
+                      "bits",
+                      "downsample",
+                      "wet"
+                    ],
+                    "additionalProperties": false
+                  }
+                },
+                "required": [
+                  "type",
+                  "enabled",
+                  "params"
+                ],
+                "additionalProperties": false
+              },
+              {
+                "type": "object",
+                "properties": {
+                  "type": {
+                    "const": "delay"
+                  },
+                  "enabled": {
+                    "type": "boolean"
+                  },
+                  "params": {
+                    "type": "object",
+                    "properties": {
+                      "time": {
+                        "type": "number",
+                        "minimum": 1,
+                        "maximum": 2000
+                      },
+                      "sync": {
+                        "type": "number",
+                        "minimum": 0,
+                        "maximum": 1
+                      },
+                      "division": {
+                        "type": "number",
+                        "minimum": 0,
+                        "maximum": 20
+                      },
+                      "feedback": {
+                        "type": "number",
+                        "minimum": 0,
+                        "maximum": 0.9
+                      },
+                      "stereo": {
+                        "type": "number",
+                        "minimum": 0,
+                        "maximum": 1
+                      },
+                      "wet": {
+                        "type": "number",
+                        "minimum": 0,
+                        "maximum": 1
+                      }
+                    },
+                    "required": [
+                      "time",
+                      "sync",
+                      "division",
+                      "feedback",
+                      "stereo",
+                      "wet"
+                    ],
+                    "additionalProperties": false
+                  }
+                },
+                "required": [
+                  "type",
+                  "enabled",
+                  "params"
+                ],
+                "additionalProperties": false
+              },
+              {
+                "type": "object",
+                "properties": {
+                  "type": {
+                    "const": "reverb"
+                  },
+                  "enabled": {
+                    "type": "boolean"
+                  },
+                  "params": {
+                    "type": "object",
+                    "properties": {
+                      "size": {
+                        "type": "number",
+                        "minimum": 0,
+                        "maximum": 1
+                      },
+                      "decay": {
+                        "type": "number",
+                        "minimum": 0.2,
+                        "maximum": 20
+                      },
+                      "preDelay": {
+                        "type": "number",
+                        "minimum": 0,
+                        "maximum": 200
+                      },
+                      "damping": {
+                        "type": "number",
+                        "minimum": 0,
+                        "maximum": 1
+                      },
+                      "wet": {
+                        "type": "number",
+                        "minimum": 0,
+                        "maximum": 1
+                      }
+                    },
+                    "required": [
+                      "size",
+                      "decay",
+                      "preDelay",
+                      "damping",
+                      "wet"
+                    ],
+                    "additionalProperties": false
+                  }
+                },
+                "required": [
+                  "type",
+                  "enabled",
+                  "params"
+                ],
+                "additionalProperties": false
+              }
+            ]
+          },
+          "minItems": 9,
+          "maxItems": 9
+        },
+        "quick": {
+          "type": "array",
+          "prefixItems": [
+            {
+              "type": "object",
+              "properties": {
+                "id": {
+                  "const": "fx.quick.warmth"
+                },
+                "value": {
+                  "type": "number",
+                  "minimum": 0,
+                  "maximum": 1
+                },
+                "mappings": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/$defs/MacroMapping"
+                  },
+                  "maxItems": 8
+                }
+              },
+              "required": [
+                "id",
+                "value",
+                "mappings"
+              ],
+              "additionalProperties": false
+            },
+            {
+              "type": "object",
+              "properties": {
+                "id": {
+                  "const": "fx.quick.width"
+                },
+                "value": {
+                  "type": "number",
+                  "minimum": 0,
+                  "maximum": 1
+                },
+                "mappings": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/$defs/MacroMapping"
+                  },
+                  "maxItems": 8
+                }
+              },
+              "required": [
+                "id",
+                "value",
+                "mappings"
+              ],
+              "additionalProperties": false
+            },
+            {
+              "type": "object",
+              "properties": {
+                "id": {
+                  "const": "fx.quick.space"
+                },
+                "value": {
+                  "type": "number",
+                  "minimum": 0,
+                  "maximum": 1
+                },
+                "mappings": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/$defs/MacroMapping"
+                  },
+                  "maxItems": 8
+                }
+              },
+              "required": [
+                "id",
+                "value",
+                "mappings"
+              ],
+              "additionalProperties": false
+            },
+            {
+              "type": "object",
+              "properties": {
+                "id": {
+                  "const": "fx.quick.echo"
+                },
+                "value": {
+                  "type": "number",
+                  "minimum": 0,
+                  "maximum": 1
+                },
+                "mappings": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/$defs/MacroMapping"
+                  },
+                  "maxItems": 8
+                }
+              },
+              "required": [
+                "id",
+                "value",
+                "mappings"
+              ],
+              "additionalProperties": false
+            }
+          ],
+          "items": false,
+          "minItems": 4,
+          "maxItems": 4
+        }
+      },
+      "required": [
+        "order",
+        "bypassAll",
+        "processors",
+        "quick"
+      ],
+      "additionalProperties": false
+    },
+    "output": {
+      "type": "object",
+      "properties": {
+        "levelDb": {
+          "type": "number",
+          "minimum": -24,
+          "maximum": 12
+        }
+      },
+      "required": [
+        "levelDb"
+      ],
+      "additionalProperties": false
+    },
+    "metadata": {
+      "type": "object"
+    },
+    "slotNames": {
+      "type": "object",
+      "properties": {
+        "a": {
+          "type": "string",
+          "maxLength": 200
+        },
+        "b": {
+          "type": "string",
+          "maxLength": 200
+        }
+      },
+      "additionalProperties": false
+    }
+  },
+  "required": [
+    "schemaVersion",
+    "pluginVersion",
+    "patchId",
+    "displayName",
+    "author",
+    "category",
+    "tags",
+    "description",
+    "engineA",
+    "engineB",
+    "morph",
+    "macros",
+    "matrix",
+    "performance",
+    "fx",
+    "output",
+    "metadata"
+  ],
+  "additionalProperties": true,
+  "allOf": [
+    {
+      "if": {
+        "properties": {
+          "engineB": {
+            "type": "object"
+          }
+        },
+        "required": [
+          "engineB"
+        ]
+      },
+      "then": {
+        "properties": {
+          "macrosB": {
+            "type": "array"
+          },
+          "matrixB": {
+            "type": "array"
+          }
+        },
+        "required": [
+          "macrosB",
+          "matrixB"
+        ]
+      },
+      "else": {
+        "properties": {
+          "macrosB": {
+            "type": "null"
+          },
+          "matrixB": {
+            "type": "null"
+          }
+        }
+      }
+    }
+  ],
+  "$defs": {
+    "ADSR": {
+      "type": "object",
+      "properties": {
+        "a": {
+          "type": "number",
+          "minimum": 0.001,
+          "maximum": 20
+        },
+        "d": {
+          "type": "number",
+          "minimum": 0.001,
+          "maximum": 30
+        },
+        "s": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 1
+        },
+        "r": {
+          "type": "number",
+          "minimum": 0.001,
+          "maximum": 40
+        }
+      },
+      "required": [
+        "a",
+        "d",
+        "s",
+        "r"
+      ],
+      "additionalProperties": false
+    },
+    "Operator": {
+      "type": "object",
+      "properties": {
+        "enabled": {
+          "type": "boolean"
+        },
+        "waveform": {
+          "enum": [
+            "sine",
+            "triangle",
+            "saw",
+            "pulse"
+          ]
+        },
+        "pitchMode": {
+          "enum": [
+            "ratio",
+            "fixed"
+          ]
+        },
+        "ratio": {
+          "type": "number",
+          "minimum": 0.125,
+          "maximum": 32
+        },
+        "fixedHz": {
+          "type": "number",
+          "minimum": 0.1,
+          "maximum": 16000
+        },
+        "detuneCents": {
+          "type": "number",
+          "minimum": -100,
+          "maximum": 100
+        },
+        "level": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 1
+        },
+        "velocityToLevel": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 1
+        },
+        "velocityToIndex": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 1
+        },
+        "keyTracking": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 1
+        },
+        "env": {
+          "$ref": "#/$defs/ADSR"
+        },
+        "phaseOffset": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 1
+        },
+        "keySync": {
+          "type": "boolean"
+        },
+        "feedback": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 1.5
+        },
+        "carrierGain": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 1
+        }
+      },
+      "required": [
+        "enabled",
+        "waveform",
+        "pitchMode",
+        "ratio",
+        "fixedHz",
+        "detuneCents",
+        "level",
+        "velocityToLevel",
+        "velocityToIndex",
+        "keyTracking",
+        "env",
+        "phaseOffset",
+        "keySync",
+        "feedback",
+        "carrierGain"
+      ],
+      "additionalProperties": false
+    },
+    "Edge": {
+      "type": "object",
+      "properties": {
+        "from": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 5
+        },
+        "to": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 5
+        },
+        "index": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 16
+        }
+      },
+      "required": [
+        "from",
+        "to",
+        "index"
+      ],
+      "additionalProperties": false
+    },
+    "LFO": {
+      "type": "object",
+      "properties": {
+        "shape": {
+          "enum": [
+            "sine",
+            "triangle",
+            "saw",
+            "square",
+            "randomSmooth"
+          ]
+        },
+        "sync": {
+          "type": "boolean"
+        },
+        "rateHz": {
+          "type": "number",
+          "minimum": 0.02,
+          "maximum": 20
+        },
+        "division": {
+          "enum": [
+            "1/1",
+            "1/1.",
+            "1/1T",
+            "1/2",
+            "1/2.",
+            "1/2T",
+            "1/4",
+            "1/4.",
+            "1/4T",
+            "1/8",
+            "1/8.",
+            "1/8T",
+            "1/16",
+            "1/16.",
+            "1/16T",
+            "1/32",
+            "1/32.",
+            "1/32T",
+            "1/64",
+            "1/64.",
+            "1/64T"
+          ]
+        },
+        "phase": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 1
+        },
+        "retrig": {
+          "type": "boolean"
+        }
+      },
+      "required": [
+        "shape",
+        "sync",
+        "rateHz",
+        "division",
+        "phase",
+        "retrig"
+      ],
+      "additionalProperties": false
+    },
+    "EnginePatch": {
+      "type": "object",
+      "properties": {
+        "operators": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/Operator"
+          },
+          "minItems": 6,
+          "maxItems": 6
+        },
+        "edges": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/Edge"
+          },
+          "maxItems": 30
+        },
+        "filter": {
+          "type": "object",
+          "properties": {
+            "type": {
+              "enum": [
+                "off",
+                "LP12",
+                "LP24",
+                "HP12",
+                "BP12"
+              ]
+            },
+            "cutoff": {
+              "type": "number",
+              "minimum": 20,
+              "maximum": 20000
+            },
+            "resonance": {
+              "type": "number",
+              "minimum": 0,
+              "maximum": 0.95
+            },
+            "drive": {
+              "type": "number",
+              "minimum": 0,
+              "maximum": 1
+            }
+          },
+          "required": [
+            "type",
+            "cutoff",
+            "resonance",
+            "drive"
+          ],
+          "additionalProperties": false
+        },
+        "lfo": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/LFO"
+          },
+          "minItems": 2,
+          "maxItems": 2
+        },
+        "modEnv": {
+          "$ref": "#/$defs/ADSR"
+        },
+        "pitchBendRange": {
+          "type": "number",
+          "minimum": 1,
+          "maximum": 24
+        }
+      },
+      "required": [
+        "operators",
+        "edges",
+        "filter",
+        "lfo",
+        "modEnv",
+        "pitchBendRange"
+      ],
+      "additionalProperties": false
+    },
+    "MacroMapping": {
+      "type": "object",
+      "properties": {
+        "targetParamId": {
+          "type": "string",
+          "minLength": 1
+        },
+        "amount": {
+          "type": "number",
+          "minimum": -1,
+          "maximum": 1
+        },
+        "curve": {
+          "enum": [
+            "linear",
+            "exp",
+            "sCurve"
+          ]
+        },
+        "polarity": {
+          "enum": [
+            "bipolar",
+            "unipolar"
+          ]
+        },
+        "min": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 1
+        },
+        "max": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 1
+        }
+      },
+      "required": [
+        "targetParamId",
+        "amount",
+        "curve",
+        "polarity"
+      ],
+      "additionalProperties": false
+    },
+    "Macro": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string",
+          "pattern": "^macro\\.[1-8]$"
+        },
+        "name": {
+          "type": "string"
+        },
+        "defaultValue": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 1
+        },
+        "mappings": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/MacroMapping"
+          },
+          "maxItems": 8
+        }
+      },
+      "required": [
+        "id",
+        "name",
+        "defaultValue",
+        "mappings"
+      ],
+      "additionalProperties": false
+    },
+    "ModSlot": {
+      "type": "object",
+      "properties": {
+        "source": {
+          "enum": [
+            "none",
+            "lfo1",
+            "lfo2",
+            "modEnv",
+            "velocity",
+            "keytrack",
+            "modWheel",
+            "aftertouch",
+            "macro1",
+            "macro2",
+            "macro3",
+            "macro4",
+            "macro5",
+            "macro6",
+            "macro7",
+            "macro8"
+          ]
+        },
+        "target": {
+          "type": "string"
+        },
+        "depth": {
+          "type": "number",
+          "minimum": -1,
+          "maximum": 1
+        },
+        "curve": {
+          "enum": [
+            "linear",
+            "exp",
+            "sCurve"
+          ]
+        },
+        "enabled": {
+          "type": "boolean"
+        }
+      },
+      "required": [
+        "source",
+        "target",
+        "depth",
+        "curve",
+        "enabled"
+      ],
+      "additionalProperties": false
+    }
+  }
+}

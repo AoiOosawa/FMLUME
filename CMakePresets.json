@@ -1,0 +1,19 @@
+{
+  "version": 6,
+  "cmakeMinimumRequired": { "major": 3, "minor": 25, "patch": 0 },
+  "configurePresets": [
+    { "name": "xcode", "displayName": "Xcode (Universal 2, plug-in + tests)", "generator": "Xcode", "binaryDir": "${sourceDir}/build" },
+    { "name": "core", "displayName": "Core + tests only (fast, native arch, no JUCE)", "generator": "Unix Makefiles",
+      "binaryDir": "${sourceDir}/build-core",
+      "cacheVariables": { "CMAKE_BUILD_TYPE": "Release", "FMLUME_BUILD_PLUGIN": "OFF", "CMAKE_OSX_ARCHITECTURES": "arm64" } }
+  ],
+  "buildPresets": [
+    { "name": "release", "configurePreset": "xcode", "configuration": "Release" },
+    { "name": "debug", "configurePreset": "xcode", "configuration": "Debug" },
+    { "name": "core", "configurePreset": "core" }
+  ],
+  "testPresets": [
+    { "name": "release", "configurePreset": "xcode", "configuration": "Release", "output": { "outputOnFailure": true } },
+    { "name": "core", "configurePreset": "core", "output": { "outputOnFailure": true } }
+  ]
+}

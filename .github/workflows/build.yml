@@ -1,0 +1,21 @@
+name: build
+on:
+  push:
+  pull_request:
+# least privilege: the job only reads the repository
+permissions:
+  contents: read
+
+jobs:
+  macos:
+    runs-on: macos-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          submodules: recursive
+      - name: Configure
+        run: cmake -S . -B build -G Xcode -DFMLUME_COPY_PLUGIN=OFF
+      - name: Build
+        run: cmake --build build --config Release --parallel
+      - name: Test
+        run: ctest --test-dir build -C Release --output-on-failure

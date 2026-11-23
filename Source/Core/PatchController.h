@@ -1,0 +1,101 @@
+// Single owner of the editable patch (Canonical Model) on the non-realtime side.
+// Every UI edit, preset load, Explorer action and morph-slot operation goes through here, so
+// Simple and Advanced always edit the same state (SPEC §6.4). Message-thread only.
+#pragma once
+#include "Core/Model.h"
+#include "Exploration/SoundExplorer.h"
+#include <functional>
+#include <string>
+#include <vector>
+
+namespace fmlume
+{
+class PatchController
+{
+public:
+    PatchController();
+
+    // ---- wiring (set once by the owner) ------------------------------------------------
+    // Sends a validated patch to the audio engine. forceNew = start a new patch generation.
+    std::function<bool (const PatchData&, bool forceNew)> sendPatch;
+    // Asks the owner to apply preset-stored host values (macro defaults, unison, ...) to the host parameters.
+    std::function<void (const HostParams&)> applyHostValues;
+    // Called after any change to the model / explorer state (UI refresh).
+    std::function<void()> changed;
+
+    // ---- model access -------------------------------------------------------------------
+    const Preset& preset() const { return current; }
+    const PatchData& data() const { return current.data; }
+    bool isDirty() const { return dirty; }
+    const std::string& lastError() const { return error; }
+
+    // Applies an edit. The mutated copy is validated first; invalid results are rejected and
+    // never reach the engine. There is no undo history (docs/DECISIONS.md D-042).
+    bool edit (const std::function<void (Preset&)>& fn, bool forceNew = false);
+    bool setParam (bool sideB, int code, float value);
+    float getParam (bool sideB, int code) const;
+
+    // Graph editing helpers (Advanced > Algorithm). All keep the patch valid.
+    bool addEdge (bool sideB, int from, int to, float index = 1.5f);
+    bool removeEdge (bool sideB, int from, int to);
+    bool setOperatorEnabled (bool sideB, int op, bool enabled);
+    bool applyAlgorithmTemplate (bool sideB, int templateIndex);
+
+    // ---- presets --------------------------------------------------------------------------
+    void loadPreset (const Preset& p);
+    void newFromCategory (Category c);
+    void markSaved (const Preset& saved); // after a successful save: adopt id / name, clear dirty
+    // The current preset with live host values folded in (what gets written to disk / state).
+    Preset presetForSave (const HostParams& live) const;
+    bool setState (const Preset& p); // host project state: not dirty
+
+    // ---- morph slots (SPEC §9, §12.1) -------------------------------------------------------
+    bool loadIntoSlot (bool sideB, const Preset& source); // copies engine + macros + matrix only
+    bool removeSlotB();
+    bool swapSlots();
+    bool copySlot (bool fromB);                            // duplicate one slot into the other
+    bool editingB() const { return editB && current.data.hasB; }
+    void setEditingB (bool b);
+
+    // ---- Sound Explorer (SPEC §8, §14.3) ----------------------------------------------------
+    ExploreSettings exploreSettings;
+    bool explore();                         // candidates from the current patch
+    bool regenerate();                      // same parent, new seed
+    bool exploreFromThis (int candidate);   // candidate becomes the new parent (not yet adopted)
+    bool exploreBack();                     // previous parent (history, max 20)
+    bool preview (int candidate);           // audition without touching the current patch
+    void cancelPreview();                   // back to the current patch
+    bool useCandidate (int candidate);      // adopt as the current sound
+    void closeExplorer();
+    const std::vector<ExploreCandidate>& candidates() const { return cands; }
+    int previewIndex() const { return previewing; }
+    bool hasExploreHistory() const { return ! exploreHistory.empty(); }
+    uint64_t exploreSeed() const { return seed; }
+    void setExploreSeed (uint64_t s) { seed = s; }
+
+    static constexpr int kMaxExploreHistory = 20;
+
+private:
+    struct ExploreStep
+    {
+        PatchData parent;
+        std::vector<ExploreCandidate> cands;
+        uint64_t seed = 0;
+    };
+    bool push (bool forceNew);
+    void notify() { if (changed) changed(); }
+    bool runExplore (const PatchData& parent, bool keepHistory);
+
+    Preset current;
+    bool dirty = false;
+    std::string error;
+    bool editB = false;
+
+    PatchData exploreParent;
+    bool exploreActive = false;
+    std::vector<ExploreCandidate> cands;
+    std::vector<ExploreStep> exploreHistory;
+    int previewing = -1;
+    uint64_t seed = 1;
+};
+} // namespace fmlume
