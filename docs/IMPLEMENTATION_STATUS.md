@@ -10,7 +10,7 @@
 |---|---|---|
 | 構成 | `cmake -S . -B build -G Xcode` | 成功 |
 | ビルド | `cmake --build build --config Release --parallel` | **BUILD SUCCEEDED**。`FMLUME.component`（AU）、`FMLUME.vst3`、`FMLUME.app`（Standalone）を生成、いずれも Universal 2（arm64 + x86_64）、アドホック署名 |
-| 自動テスト | `ctest --test-dir build -C Release` | **4/4 グループ通過**（45テストケース、失敗0、約50秒。2026-11-23 の最終変更後に再実行） |
+| 自動テスト | `ctest --test-dir build -C Release` | **4/4 グループ通過**（57テストケース、失敗0、約53秒。2026-11-23 の最終変更後に再実行） |
 | Standalone | `open build/FMLUME_artefacts/Release/Standalone/FMLUME.app` | 起動しエディタが表示されること、正常終了することを確認（クラッシュなし）。**発音・MIDI入力・Audio設定ダイアログは人手で未確認** |
 | x86_64 スライス | `arch -x86_64 build/tests/Release/FMLUMETests` | 41ケース全通過（Rosetta 2 上。Intel実機は未検証） |
 | AU 検証 | `auval -v aumu Fmld Chbw`（開発用。製品版は `Fmlu`） | **AU VALIDATION SUCCEEDED** |
@@ -79,7 +79,7 @@
 
 | 項目 | 状態 |
 |---|---|
-| **実DAWでの確認（HOST-01）** | **未実施**。Cubase / Logic Pro / REAPER / Ableton Live での認識・演奏・オートメーション記録再生・プロジェクト保存再読込・オフライン書き出しは人手での確認が必要（手順は `docs/TEST_PLAN.md`）。自動検証は auval と pluginval のみ |
+| **実DAWでの確認（HOST-01）** | **一部実施**。Cubase（VST3、開発用ビルド）: 読み込み・演奏・保存は利用者が確認し問題なし（2026-11-23）。このとき「マクロ等を動かしてもプリセット名に `*` が付かない」不具合が見つかり修正済み（原因は全形式共通のコード。`fmlume-uisnap --check-edited` で実プロセッサー＋エディタ上の表示を確認済み、Cubase での再確認は未実施）。Cubase のオートメーション記録再生・オフライン書き出し、および Logic Pro / REAPER / Ableton Live は**未実施**で、人手での確認が必要（手順は `docs/TEST_PLAN.md`）。自動検証は auval と pluginval のみ |
 | **耳による音質確認（§17.4）** | **未実施**。152音色とFXはFM設計の知識に基づいて作成し、自動検査（発音・レベル・全マクロの可聴性・非有限値なし）のみ通過。音楽的な良し悪し、マクロの効き方の自然さ、Explorer候補の「意味のある違い」は試聴と調整が必要 |
 | Intel Mac 実機 | 未検証（配布用の Universal ビルドと、x86_64 でビルドしたテストの Rosetta 上での実行のみ） |
 | GitHub Actions | ワークフロー定義のみ。リモート未設定のため未実行 |
@@ -101,7 +101,7 @@
 
 ## 6. 次のタスク候補
 
-1. **HOST-01 を Cubase で実施**し、結果をこの文書へ追記。次に Logic Pro（AU）と REAPER。
+1. **HOST-01 の残り**: Cubase でオートメーション記録再生とオフライン書き出しを確認。次に Logic Pro（AU）と REAPER。
 2. **試聴パス**: `fmlume-render` で152音色を書き出して聴き、`tools/PresetGen/Factory.cpp` の値とカテゴリテンプレートのマクロ量を調整→ `fmlume-presetgen` で再生成。
 3. Explorer の方向別ヒューリスティックとカテゴリ別制約の調整（試聴ベース）。
 4. プラグインID・会社名・Bundle ID の確定（公開前に1回だけ、D-001）。

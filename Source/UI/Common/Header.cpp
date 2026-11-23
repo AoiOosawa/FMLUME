@@ -158,7 +158,7 @@ void Header::mouseExit (const juce::MouseEvent&)
 void Header::refresh (const Preset& p)
 {
     presetName = utf8 (p.meta.displayName);
-    dirty = ctx.proc.withModel ([] (PatchController& pc) { return pc.isDirty(); });
+    dirty = ctx.proc.isPresetDirty();
     repaint();
 }
 
@@ -172,5 +172,7 @@ void Header::tick()
         peak[ch] = v < 1.0e-4f ? 0.0f : v;
     }
     if (changed) { repaint (meterArea); repaint (outLabelArea.translated (0, 13)); }
+    // Macros and the other host parameters do not bump the model version: poll the edited mark.
+    if (const bool d = ctx.proc.isPresetDirty(); d != dirty) { dirty = d; repaint (nameArea); }
 }
 } // namespace ui

@@ -3,10 +3,23 @@
 #include "Core/PatchCompiler.h"
 #include "Core/Templates.h"
 #include "Presets/PresetSerializer.h"
+#include <algorithm>
+#include <cmath>
 
 namespace fmlume
 {
 PatchController::PatchController() { current = makeCategoryPreset (Category::EPiano); }
+
+bool PatchController::presetHostValuesEqual (const HostParams& a, const HostParams& b)
+{
+    // tolerant: values pass through the host's normalised 0..1 range and back
+    const auto same = [] (float x, float y) { return std::abs (x - y) <= 1.0e-4f * std::max (1.0f, std::abs (y)); };
+    for (int i = 0; i < kNumMacros; ++i) if (! same (a.macro[(size_t) i], b.macro[(size_t) i])) return false;
+    for (int i = 0; i < kNumQuick; ++i) if (! same (a.quick[(size_t) i], b.quick[(size_t) i])) return false;
+    return a.polyphony == b.polyphony && a.unison == b.unison && same (a.detune, b.detune) && same (a.spread, b.spread)
+        && same (a.morphAmount, b.morphAmount) && a.morphEnabled == b.morphEnabled
+        && a.arpEnabled == b.arpEnabled && a.gateEnabled == b.gateEnabled;
+}
 
 bool PatchController::push (bool forceNew)
 {

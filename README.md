@@ -72,7 +72,7 @@ auval -v aumu Fmld Chbw   # 開発用。製品版は Fmlu
 | `fmlume-render` | オフライン MIDI→WAV レンダラー。`--preset file.fmlume --midi song.mid --out out.wav`、`--template Bell --note 60 --note 67 --macro 1=0.9`、`--validate file.fmlume` など（引数なしでヘルプ） |
 | `fmlume-presetgen Resources/Presets` | ファクトリープリセット152音色の再生成と検証（全マクロの可聴性・ラウドネス調整） |
 | `fmlume-bench` | エンジンのCPU負荷計測（SPEC §17.3 の基準ケースを含む） |
-| `fmlume-uisnap <dir>` | エディタ画面をPNGに書き出す開発用ツール（`-DFMLUME_BUILD_UI_SNAPSHOT=ON`）。`--icon in.svg out.png [size] [canvas]` でブランディングSVGをPNG化 |
+| `fmlume-uisnap <dir>` | エディタ画面をPNGに書き出す開発用ツール（`-DFMLUME_BUILD_UI_SNAPSHOT=ON`）。`--icon in.svg out.png [size] [canvas]` でブランディングSVGをPNG化。`--check-edited <dir>` でプリセット名の `*`（編集済み表示）を実プロセッサー＋エディタで検査 |
 
 ## 使い方（概要）
 

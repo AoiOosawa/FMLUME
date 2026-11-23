@@ -154,6 +154,14 @@ void FmlumeAudioProcessor::applyHostValues (const HostParams& h)
     setParam ("morph.enabled", h.morphEnabled ? 1.0f : 0.0f);
     setParam ("arp.enabled", h.arpEnabled ? 1.0f : 0.0f);
     setParam ("tranceGate.enabled", h.gateEnabled ? 1.0f : 0.0f);
+    // The host parameters now hold the preset's values (as the parameters quantise them).
+    controller.setHostBaseline (currentHostParams());
+}
+
+bool FmlumeAudioProcessor::isPresetDirty()
+{
+    std::lock_guard<std::recursive_mutex> lock (modelMutex);
+    return controller.isDirty (currentHostParams());
 }
 
 void FmlumeAudioProcessor::prepareToPlay (double sampleRate, int samplesPerBlock)
@@ -434,6 +442,7 @@ juce::String FmlumeAudioProcessor::savePreset (const juce::String& name, bool ov
             if (presets.load (presets.findById (e.id), saved)) controller.markSaved (saved);
             break;
         }
+    controller.setHostBaseline (currentHostParams()); // the file holds the live host values
     return {};
 }
 

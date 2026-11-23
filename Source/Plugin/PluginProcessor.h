@@ -58,6 +58,8 @@ public:
     fmlume::PresetManager& presetManager() { return presets; }
     uint32_t getModelVersion() const { return modelVersion.load(); }
     fmlume::HostParams currentHostParams() const;
+    // Edited since it was loaded / saved: model edits or a moved preset-stored host parameter (macro, ...).
+    bool isPresetDirty();
 
     // Preset operations (message thread). Return an error message, empty on success.
     juce::String loadPresetIndex (int listIndex);

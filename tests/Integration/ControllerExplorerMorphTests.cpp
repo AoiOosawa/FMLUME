@@ -461,3 +461,38 @@ FM_TEST ("integration", "Morph slot names are kept in the preset, travel with a 
     CHECK (presetToJson (ctl.preset(), json, &err));
     CHECK (json.find ("slotNames") == std::string::npos);
 }
+
+FM_TEST ("integration", "Controller: moving a preset-stored host value (macro, unison, ...) marks the preset edited")
+{
+    PatchController ctl;
+    ctl.loadPreset (makeCategoryPreset (Category::Keys));
+    HostParams live = ctl.data().host;
+    ctl.setHostBaseline (live); // what the plug-in does once the host parameters hold the preset's values
+    CHECK (! ctl.isDirty (live));
+
+    live.macro[2] += 0.1f;
+    CHECK (ctl.isDirty (live));
+    CHECK (! ctl.isDirty()); // the model itself is untouched
+    live.macro[2] -= 0.1f;
+    CHECK (! ctl.isDirty (live)); // back on the stored value
+
+    // the round trip through the host's normalised range is not an edit
+    live.detune += 1.0e-5f;
+    CHECK (! ctl.isDirty (live));
+
+    HostParams h = live;
+    h.unison += 1;          CHECK (ctl.isDirty (h)); h = live;
+    h.quick[1] = 0.9f;      CHECK (ctl.isDirty (h)); h = live;
+    h.morphAmount = 0.75f;  CHECK (ctl.isDirty (h)); h = live;
+    h.arpEnabled = ! h.arpEnabled; CHECK (ctl.isDirty (h)); h = live;
+
+    // session settings are not part of a preset (D-010)
+    h.gainDb = -12.0f; h.pan = 0.5f; h.quality = 2; h.fxBypassAll = true;
+    CHECK (! ctl.isDirty (h));
+
+    // saving adopts the live values
+    live.macro[0] = 0.9f;
+    CHECK (ctl.isDirty (live));
+    ctl.setHostBaseline (live);
+    CHECK (! ctl.isDirty (live));
+}

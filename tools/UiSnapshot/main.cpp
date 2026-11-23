@@ -104,6 +104,57 @@ struct SnapshotApp final : public juce::JUCEApplication
             quit();
             return;
         }
+        // "--check-edited <dir>": the "*" beside the preset name follows the host parameters a preset
+        // stores (macros, ...), through the real processor and editor. Writes the header before / after.
+        if (tokens.size() >= 1 && tokens[0] == "--check-edited")
+        {
+            const juce::File out (tokens.size() > 1 ? tokens[1].unquoted() : juce::File::getCurrentWorkingDirectory().getFullPathName());
+            out.createDirectory();
+            auto processor = std::make_unique<FmlumeAudioProcessor>();
+            processor->prepareToPlay (48000.0, 512);
+            std::unique_ptr<juce::AudioProcessorEditor> ed (processor->createEditor());
+            ed->setVisible (true);
+            ed->addToDesktop (0);
+            auto pump = [] { juce::MessageManager::getInstance()->runDispatchLoopUntil (200); };
+            int problems = 0;
+            const auto expect = [&] (bool wanted, const char* what) {
+                const bool got = processor->isPresetDirty();
+                std::printf ("%s %s: edited=%d (expected %d)\n", got == wanted ? "ok     " : "PROBLEM", what, (int) got, (int) wanted);
+                if (got != wanted) ++problems;
+            };
+            const auto setNorm = [&] (const char* id, float v) { processor->apvts.getParameter (id)->setValueNotifyingHost (v); };
+            auto* header = findOf<ui::Header> (*ed);
+            pump();
+            expect (false, "after loading the first preset");
+            if (header != nullptr) save (*header, out.getChildFile ("header_clean.png"));
+            const float macro = processor->apvts.getParameter ("macro.1")->getValue();
+            setNorm ("macro.1", macro > 0.5f ? macro - 0.3f : macro + 0.3f);
+            pump();
+            expect (true, "macro 1 moved");
+            if (header != nullptr) save (*header, out.getChildFile ("header_edited.png"));
+            setNorm ("macro.1", macro);
+            pump();
+            expect (false, "macro 1 back on the stored value");
+            const float gain = processor->apvts.getParameter ("master.gainDb")->getValue();
+            setNorm ("master.gainDb", gain * 0.5f);
+            expect (false, "master gain moved (session setting, not in the preset)");
+            setNorm ("fx.quick.space", 0.93f);
+            expect (true, "quick FX Space moved");
+            juce::MemoryBlock state;
+            processor->getStateInformation (state);
+            processor->setStateInformation (state.getData(), (int) state.getSize());
+            pump();
+            expect (false, "project state saved and restored");
+            processor->stepPreset (1);
+            pump();
+            expect (false, "next preset loaded");
+            if (header != nullptr) save (*header, out.getChildFile ("header_next.png"));
+            ed.reset();
+            processor.reset();
+            setApplicationReturnValue (problems == 0 ? 0 : 1);
+            quit();
+            return;
+        }
         const juce::File dir (args.unquoted().isEmpty() ? juce::File::getCurrentWorkingDirectory().getFullPathName() : args.unquoted());
         dir.createDirectory();
         auto processor = std::make_unique<FmlumeAudioProcessor>();

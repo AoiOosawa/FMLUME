@@ -27,6 +27,13 @@ public:
     const Preset& preset() const { return current; }
     const PatchData& data() const { return current.data; }
     bool isDirty() const { return dirty; }
+    // The preset also stores host values (macros, quick FX, unison, morph amount, ...) that live in
+    // the host parameters, not in the model. The owner records them whenever they match the preset
+    // (after a load / state restore / save); moving one of them afterwards makes the preset dirty too.
+    void setHostBaseline (const HostParams& h) { hostBaseline = h; }
+    bool isDirty (const HostParams& live) const { return dirty || ! presetHostValuesEqual (live, hostBaseline); }
+    // Compares only the host values a preset stores (not master gain / pan / quality / FX bypass, D-010).
+    static bool presetHostValuesEqual (const HostParams& a, const HostParams& b);
     const std::string& lastError() const { return error; }
 
     // Applies an edit. The mutated copy is validated first; invalid results are rejected and
@@ -88,6 +95,7 @@ private:
 
     Preset current;
     bool dirty = false;
+    HostParams hostBaseline;
     std::string error;
     bool editB = false;
 
