@@ -219,11 +219,11 @@
         },
         {
           "targetParamId": "master.level",
-          "amount": -0.0500000007,
+          "amount": -0.0855035782,
           "curve": "linear",
           "polarity": "bipolar",
           "min": 0,
-          "max": 1
+          "max": 0.5
         }
       ]
     },
@@ -263,6 +263,14 @@
           "polarity": "bipolar",
           "min": 0,
           "max": 1
+        },
+        {
+          "targetParamId": "master.level",
+          "amount": -0.0246694982,
+          "curve": "linear",
+          "polarity": "bipolar",
+          "min": 0,
+          "max": 0.5
         }
       ]
     },
@@ -318,6 +326,14 @@
           "polarity": "bipolar",
           "min": 0,
           "max": 1
+        },
+        {
+          "targetParamId": "master.level",
+          "amount": -0.0240797102,
+          "curve": "linear",
+          "polarity": "bipolar",
+          "min": 0,
+          "max": 0.5
         }
       ]
     },
@@ -395,6 +411,14 @@
           "polarity": "bipolar",
           "min": 0,
           "max": 1
+        },
+        {
+          "targetParamId": "master.level",
+          "amount": -0.0143939257,
+          "curve": "linear",
+          "polarity": "bipolar",
+          "min": 0,
+          "max": 0.5
         }
       ]
     },

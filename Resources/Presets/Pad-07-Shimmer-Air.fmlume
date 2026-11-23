@@ -227,11 +227,11 @@
         },
         {
           "targetParamId": "master.level",
-          "amount": -0.0500000007,
+          "amount": 0.063798368,
           "curve": "linear",
           "polarity": "bipolar",
           "min": 0,
-          "max": 1
+          "max": 0.5
         }
       ]
     },

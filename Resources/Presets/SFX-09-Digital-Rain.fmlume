@@ -265,6 +265,14 @@
           "polarity": "bipolar",
           "min": 0,
           "max": 1
+        },
+        {
+          "targetParamId": "master.level",
+          "amount": -0.239637911,
+          "curve": "linear",
+          "polarity": "bipolar",
+          "min": 0,
+          "max": 0.5
         }
       ]
     },
@@ -372,6 +380,14 @@
           "polarity": "bipolar",
           "min": 0,
           "max": 1
+        },
+        {
+          "targetParamId": "master.level",
+          "amount": -0.114521682,
+          "curve": "linear",
+          "polarity": "bipolar",
+          "min": 0,
+          "max": 0.5
         }
       ]
     }

@@ -123,7 +123,7 @@ std::vector<Preset> buildFactory()
       b.clear().op (1, 1.0f, 1.0f, 0.001f, 0.3f, 0.8f, 0.05f, 1.0f).wave (1, W::Pulse).op (2, 2.0f, 0.5f, 0.001f, 0.2f, 0.5f, 0.05f, 0.25f).wave (2, W::Pulse)
        .op (3, 1.0f, 0.4f, 0.001f, 0.12f, 0.0f, 0.05f).edge (3, 1, 0.8f)
        .mod (0, S::LFO1, pc::pitch, 0.0f).lfo (1, 6.0f).mod (1, S::LFO2, pc::pan, 0.0f).lfo (2, 0.8f)
-       .m (5, { { E (3, 1), 0.3f } }).m (6, { { O (2, kOpCarrierGain), 0.4f } }).mu (7, { { DEPTH (0), 0.006f } }).mu (8, { { DEPTH (1), 0.5f } })
+       .m (5, { { E (3, 1), 0.3f } }).m (6, { { O (2, kOpCarrierGain), 0.4f } }).mu (7, { { DEPTH (0), 0.014f } }).mu (8, { { DEPTH (1), 0.5f } })
        .mname (5, "Grit").mname (6, "Octave").mname (7, "Vibrato").mname (8, "Auto Pan")
        .poly (8).chord (CH::Major).arp (A::Up, 15, 0.8f, 2).delaySync (0.12f, 9, 0.3f); addArp (b); }
     { B b (C::Lead); b.name ("One Key Hook").tags ({ "Arp", "Modern", "Bright" }).desc ("One key plays a pop hook: a seventh-chord arpeggio with swing.", "single keys in the middle of the keyboard.");
@@ -213,7 +213,7 @@ std::vector<Preset> buildFactory()
        .m (5, { { O (4, kOpCarrierGain), 0.3f }, { O (5, kOpCarrierGain), 0.4f }, { E (1, 2), 0.15f } })
        .m (6, { { FX (FxType::Chorus, 3), 0.5f } }).mu (6, { { DEPTH (1), 0.004f } })
        .m (7, { { O (2, kOpEnvD), 0.3f }, { O (3, kOpEnvD), 0.3f }, { O (6, kOpEnvD), 0.3f }, { O (2, kOpEnvR), 0.3f }, { O (3, kOpEnvR), 0.3f }, { O (6, kOpEnvR), 0.3f } })
-       .mu (8, { { DEPTH (0), 0.12f } })
+       .mu (8, { { DEPTH (0), 0.3f } })
        .chorus (0.35f, 0.45f, 0.5f).reverb (0.16f, 1.8f, 0.5f, 0.4f); add (b); }
     { B b (C::Bell); b.name ("Crystal Bell").tags ({ "Bright", "Metallic" }).desc ("Clear inharmonic bell with a long natural tail.", "soft = pure, hard = more clang."); add (b); }
     { B b (C::Bell); b.name ("Tubular Tower").tags ({ "Metallic", "Cinematic" }).desc ("Orchestral tubular bell with a slow, heavy decay.", "play single notes firmly.");
@@ -267,7 +267,7 @@ std::vector<Preset> buildFactory()
       b.ratio (3, 0.5f).ratio (1, 2.76f).edge (1, 3, 3.4f).edge (2, 3, 0.6f).env (3, 0.002f, 8.0f, 0.0f, 5.0f).env (5, 0.002f, 9.0f, 0.0f, 5.0f).eq (2.0f, 0.0f, -5.0f).reverb (0.42f, 6.5f, 0.85f, 0.7f); add (b); }
     { B b (C::Bell); b.name ("Thumb Piano").tags ({ "Warm", "Soft", "Punchy" }).desc ("Kalimba-like plucked tine.", "medium; harder adds buzz.");
       b.ratio (1, 6.3f).edge (1, 3, 1.3f).edge (2, 3, 0.0f).env (1, 0.001f, 0.09f, 0.0f, 0.06f).env (3, 0.001f, 1.3f, 0.0f, 0.5f).out (5, 0.3f).ratio (5, 1.0f).level (4, 0.15f).env (5, 0.001f, 0.9f, 0.0f, 0.4f).delay (0.12f, 300.0f)
-       .m (5, { { E (1, 3), 0.25f }, { O (1, kOpEnvD), 0.2f } }); add (b); }
+       .m (5, { { E (1, 3), 0.25f }, { O (1, kOpEnvD), 0.2f } }).mod (0, S::LFO1, pc::level, 0.0f).lfo (1, 5.5f).m (8, {}).mu (8, { { DEPTH (0), -0.3f } }); add (b); }
 
     // ============================================================================ Bass
     { B b (C::Bass); b.name ("FM Bass One").tags ({ "Punchy", "Retro" }).desc ("The all-round FM bass: tight attack, solid fundamental.", "harder = brighter attack."); add (b); }
@@ -432,7 +432,8 @@ std::vector<Preset> buildFactory()
     { B b (C::Brass); b.name ("Soft Horns").tags ({ "Soft", "Warm" }).desc ("Mellow French-horn style section.", "soft to medium; swells nicely.");
       b.fb (1, 0.35f).edge (1, 2, 1.3f).edge (3, 4, 0.7f).env (1, 0.12f, 0.6f, 0.6f, 0.25f).env (2, 0.09f, 0.3f, 0.9f, 0.25f).env (4, 0.1f, 0.3f, 0.8f, 0.25f).out (4, 0.3f).eq (2.0f, 0.0f, -3.0f).reverb (0.3f, 2.8f); add (b); }
     { B b (C::Brass); b.name ("Bright Trumpet").tags ({ "Bright", "Punchy" }).desc ("Solo trumpet with a sharp, brilliant tone.", "velocity strongly controls brightness.");
-      b.fb (1, 0.9f).edge (1, 2, 3.4f).vel (1, 0.4f, 0.9f).env (1, 0.03f, 0.3f, 0.75f, 0.15f).env (2, 0.02f, 0.2f, 0.95f, 0.15f).out (4, 0.2f).mono (true, 0.02f).mod (0, S::LFO1, pc::pitch, 0.006f).lfo (1, 5.2f).reverb (0.2f, 2.0f); add (b); }
+      b.fb (1, 0.9f).edge (1, 2, 3.4f).vel (1, 0.4f, 0.9f).env (1, 0.03f, 0.3f, 0.75f, 0.15f).env (2, 0.02f, 0.2f, 0.95f, 0.15f).out (4, 0.2f).mono (true, 0.02f).mod (0, S::LFO1, pc::pitch, 0.006f).lfo (1, 5.2f).reverb (0.2f, 2.0f)
+       .m (6, { { FX (F::EQ, 0), 0.35f }, { O (4, kOpCarrierGain), 0.3f }, { E (3, 4), 0.2f } }); add (b); }
     { B b (C::Brass); b.name ("Synth Brass").tags ({ "Retro", "Warm", "Punchy" }).desc ("Analog-style saw brass with a filter swell.", "velocity opens the filter.");
       b.clear().op (1, 1.0f, 1.0f, 0.02f, 0.4f, 0.9f, 0.2f, 1.0f).op (2, 1.0f, 1.0f, 0.02f, 0.4f, 0.9f, 0.2f, 0.9f).wave (1, W::Saw).wave (2, W::Saw).det (1, -7.0f).det (2, 7.0f)
        .filter (FT::LP24, 900.0f, 0.2f, 0.1f).modEnv (0.05f, 0.5f, 0.55f, 0.2f).mod (0, S::ModEnv, pc::filterCutoff, 0.3f).mod (1, S::Velocity, pc::filterCutoff, 0.12f).chorus (0.2f)
@@ -470,7 +471,7 @@ std::vector<Preset> buildFactory()
     { B b (C::Keys); b.name ("Click Organ").tags ({ "Retro", "Punchy" }).desc ("Percussive organ with key click.", "velocity only affects the click.");
       b.clear().op (1, 1.0f, 1.0f, 0.002f, 0.3f, 1.0f, 0.05f, 1.0f).op (2, 2.0f, 0.8f, 0.002f, 0.3f, 1.0f, 0.05f, 0.6f).op (3, 3.0f, 1.0f, 0.001f, 0.12f, 0.0f, 0.05f, 0.7f).op (4, 7.0f, 0.8f, 0.001f, 0.02f, 0.0f, 0.02f)
        .edge (4, 3, 1.5f).vel (1, 0.0f, 0.0f).vel (2, 0.0f, 0.0f).vel (3, 0.6f, 0.5f).chorus (0.25f, 0.5f, 2.5f)
-       .m (5, { { E (4, 3), 0.3f }, { O (3, kOpCarrierGain), 0.3f } }).mname (5, "Click").m (6, { { O (1, kOpCarrierGain), 0.3f }, { FX (F::EQ, 0), 0.2f } }).m (7, { { O (3, kOpEnvD), 0.3f }, { O (2, kOpCarrierGain), 0.3f } }).mname (7, "Percussion").m (8, { { FX (F::Chorus, 3), 0.55f }, { FX (F::Chorus, 2), 0.3f } }); add (b); }
+       .m (5, { { E (4, 3), 0.45f }, { O (3, kOpCarrierGain), 0.45f }, { O (4, kOpEnvD), 0.3f } }).mname (5, "Click").m (6, { { O (1, kOpCarrierGain), 0.3f }, { FX (F::EQ, 0), 0.2f } }).m (7, { { O (3, kOpEnvD), 0.3f }, { O (2, kOpCarrierGain), 0.3f } }).mname (7, "Percussion").m (8, { { FX (F::Chorus, 3), 0.55f }, { FX (F::Chorus, 2), 0.3f } }); add (b); }
     { B b (C::Keys); b.name ("Funky Clav").tags ({ "Punchy", "Retro", "Bright" }).desc ("Biting clavinet for funk riffs.", "short notes; velocity = bite.");
       b.ratio (1, 1.0f).fb (1, 0.6f).edge (1, 2, 3.4f).vel (1, 0.4f, 0.8f).env (1, 0.001f, 0.35f, 0.2f, 0.06f).env (2, 0.001f, 0.9f, 0.0f, 0.06f).ratio (3, 4.0f).edge (3, 4, 1.4f).env (4, 0.001f, 0.5f, 0.0f, 0.06f)
        .eq (-2.0f, 3.0f, 2.0f, 1800.0f).phaser (0.2f, 0.5f); add (b); }

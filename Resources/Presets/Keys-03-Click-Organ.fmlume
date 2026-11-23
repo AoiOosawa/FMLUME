@@ -338,7 +338,7 @@
       "mappings": [
         {
           "targetParamId": "edge.4.3.index",
-          "amount": 0.300000012,
+          "amount": 0.449999988,
           "curve": "linear",
           "polarity": "bipolar",
           "min": 0,
@@ -346,6 +346,14 @@
         },
         {
           "targetParamId": "op3.carrierGain",
+          "amount": 0.449999988,
+          "curve": "linear",
+          "polarity": "bipolar",
+          "min": 0,
+          "max": 1
+        },
+        {
+          "targetParamId": "op4.decay",
           "amount": 0.300000012,
           "curve": "linear",
           "polarity": "bipolar",

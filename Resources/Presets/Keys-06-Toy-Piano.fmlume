@@ -219,11 +219,11 @@
         },
         {
           "targetParamId": "master.level",
-          "amount": -0.0500000007,
+          "amount": 0.0137411952,
           "curve": "linear",
           "polarity": "bipolar",
           "min": 0,
-          "max": 1
+          "max": 0.5
         }
       ]
     },
@@ -263,6 +263,14 @@
           "polarity": "bipolar",
           "min": 0,
           "max": 1
+        },
+        {
+          "targetParamId": "master.level",
+          "amount": -0.0254309773,
+          "curve": "linear",
+          "polarity": "bipolar",
+          "min": 0,
+          "max": 0.5
         }
       ]
     },
@@ -318,6 +326,14 @@
           "polarity": "bipolar",
           "min": 0,
           "max": 1
+        },
+        {
+          "targetParamId": "master.level",
+          "amount": -0.0187963247,
+          "curve": "linear",
+          "polarity": "bipolar",
+          "min": 0,
+          "max": 0.5
         }
       ]
     },
@@ -345,6 +361,14 @@
         {
           "targetParamId": "op3.level",
           "amount": 0.25,
+          "curve": "linear",
+          "polarity": "bipolar",
+          "min": 0,
+          "max": 1
+        },
+        {
+          "targetParamId": "op2.feedback",
+          "amount": 0.449999988,
           "curve": "linear",
           "polarity": "bipolar",
           "min": 0,
@@ -395,6 +419,14 @@
           "polarity": "bipolar",
           "min": 0,
           "max": 1
+        },
+        {
+          "targetParamId": "master.level",
+          "amount": -0.0209489763,
+          "curve": "linear",
+          "polarity": "bipolar",
+          "min": 0,
+          "max": 0.5
         }
       ]
     },

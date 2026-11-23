@@ -146,6 +146,19 @@ int main (int argc, char** argv)
 
         sanitizeTargets (d);
         assignCommonMacros (d, false);
+        // Character (macro 4) is feedback on the first modulator plus carrier detune. On these sounds the
+        // screening (scripts/audition.py) measured no audible change, so the first carrier's own feedback
+        // is added: it always turns the tone edgier (docs/DECISIONS.md D-054).
+        static const char* const kCharacterNeedsEdge[] = { "Chip Hero Arp", "Wood Bell", "Thumb Piano", "Analog Horns", "Toy Piano",
+                                                           "Nylon Fingers", "Tine Pluck", "Sub Drop", "Pendulum Arp" };
+        for (const char* name : kCharacterNeedsEdge)
+            if (p.meta.displayName == name)
+                for (int k = 0; k < kNumOps; ++k)
+                    if (d.a.engine.operators[(size_t) k].enabled && d.a.engine.operators[(size_t) k].carrierGain > 0.0f)
+                    {
+                        addMapping (d.a.macros[3], pc::op (k, kOpFeedback), 0.45f);
+                        break;
+                    }
         for (int i = 0; i < kNumMacros; ++i)
         {
             if (d.a.macros[(size_t) i].numMappings == 0)
@@ -180,6 +193,47 @@ int main (int argc, char** argv)
         static const std::pair<const char*, float> kLevelByEar[] = { { "Soft Stairs Arp", 4.0f } };
         for (auto& kv : kLevelByEar) if (p.meta.displayName == kv.first) trim += kv.second;
         d.out.levelDb = std::round (clampf (trim, -18.0f, 12.0f) * 10.0f) / 10.0f;
+
+        // Macro loudness guard: no macro may push the phrase into the limiter (peak above -1.5 dBFS) or
+        // make it more than 9 dB louder (RMS; longer tails alone stay well below that) at either end of its throw. Where one does, a level mapping
+        // that only acts on that half of the throw takes the excess back out (D-054).
+        {
+            const auto measure = [&] (const HostParams& h) {
+                const Render r = render (d, h, cat, -12.0f);
+                return std::pair<float, float> (20.0f * std::log10 (std::max (r.peak, 1.0e-6f)) + 12.0f, 20.0f * (float) std::log10 (std::max (r.rms, 1.0e-9)) + 12.0f);
+            };
+            const auto base = measure (d.host);
+            for (int i = 0; i < kNumMacros; ++i)
+            {
+                Macro& mc = d.a.macros[(size_t) i];
+                int guardedHalf = -1; // 0 = lower, 1 = upper
+                for (int half = 0; half < 2; ++half)
+                    for (int pass = 0; pass < 5; ++pass)
+                    {
+                        HostParams h = d.host;
+                        h.macro[(size_t) i] = (float) half;
+                        const auto m = measure (h);
+                        const float over = std::max (m.first + 1.5f, m.second - base.second - 9.0f);
+                        if (over < 0.2f) break;
+                        MacroMapping* mp = nullptr;
+                        for (int k = 0; k < mc.numMappings; ++k) if (mc.mappings[(size_t) k].target == pc::level) mp = &mc.mappings[(size_t) k];
+                        if (guardedHalf >= 0 && guardedHalf != half) { std::printf ("NOTE %s: macro %d is too loud at both ends; only one end is guarded\n", p.meta.displayName.c_str(), i + 1); break; }
+                        if (mp == nullptr)
+                        {
+                            if (! addMapping (mc, pc::level, 0.0f)) { std::printf ("NOTE %s: macro %d has no free mapping for the loudness guard\n", p.meta.displayName.c_str(), i + 1); break; }
+                            mp = &mc.mappings[(size_t) (mc.numMappings - 1)];
+                        }
+                        if (guardedHalf < 0) { mp->amount = 0.0f; mp->curve = Curve::Linear; mp->polarity = Polarity::Bipolar; mp->min = 0.0f; mp->max = 0.5f; }
+                        guardedHalf = half;
+                        // preset level is 0..2 (normalised 0.5 = unity): |amount| a gives a gain of 1 - 2a at the end of the throw
+                        const float gain = (1.0f - 2.0f * std::fabs (mp->amount)) * std::pow (10.0f, -over / 20.0f);
+                        const float a = clampf ((1.0f - gain) * 0.5f, 0.0f, 0.45f);
+                        mp->amount = half == 1 ? -a : a;
+                        if (pass == 0) std::printf ("guard %-22s macro %d (%s) at %d: %+.1f dB over\n", p.meta.displayName.c_str(), i + 1, p.meta.macroNames[(size_t) i].c_str(), half, over);
+                    }
+            }
+            d.b = d.a;
+        }
 
         // Every macro must be audible in at least one direction.
         const Render neutral = render (d, d.host, cat, -12.0f);

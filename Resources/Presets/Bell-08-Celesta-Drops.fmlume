@@ -227,11 +227,11 @@
         },
         {
           "targetParamId": "master.level",
-          "amount": -0.0500000007,
+          "amount": -0.0703395009,
           "curve": "linear",
           "polarity": "bipolar",
           "min": 0,
-          "max": 1
+          "max": 0.5
         }
       ]
     },
@@ -271,6 +271,14 @@
           "polarity": "bipolar",
           "min": 0,
           "max": 1
+        },
+        {
+          "targetParamId": "master.level",
+          "amount": -0.0441486537,
+          "curve": "linear",
+          "polarity": "bipolar",
+          "min": 0,
+          "max": 0.5
         }
       ]
     },
@@ -334,6 +342,14 @@
           "polarity": "bipolar",
           "min": 0,
           "max": 1
+        },
+        {
+          "targetParamId": "master.level",
+          "amount": -0.0480190516,
+          "curve": "linear",
+          "polarity": "bipolar",
+          "min": 0,
+          "max": 0.5
         }
       ]
     },
@@ -396,6 +412,14 @@
           "polarity": "bipolar",
           "min": 0,
           "max": 1
+        },
+        {
+          "targetParamId": "master.level",
+          "amount": -0.094527781,
+          "curve": "linear",
+          "polarity": "bipolar",
+          "min": 0,
+          "max": 0.5
         }
       ]
     },
@@ -458,6 +482,14 @@
           "polarity": "bipolar",
           "min": 0,
           "max": 1
+        },
+        {
+          "targetParamId": "master.level",
+          "amount": -0.121345162,
+          "curve": "linear",
+          "polarity": "bipolar",
+          "min": 0,
+          "max": 0.5
         }
       ]
     },
@@ -473,6 +505,14 @@
           "polarity": "unipolar",
           "min": 0.5,
           "max": 1
+        },
+        {
+          "targetParamId": "master.level",
+          "amount": 0.217617452,
+          "curve": "linear",
+          "polarity": "bipolar",
+          "min": 0,
+          "max": 0.5
         }
       ]
     }
