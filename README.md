@@ -11,6 +11,16 @@ macOS 用 AU（AUv2）/ VST3 / Standalone の6オペレーター FM/PM シンセ
 - 構造: [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md) / 設計判断: [`docs/DECISIONS.md`](docs/DECISIONS.md)
 - プリセット形式: [`docs/PRESET_SCHEMA.md`](docs/PRESET_SCHEMA.md) / テスト計画: [`docs/TEST_PLAN.md`](docs/TEST_PLAN.md)
 
+## インストール
+
+[最新のリリース](https://github.com/cheebow/FMLUME/releases/latest) からインストーラー（`.pkg`）をダウンロードして開き、画面の案内に沿って進めてください。VST3、Audio Unit、スタンドアロンアプリの中から、入れたいものを選べます。
+
+- macOS 12 以降
+- Apple Silicon。Intel Mac でも動くように作っていますが、実機ではまだ試せていません
+- Apple の公証済みです
+
+音と画面は [紹介ページ](https://cheebow.github.io/FMLUME/)、使い方とアンインストールの手順は [ユーザーガイド](docs/USER_GUIDE.md) にあります。
+
 ## 必要環境
 
 - macOS 12 以降。開発用のビルドは Apple Silicon のみ、配布用（`scripts/package.sh`）は Universal（Apple Silicon + Intel。Intel の実機では未確認）

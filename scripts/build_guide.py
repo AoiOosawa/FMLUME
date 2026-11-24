@@ -248,6 +248,16 @@ def render(md: str) -> str:
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>%(title)s</title>
 <meta name="description" content="FMLUME（6 オペレーター FM シンセサイザー）の使い方。インストール、画面の見方、Variations、Advanced の各タブ、プリセット、MIDI、DAW との連携。">
+<meta property="og:title" content="%(title)s">
+<meta property="og:description" content="FMLUME（6 オペレーター FM シンセサイザー）の使い方。インストール、画面の見方、Variations、Advanced の各タブ、プリセット、MIDI、DAW との連携。">
+<meta property="og:image" content="https://cheebow.github.io/FMLUME/assets/og.png">
+<meta property="og:image:width" content="1200">
+<meta property="og:image:height" content="630">
+<meta property="og:type" content="article">
+<meta property="og:url" content="https://cheebow.github.io/FMLUME/guide.html">
+<meta property="og:site_name" content="FMLUME">
+<meta property="og:locale" content="ja_JP">
+<meta name="twitter:card" content="summary_large_image">
 <link rel="icon" type="image/svg+xml" href="assets/icon.svg">
 <!-- docs/USER_GUIDE.md から scripts/build_guide.py で作ったファイル。直接編集しない。 -->
 <style>%(style)s</style>

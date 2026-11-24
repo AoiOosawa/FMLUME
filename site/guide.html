@@ -5,6 +5,16 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>FMLUME ユーザーガイド</title>
 <meta name="description" content="FMLUME（6 オペレーター FM シンセサイザー）の使い方。インストール、画面の見方、Variations、Advanced の各タブ、プリセット、MIDI、DAW との連携。">
+<meta property="og:title" content="FMLUME ユーザーガイド">
+<meta property="og:description" content="FMLUME（6 オペレーター FM シンセサイザー）の使い方。インストール、画面の見方、Variations、Advanced の各タブ、プリセット、MIDI、DAW との連携。">
+<meta property="og:image" content="https://cheebow.github.io/FMLUME/assets/og.png">
+<meta property="og:image:width" content="1200">
+<meta property="og:image:height" content="630">
+<meta property="og:type" content="article">
+<meta property="og:url" content="https://cheebow.github.io/FMLUME/guide.html">
+<meta property="og:site_name" content="FMLUME">
+<meta property="og:locale" content="ja_JP">
+<meta name="twitter:card" content="summary_large_image">
 <link rel="icon" type="image/svg+xml" href="assets/icon.svg">
 <!-- docs/USER_GUIDE.md から scripts/build_guide.py で作ったファイル。直接編集しない。 -->
 <style>
@@ -94,15 +104,15 @@
   <aside class="toc"><b>目次</b><ol><li><a href="#s1">1. 動作環境</a></li><li><a href="#s2">2. インストール</a></li><li><a href="#s3">3. 最初の音を出す</a></li><li><a href="#s4">4. 画面の構成</a><ol><li><a href="#s4-1">ノブの操作</a></li></ol></li><li><a href="#s5">5. Simple 表示</a><ol><li><a href="#s5-1">Variations</a></li></ol></li><li><a href="#s6">6. Advanced 表示</a><ol><li><a href="#s6-1">Operators</a></li><li><a href="#s6-2">Filter &amp; Mod</a></li><li><a href="#s6-3">FX</a></li><li><a href="#s6-4">Rhythm</a></li><li><a href="#s6-5">Performance</a></li></ol></li><li><a href="#s7">7. プリセット</a></li><li><a href="#s8">8. MIDI</a></li><li><a href="#s9">9. DAW との連携</a></li><li><a href="#s10">10. 困ったとき</a></li><li><a href="#s11">11. 現在の制限</a></li></ol></aside>
   <main>
     <h1>FMLUME ユーザーガイド</h1>
-    <p class="intro">FMLUME（エフエムリューム）は、FM 音源の音を、オペレーターやアルゴリズムを知らなくても作れるようにした macOS 用のシンセサイザーです。6 オペレーターの FM 音源に、マクロ、Variations（音色の候補づくり）、エフェクト、トランスゲート、アルペジエーターを備えています。</p><p class="intro">このガイドは開発中のビルド（v0.1.0）に対応しています。</p>
-<div class="note"><strong>お読みください</strong>: 自動テストと検証ツール（auval / pluginval）は通っています。DAW での動作は、Cubase（VST3）で読み込み・演奏・保存と復元・オートメーション・キー操作・オフライン書き出しを確かめています。Logic Pro（Audio Unit）とそのほかの DAW では、まだ確かめていません。収録音色は作者が 2 回通して試聴し、指摘した点を直しています。</div>
+    <p class="intro">FMLUME（エフエムリューム）は、FM 音源の音を、オペレーターやアルゴリズムを知らなくても作れるようにした macOS 用のシンセサイザーです。6 オペレーターの FM 音源に、マクロ、Variations（音色の候補づくり）、エフェクト、トランスゲート、アルペジエーターを備えています。</p><p class="intro">このガイドは v0.1.0 に対応しています。</p>
+<div class="note"><strong>お読みください</strong>: 自動テストと検証ツール（auval / pluginval）は通っています。DAW での動作は、Cubase（VST3）で読み込み・演奏・保存と復元・オートメーション・キー操作・オフライン書き出しを確かめています。Logic Pro（Audio Unit）でも動作を確かめています。そのほかの DAW では、まだ確かめていません。収録音色は作者が 2 回通して試聴し、指摘した点を直しています。</div>
 <h2 id="s1">1. 動作環境</h2>
 <div class="table-scroll"><table><thead><tr><th>項目</th><th>内容</th></tr></thead><tbody><tr><td>OS</td><td>macOS 12 以降</td></tr><tr><td>CPU</td><td>Apple Silicon。Intel Mac でも動くように作っています（Universal ビルド）が、実機ではまだ試せていません</td></tr><tr><td>形式</td><td>Audio Unit（Logic Pro など）、VST3（Cubase など）、Standalone アプリ</td></tr><tr><td>入出力</td><td>MIDI 入力、ステレオ出力（音声入力なし）</td></tr><tr><td>サンプルレート</td><td>44.1〜192 kHz（自動テストで確認）</td></tr></tbody></table></div>
 <p>Cubase は Audio Unit に対応していないため、Cubase では VST3 を使います。ライセンスは GNU AGPL v3.0 です。</p>
 <h2 id="s2">2. インストール</h2>
-<p>インストーラー（<code>.pkg</code>）を開き、画面の案内に沿って進めてください。VST3、Audio Unit、Standalone アプリの中から、入れたいものを選べます。次の場所に入ります。</p>
+<p><a href="https://github.com/cheebow/FMLUME/releases/latest">GitHub のリリースページ</a>からインストーラー（<code>.pkg</code>）をダウンロードして開き、画面の案内に沿って進めてください。VST3、Audio Unit、Standalone アプリの中から、入れたいものを選べます。次の場所に入ります。</p>
 <div class="table-scroll"><table><thead><tr><th>形式</th><th>場所</th></tr></thead><tbody><tr><td>VST3</td><td><code>/Library/Audio/Plug-Ins/VST3/FMLUME.vst3</code></td></tr><tr><td>Audio Unit</td><td><code>/Library/Audio/Plug-Ins/Components/FMLUME.component</code></td></tr><tr><td>Standalone</td><td><code>/Applications/FMLUME.app</code></td></tr></tbody></table></div>
-<p>現在のインストーラーには署名がありません。macOS に開くのを止められた場合は、システム設定の「プライバシーとセキュリティ」で開くことを許可してください。</p>
+<p>インストーラーは Apple の公証を受けています。</p>
 <p>インストール後、DAW でプラグインを再スキャンしてください。メーカー名は <strong>CHEEBOW</strong>、種類はインストゥルメントです。</p>
 <p>アンインストールは、上の 3 つを削除します。ユーザープリセットとお気に入りは <code>~/Library/Application Support/FMLUME/Presets/</code> にあります。</p>
 <h2 id="s3">3. 最初の音を出す</h2>

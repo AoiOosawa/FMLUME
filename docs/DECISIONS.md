@@ -437,3 +437,10 @@
   - JSON Schema（`schemas/`）の列挙は今の版の値の一覧のまま（ファイルを書く側の検査用）。
 - **(2) 音の指紋**: `tests/Integration/SoundRegressionTests.cpp`。代表 14 音色を描き出し、20 ms ごとの左右・低域・高域の音量を `tests/Golden/sound_fingerprints.json` と 1 dB の許容差で比べる。オペレーター 1 つを 5 セントずらすと失敗すること、x86_64（Rosetta）でも通ることを確かめた。音を変えるときの手順（不具合として直す / エンジンの版で古い動作を残す / 新しい設定として足す）は COMPATIBILITY.md §3。
 - 互換性への影響: 読める範囲が広がるだけで、今までのファイルの読み方は変わらない。
+
+## D-063 0.1.0 を公開する: 署名・公証済みのインストーラー、OGP（2026-11-24）
+- ユーザーの指示（「インストーラを公開しましょうか」→ 手順の提案に「すすめて」）。Logic Pro（AU）での動作はユーザーが確認し「問題なし」。
+- インストーラー: `scripts/package.sh` を Developer ID Application / Installer と公証用のキーチェーンプロファイル（POLYBRISK と同じもの）で実行。Apple の公証は Accepted、チケットを添付。`spctl` で「Notarized Developer ID」、製品版 VST3 は pluginval 厳しさ 10 に arm64 / x86_64 とも合格。
+- 公開: GitHub Releases の `v0.1.0` にインストーラーと SHA-256 を置く。リリースノートは POLYBRISK と同じ形。製品ページの「開発中」の印を外し、ダウンロードのボタンと入手方法を追加。README にインストールの節。ユーザーガイドのインストールの説明を公証済みに合わせた。
+- OGP: `site/assets/og.png`（1200×630）。ロゴとワードマーク、キャッチコピーの下に Simple の画面（POLYBRISK と同じ構成）。`scripts/make_og_image.sh` が `tools/og_image.html` を Chrome のヘッドレスモードで PNG にする。製品ページと使い方ページに OGP と Twitter カードのメタタグ。
+- 互換性: ここから `docs/COMPATIBILITY.md` の約束が始まる。

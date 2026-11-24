@@ -5,6 +5,20 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>FMLUME — 選んで、回して、聴き比べる。6 オペレーター FM シンセ</title>
 <meta name="description" content="FMLUME（エフエムリューム）は、FM の仕組みを知らなくても音作りが楽しめる、macOS 用の 6 オペレーター FM シンセサイザーです。AU / VST3 / Standalone に対応しています。">
+<meta property="og:title" content="FMLUME — 選んで、回して、聴き比べる。6 オペレーター FM シンセ">
+<meta property="og:description" content="FM の仕組みを知らなくても音作りが楽しめる、macOS 用の 6 オペレーター FM シンセサイザー。152 のプリセット、候補を聴き比べる Variations 入り、無料。">
+<meta property="og:image" content="https://cheebow.github.io/FMLUME/assets/og.png">
+<meta property="og:image:width" content="1200">
+<meta property="og:image:height" content="630">
+<meta property="og:image:alt" content="選んで、回して、聴き比べる。FMLUME のロゴと Simple の画面">
+<meta property="og:type" content="website">
+<meta property="og:url" content="https://cheebow.github.io/FMLUME/">
+<meta property="og:site_name" content="FMLUME">
+<meta property="og:locale" content="ja_JP">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:title" content="FMLUME — 選んで、回して、聴き比べる。6 オペレーター FM シンセ">
+<meta name="twitter:description" content="FM の仕組みを知らなくても音作りが楽しめる、macOS 用の 6 オペレーター FM シンセサイザー。152 のプリセット、候補を聴き比べる Variations 入り、無料。">
+<meta name="twitter:image" content="https://cheebow.github.io/FMLUME/assets/og.png">
 <link rel="icon" type="image/svg+xml" href="assets/icon.svg">
 <style>
   :root {
@@ -75,6 +89,14 @@
   }
   .tagline { margin: 22px auto 0; max-width: 820px; font-size: clamp(17px, 2.4vw, 22px); font-weight: 600; }
   .lead { margin: 14px auto 0; max-width: 680px; color: var(--muted); font-size: 15.5px; text-wrap: balance; }
+  .download { margin-top: 30px; }
+  .button {
+    display: inline-block; padding: 15px 34px; border-radius: 999px; background: var(--grad); color: #14151f;
+    font-weight: 800; font-size: 17px; text-decoration: none; letter-spacing: 0.02em;
+  }
+  .button:hover { filter: brightness(1.08); }
+  .download-note { margin: 12px 0 0; color: var(--muted); font-size: 13.5px; }
+  .download-note a { color: var(--cyan); }
   .formats { margin-top: 30px; display: flex; gap: 10px; justify-content: center; flex-wrap: wrap; }
   .chip {
     padding: 7px 16px; border-radius: 999px; background: var(--bg-card); border: 1px solid var(--line);
@@ -221,10 +243,13 @@
   <div class="hero">
     <div class="wrap">
       <svg class="hero-mark" viewBox="0 0 680 520" role="img" aria-label="FMLUME ロゴ"><use href="#fm-mark"/></svg>
-      <div><span class="badge">開発中 / Pre-release</span></div>
       <h1>FMLUME</h1>
       <p class="tagline">選んで、回して、聴き比べる。<br>FM の音作りを、もっと気軽に。</p>
       <p class="lead">きらめくベル、エレピ、芯のあるベース、厚みのあるポリシンセ、階段を駆け上がるようなアルペジオ。FM の仕組みを知らなくても、音色を選んでノブを回し、候補を聴き比べていくうちに、欲しい音にたどり着けます。もっと作り込みたくなったら、オペレーターを 1 つずつ触ることもできます。</p>
+      <div class="download">
+        <a class="button" href="https://github.com/cheebow/FMLUME/releases/latest">ダウンロード（無料）</a>
+        <p class="download-note">macOS 用のインストーラーです。Apple の公証済み。使い方は<a href="guide.html">ユーザーガイド</a>へ。</p>
+      </div>
       <div class="formats">
         <span class="chip">AU</span>
         <span class="chip">VST3</span>
@@ -422,7 +447,7 @@
       <div class="shots">
         <figure class="wide"><img src="assets/screens/fmlume_simple_variations.png" alt="Simple: 8 つのマクロ、FX、Trance Gate と Arpeggiator、Variations" loading="lazy"><figcaption>Simple: 8 つのマクロ、FX、Trance Gate と Arpeggiator、Variations</figcaption></figure>
         <figure><img src="assets/screens/fmlume_advanced_operators.png" alt="Advanced / Operators: 結線図と、選んだオペレーターの波形・エンベロープ・レベル" loading="lazy"><figcaption>Advanced / Operators: 結線図と、選んだオペレーターの波形・エンベロープ・レベル</figcaption></figure>
-        <figure><img src="assets/screens/fmlume_advanced_algorithm.png" alt="Advanced / Operators（Expand）: 18 種類のアルゴリズムと、ドラッグでつなげる接続図" loading="lazy"><figcaption>Advanced / Operators（Expand）: 18 種類のアルゴリズムと、ドラッグでつなげる接続図</figcaption></figure>
+        <figure><img src="assets/screens/fmlume_advanced_operators_expanded.png" alt="Advanced / Operators（Expand）: 18 種類のアルゴリズムと、ドラッグでつなげる接続図" loading="lazy"><figcaption>Advanced / Operators（Expand）: 18 種類のアルゴリズムと、ドラッグでつなげる接続図</figcaption></figure>
         <figure><img src="assets/screens/fmlume_advanced_rhythm_stereo.png" alt="Advanced / Rhythm: 左右で別々に刻む Trance Gate と、Arpeggiator、Chord" loading="lazy"><figcaption>Advanced / Rhythm: 左右で別々に刻む Trance Gate と、Arpeggiator、Chord</figcaption></figure>
         <figure><img src="assets/screens/fmlume_advanced_fx.png" alt="Advanced / FX: 9 種類のエフェクト。ドラッグで並べ替えられる" loading="lazy"><figcaption>Advanced / FX: 9 種類のエフェクト。ドラッグで並べ替えられる</figcaption></figure>
         <figure><img src="assets/screens/fmlume_advanced_filtermod.png" alt="Advanced / Filter & Mod: フィルター、LFO、モジュレーションマトリクス、マクロの割り当て" loading="lazy"><figcaption>Advanced / Filter & Mod: フィルター、LFO、モジュレーションマトリクス、マクロの割り当て</figcaption></figure>
@@ -441,7 +466,7 @@
         <dt>形式</dt><dd>Audio Unit（.component）、VST3（.vst3）、Standalone アプリ</dd>
         <dt>種類</dt><dd>音源（MIDI 入力、ステレオ出力）</dd>
         <dt>同時発音数</dt><dd>最大 32 音、ユニゾン最大 8</dd>
-        <dt>状況</dt><dd>現在開発中です。配布はまだ行っていません。</dd>
+        <dt>入手方法</dt><dd><a href="https://github.com/cheebow/FMLUME/releases/latest">GitHub のリリースページ</a>からインストーラー（.pkg）をダウンロードできます。無料です。ソースコードは <a href="https://github.com/cheebow/FMLUME">GitHub</a> で公開しています（AGPL-3.0）</dd>
         <dt>ライセンス</dt><dd>GNU AGPL v3.0（自由ソフトウェア）</dd>
         <dt>対応しないもの</dt><dd>Windows、AAX、CLAP、AUv3、MPE</dd>
       </dl>
