@@ -1,4 +1,4 @@
-#include "UI/Advanced/AlgorithmTab.h"
+#include "UI/Advanced/RoutingGraph.h"
 #include "Core/PatchCompiler.h"
 #include "Core/Templates.h"
 
@@ -81,7 +81,7 @@ GraphView::GraphView (Ctx& c) : ctx (c) { engine = makeInitEngine(); } // no too
 
 void GraphView::relayout()
 {
-    layout = layoutAlgorithm (engine, getLocalBounds().toFloat().reduced (14.0f, 8.0f).withTrimmedTop (showLegend ? 18.0f : 0.0f), true, maxBox);
+    layout = layoutAlgorithm (engine, getLocalBounds().toFloat().reduced (14.0f, 8.0f), true, maxBox);
 }
 
 void GraphView::refresh (const Preset& p)
@@ -104,6 +104,7 @@ bool GraphView::edgeAt (juce::Point<float> p, int& from, int& to) const
     for (int i = 0; i < engine.numEdges; ++i)
     {
         const auto& e = engine.edges[(size_t) i];
+        if (! engine.operators[(size_t) e.from].enabled || ! engine.operators[(size_t) e.to].enabled) continue; // not drawn either
         juce::Point<float> nearest;
         layout.edgePath (e.from, e.to).getNearestPoint (p, nearest);
         if (nearest.getDistanceFrom (p) < 7.0f) { from = e.from; to = e.to; return true; }
@@ -115,8 +116,6 @@ void GraphView::paint (juce::Graphics& g)
 {
     g.setColour (col::bg);
     g.fillRoundedRectangle (getLocalBounds().toFloat(), 6.0f);
-
-    if (showLegend) drawLegend (g, getLocalBounds().reduced (10, 6).removeFromTop (16));
 
     AlgoStyle st;
     st.selectedOp = ctx.selectedOp;
@@ -137,21 +136,6 @@ void GraphView::paint (juce::Graphics& g)
                         juce::Rectangle<float> (dragPos.x - 120.0f, dragPos.y - 30.0f, 240.0f, 16.0f), juce::Justification::centred);
         }
     }
-}
-
-void GraphView::drawLegend (juce::Graphics& g, juce::Rectangle<int> legend)
-{
-    const auto item = [&] (juce::Colour c, const juce::String& text, int width) {
-        auto r = legend.removeFromLeft (width);
-        g.setColour (c);
-        g.fillRoundedRectangle (r.removeFromLeft (12).withSizeKeepingCentre (11, 11).toFloat(), 2.5f);
-        g.setColour (col::textDim);
-        g.setFont (font (11.5f));
-        g.drawText (text, r.withTrimmedLeft (5), juce::Justification::centredLeft);
-    };
-    item (col::accent, "Carrier (heard)", 118);
-    item (col::violet, "Modulator (shapes the tone)", 186);
-    item (col::warm, "Feedback", 80);
 }
 
 void GraphView::mouseDown (const juce::MouseEvent& e)

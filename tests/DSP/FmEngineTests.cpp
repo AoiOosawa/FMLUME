@@ -619,3 +619,26 @@ FM_TEST ("dsp", "Every algorithm template and category template compiles and mak
             }
     }
 }
+
+FM_TEST ("dsp", "Review: the sound fades out after the last note instead of being cut to zero (DC blocker tail)")
+{
+    // Feedback at its maximum puts a DC offset on the output; the DC blocker's decay must be allowed
+    // to finish after the voice has ended (it used to be cut after four short chunks: a click).
+    const double sr = 48000.0;
+    PatchData d = makeInitPatchData();
+    auto& op = d.sound.engine.operators[0];
+    op.feedback = 1.5f;
+    op.env = { 0.001f, 0.2f, 1.0f, 0.001f };
+    SynthEngine e;
+    e.prepare (sr, 512);
+    CHECK (e.setPatch (d));
+    HostParams h;
+    h.fxBypassAll = true;
+    const auto r = renderSeq (e, sr, 512, 1.0, { { 0.0, noteOn (36, 127) }, { 0.3, noteOff (36) } }, h);
+    // where the output falls silent for good, it must already have been (almost) silent
+    int last = (int) r.l.size() - 1;
+    while (last > 0 && r.l[(size_t) last] == 0.0f && r.r[(size_t) last] == 0.0f) --last;
+    CHECK (last > (int) (0.3 * sr));
+    CHECK (std::fabs (r.l[(size_t) last]) < 2.0e-4f);
+    CHECK (std::fabs (r.r[(size_t) last]) < 2.0e-4f);
+}

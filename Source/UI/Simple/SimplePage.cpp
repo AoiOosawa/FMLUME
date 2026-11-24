@@ -196,12 +196,17 @@ void ExplorerPanel::Tile::paint (juce::Graphics& g)
         g.setFont (font (10.5f, true));
         g.drawText ("PLAYING", head.removeFromRight (56), juce::Justification::centredRight);
     }
+    // A short tile (small window) puts the name beside the letter and drops the description.
+    const bool compact = ! original && getHeight() < 60;
     g.setColour (isEnabled() ? col::text : col::textDim);
     g.setFont (font (13.5f, true));
-    g.drawFittedText (name, original ? head : t.removeFromTop (18), juce::Justification::centredLeft, 1, 0.75f);
-    g.setColour (col::textDim);
-    g.setFont (font (11.5f));
-    g.drawFittedText (detail, t, juce::Justification::topLeft, 3, 0.8f);
+    g.drawFittedText (name, original || compact ? head : t.removeFromTop (18), juce::Justification::centredLeft, 1, 0.75f);
+    if (! compact)
+    {
+        g.setColour (col::textDim);
+        g.setFont (font (11.5f));
+        g.drawFittedText (detail, t, juce::Justification::topLeft, 3, 0.8f);
+    }
     if (reveal < 1.0f) g.endTransparencyLayer();
 }
 
@@ -371,7 +376,6 @@ void ExplorerPanel::refresh (const Preset&)
         return out;
     });
     const bool active = v.exploring;
-    busy = v.busy;
     previewing = v.preview;
     bool animate = false;
     for (int i = 0; i < tiles.size(); ++i)
@@ -400,7 +404,7 @@ void ExplorerPanel::refresh (const Preset&)
     more.setEnabled (v.preview >= 0);
     done.setEnabled (active);
     back.setEnabled (v.history);
-    if (animate && ! isTimerRunning()) startTimerHz (30);
+    if (animate && isShowing() && ! isTimerRunning()) startTimerHz (30);
     guide.setText (! active ? "1.  Press Generate to get eight variations of this sound."
                             : v.busy && v.items.empty() ? "Making variations..."
                             : (v.preview < 0 ? "2.  Click a tile (A-H) to hear it. Original takes you back."

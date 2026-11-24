@@ -79,6 +79,8 @@ private:
     bool run (const std::function<bool (fmlume::PatchController&)>& fn);
     void keepMenu();
     void timerCallback() override;
+    // the tile animation only runs while the panel can be seen (refresh restarts it)
+    void visibilityChanged() override { if (! isShowing()) stopTimer(); }
 
     Ctx& ctx;
     juce::ComboBox direction, strength;
@@ -89,7 +91,6 @@ private:
     juce::OwnedArray<Tile> tiles;
     fmlume::ExploreLocks locks;
     int previewing = -1;
-    bool busy = false;
 };
 
 class SimplePage final : public juce::Component

@@ -104,7 +104,7 @@ bool PatchController::setOperatorEnabled (int op, bool enabled)
         auto& o = p.data.sound.engine.operators[(size_t) op];
         o.enabled = enabled;
         if (enabled && o.level <= 0.0f) o.level = 1.0f;
-    }, enabled ? "Enable Operator" : "Disable Operator");
+    }); // (this used to pass an undo label, which silently converted to forceNew = true)
 }
 
 bool PatchController::applyAlgorithmTemplate (int templateIndex)
@@ -117,14 +117,27 @@ bool PatchController::applyAlgorithmTemplate (int templateIndex)
     });
 }
 
-void PatchController::loadPreset (const Preset& p)
+bool PatchController::adopt (const Preset& p, bool edited)
 {
-    if (! validatePatch (p.data).ok) { error = validatePatch (p.data).error; return; }
+    if (const auto v = validatePatch (p.data); ! v.ok) { error = v.error; return false; }
     closeExplorer();
     current = p;
     sanitizeTargets (current.data);
-    dirty = false;
+    dirty = edited;
     push (true);
+    return true;
+}
+
+void PatchController::endPreview()
+{
+    if (previewing < 0) return;
+    previewing = -1;
+    push (true); // the untouched current patch
+}
+
+void PatchController::loadPreset (const Preset& p)
+{
+    if (! adopt (p, false)) return;
     if (applyHostValues) applyHostValues (current.data.host);
     notify();
 }
@@ -156,14 +169,9 @@ Preset PatchController::presetForSave (const HostParams& live) const
     return p;
 }
 
-bool PatchController::setState (const Preset& p)
+bool PatchController::setState (const Preset& p, bool edited)
 {
-    if (! validatePatch (p.data).ok) { error = validatePatch (p.data).error; return false; }
-    closeExplorer();
-    current = p;
-    sanitizeTargets (current.data);
-    dirty = false;
-    push (true);
+    if (! adopt (p, edited)) return false;
     notify();
     return true;
 }
@@ -180,7 +188,7 @@ bool PatchController::runExplore (const PatchData& parent, bool keepHistory)
     }
     exploreParent = parent;
     exploreActive = true;
-    if (previewing >= 0) { previewing = -1; push (true); }
+    endPreview();
     if (! asyncExplore)
     {
         cands = SoundExplorer::generate (parent, exploreSettings, seed);
@@ -240,7 +248,7 @@ bool PatchController::exploreBack()
     exploreParent = s.parent;
     cands = std::move (s.cands);
     seed = s.seed;
-    if (previewing >= 0) { previewing = -1; push (true); }
+    endPreview();
     notify();
     return true;
 }
@@ -257,8 +265,7 @@ bool PatchController::preview (int candidate)
 void PatchController::cancelPreview()
 {
     if (previewing < 0) return;
-    previewing = -1;
-    push (true); // the untouched current patch
+    endPreview();
     notify();
 }
 
@@ -279,11 +286,9 @@ bool PatchController::useCandidate (int candidate)
 void PatchController::closeExplorer()
 {
     stopWorker();
-    const bool wasPreviewing = previewing >= 0;
     exploreActive = false;
     cands.clear();
     exploreHistory.clear();
-    previewing = -1;
-    if (wasPreviewing) push (true);
+    endPreview();
 }
 } // namespace fmlume

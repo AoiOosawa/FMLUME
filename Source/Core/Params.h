@@ -56,7 +56,7 @@ constexpr int matrixDepthBase = pitch + 3; // 132
 constexpr int engineCount = matrixDepthBase + kNumModSlots; // 140
 constexpr int fxBase = engineCount;
 constexpr int fxEnd = fxBase + kNumFx * kFxParams; // 212
-constexpr int portamento = fxEnd;                  // shared performance parameter
+constexpr int portamento = fxEnd;                  // performance parameter (not part of the engine block)
 constexpr int total = portamento + 1;
 
 constexpr int op (int opIndex, int field) { return opBase + opIndex * kOpFieldCount + field; }
@@ -65,7 +65,6 @@ constexpr int fx (int type, int p) { return fxBase + type * kFxParams + p; }
 constexpr int fx (FxType type, int p) { return fx ((int) type, p); }
 constexpr bool isEngine (int code) { return code >= 0 && code < engineCount; }
 constexpr bool isFx (int code) { return code >= fxBase && code < fxEnd; }
-constexpr bool isShared (int code) { return code >= fxBase && code < total; }
 constexpr bool isEdge (int code) { return code >= edgeBase && code < filterCutoff; }
 constexpr bool isOp (int code) { return code >= 0 && code < edgeBase; }
 } // namespace pc

@@ -9,7 +9,6 @@ FmlumeAudioProcessorEditor::FmlumeAudioProcessorEditor (FmlumeAudioProcessor& p)
     setLookAndFeel (&lookAndFeel);
     ctx.status = [this] (const juce::String& t, bool e) { setStatus (t, e); };
     ctx.refreshAll = [this] { refreshAll(); };
-    ctx.openBrowser = [this] { showBrowser (true); };
 
     addAndMakeVisible (header);
     addAndMakeVisible (simple);
@@ -130,6 +129,12 @@ void FmlumeAudioProcessorEditor::refreshAll()
         setStatus ("The sound saved in this project could not be restored (" + stateError + "). The current sound was kept.", true);
         statusCountdown = 30 * 30; // stays for 30 s
     }
+    const juce::String stateNotice = processor.takeStateNotice();
+    if (stateNotice.isNotEmpty())
+    {
+        setStatus ("This project was saved with an older FMLUME: " + stateNotice + ".", false);
+        statusCountdown = 30 * 20;
+    }
 }
 
 void FmlumeAudioProcessorEditor::timerCallback()
@@ -143,7 +148,7 @@ void FmlumeAudioProcessorEditor::timerCallback()
     // read-outs are derived from (voice budget); those do not bump the model version.
     const int tab = advanced.tabs.getCurrentTabIndex();
     const fmlume::HostParams h = processor.currentHostParams();
-    const int hostKey = h.polyphony | (h.unison << 6) | (h.quality << 10) | ((h.arpEnabled ? 1 : 0) << 13) | ((h.gateEnabled ? 1 : 0) << 14);
+    const int hostKey = h.polyphony | (h.unison << 6) | (h.quality << 10) | ((h.arpEnabled ? 1 : 0) << 12) | ((h.gateEnabled ? 1 : 0) << 13);
     if (processor.getModelVersion() != seenVersion || tab != seenTab || hostKey != seenHostKey)
     {
         seenTab = tab;
@@ -211,12 +216,13 @@ void FmlumeAudioProcessorEditor::fileDialog (bool save)
         juce::File f = fc.getResult();
         if (f == juce::File()) return;
         if (save && ! f.hasFileExtension ("fmlume")) f = f.withFileExtension ("fmlume");
-        juce::String imported;
-        const juce::String err = save ? safe->processor.exportPreset (f) : safe->processor.importPreset (f, &imported);
+        juce::String imported, notice;
+        const juce::String err = save ? safe->processor.exportPreset (f) : safe->processor.importPreset (f, &imported, &notice);
         if (err.isNotEmpty()) safe->setStatus ((save ? "Export failed: " : "Import refused: ") + err, true);
         else
         {
-            safe->setStatus (save ? "Exported " + f.getFileName() : "Imported as user preset \"" + imported + "\".", false);
+            safe->setStatus (save ? "Exported " + f.getFileName()
+                                  : "Imported as user preset \"" + imported + "\"." + (notice.isNotEmpty() ? " Note: " + notice + "." : juce::String()), false);
             safe->refreshAll(); // the browser stays open and shows the new user preset
         }
     });

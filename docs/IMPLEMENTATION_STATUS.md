@@ -10,12 +10,13 @@
 |---|---|---|
 | 構成 | `cmake -S . -B build -G Xcode` | 成功 |
 | ビルド | `cmake --build build --config Release --parallel` | **BUILD SUCCEEDED**。`FMLUME.component`（AU）、`FMLUME.vst3`、`FMLUME.app`（Standalone）を生成、いずれも Universal 2（arm64 + x86_64）、アドホック署名 |
-| 自動テスト | `ctest --test-dir build -C Release` | **4/4 グループ通過**（54テストケース、失敗0、約50秒。2026-11-24 の Morph 削除後に再実行） |
+| 自動テスト | `ctest --test-dir build -C Release` | **4/4 グループ通過**（59テストケース、失敗0。2026-11-24 の見直し D-060 後に再実行） |
 | Standalone | `open build/FMLUME_artefacts/Release/Standalone/FMLUME.app` | 起動しエディタが表示されること、正常終了することを確認（クラッシュなし）。**発音・MIDI入力・Audio設定ダイアログは人手で未確認** |
 | x86_64（Intel 向け） | `cmake -S . -B build-x86 -G "Unix Makefiles" -DCMAKE_BUILD_TYPE=Release -DFMLUME_BUILD_PLUGIN=OFF -DCMAKE_OSX_ARCHITECTURES=x86_64` → `ctest --test-dir build-x86` | 54ケース全通過（2026-11-24、Morph 削除後。Rosetta 2 上。Intel実機は未検証） |
 | AU 検証 | `auval -v aumu Fmld Chbw`（開発用。製品版は `Fmlu`） | **AU VALIDATION SUCCEEDED** |
 | VST3 検証 | `pluginval --strictness-level 10 --validate FMLUME.vst3`（GUIテスト含む） | **SUCCESS** |
 | AU を pluginval | `pluginval --strictness-level 10 --validate FMLUME.component` | SUCCESS（警告1件: "Current program is -1"。AUラッパー由来で実害なし） |
+| サニタイザー | `-fsanitize=address,undefined` / `-fsanitize=thread` で Core とテストをビルド（`build-asan` / `build-tsan`） | ASan / UBSan: dsp・unit・integration 全通過、検出 0。TSan: integration（裏側での Variations 生成を含む）全通過、検出 0（2026-11-24、D-060） |
 | JSON Schema | Draft 2020-12 バリデーターで照合 | ファクトリー152＋フィクスチャ2を受理、schemaVersion 2 のスキーマで再照合（2026-11-24）: ファクトリー152＋新形式フィクスチャ2を受理、破損フィクスチャ21のうち15を構造で拒否（残り6はローダー専用規則で拒否）。旧形式（schemaVersion 1）のフィクスチャはスキーマでは拒否され、ローダーがマイグレーションして読む |
 
 ### 性能（`fmlume-bench`、48 kHz / 256 frames / 単一スレッド / Release / M1 Max、実時間1コア比）

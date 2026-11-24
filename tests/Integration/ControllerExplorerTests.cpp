@@ -35,14 +35,14 @@ FM_TEST ("integration", "Controller: edits validate; Simple and Advanced share o
     Rig rig;
     auto& ctl = rig.ctl;
     ctl.loadPreset (makeCategoryPreset (Category::Keys));
-    CHECK (! ctl.isDirty());
+    CHECK (! ctl.isModelDirty());
     CHECK (rig.hostApplied == 1);
     const PatchData original = ctl.data();
 
     // A knob drag = many edits; each reaches the model and marks it dirty.
     const int code = pc::edge (0, 1);
     for (int i = 0; i < 20; ++i) CHECK (ctl.setParam (code, 1.0f + 0.1f * (float) i));
-    CHECK (ctl.isDirty());
+    CHECK (ctl.isModelDirty());
     CHECK_NEAR (ctl.getParam (code), 2.9, 1.0e-5);
     CHECK (ctl.setParam (pc::filterCutoff, 800.0f));
     CHECK_NEAR (ctl.getParam (pc::filterCutoff), 800.0, 1.0e-3);
@@ -181,7 +181,7 @@ FM_TEST ("integration", "EXP-02 preview / cancel / use / explore-from-this / his
     const auto previewed = rig.play();
     CHECK (maxAbsDiff (previewed.l, reference.l) > 1.0e-3);
     CHECK (patchDataEqual (ctl.data(), original));
-    CHECK (! ctl.isDirty());
+    CHECK (! ctl.isModelDirty());
 
     // Cancel restores the original sound exactly.
     ctl.cancelPreview();
@@ -212,7 +212,7 @@ FM_TEST ("integration", "EXP-02 preview / cancel / use / explore-from-this / his
     const PatchData pick = ctl.candidates()[2].data;
     CHECK (ctl.preview (2));
     CHECK (ctl.useCandidate (2));
-    CHECK (ctl.isDirty());
+    CHECK (ctl.isModelDirty());
     CHECK (ctl.data().sound.engine.numEdges == pick.sound.engine.numEdges);
     CHECK (ctl.getParam (pc::op (1, kOpEnvD)) == getParam (pick, pc::op (1, kOpEnvD)));
     const auto used = rig.play();
@@ -284,7 +284,7 @@ FM_TEST ("integration", "Controller: moving a preset-stored host value (macro, u
 
     live.macro[2] += 0.1f;
     CHECK (ctl.isDirty (live));
-    CHECK (! ctl.isDirty()); // the model itself is untouched
+    CHECK (! ctl.isModelDirty()); // the model itself is untouched
     live.macro[2] -= 0.1f;
     CHECK (! ctl.isDirty (live)); // back on the stored value
 
@@ -381,4 +381,21 @@ FM_TEST ("integration", "Variations made in the background arrive one by one and
         shortLived.loadPreset (start);
         CHECK (shortLived.explore());
     }
+}
+
+FM_TEST ("integration", "Review: a very quiet original still gets real variations (silence is judged relative to it)")
+{
+    Preset p = makeCategoryPreset (Category::Pad);
+    p.data.out.levelDb = -24.0f;
+    for (auto& op : p.data.sound.engine.operators) if (op.carrierGain > 0.0f) op.level = 0.1f;
+    const auto cands = SoundExplorer::generate (p.data, {}, 3);
+    CHECK (cands.size() == (size_t) kNumCandidates);
+    int fallback = 0, sameAsParent = 0;
+    for (auto& c : cands)
+    {
+        fallback += c.fallback ? 1 : 0;
+        sameAsParent += patchDataEqual (c.data, p.data) ? 1 : 0;
+    }
+    CHECK (fallback == 0);
+    CHECK (sameAsParent == 0);
 }

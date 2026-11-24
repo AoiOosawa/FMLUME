@@ -2,6 +2,7 @@
 #include "Core/Json.h"
 #include "Presets/PresetSerializer.h"
 #include <algorithm>
+#include <unordered_set>
 #include <atomic>
 #include <cerrno>
 #include <fcntl.h>
@@ -136,6 +137,9 @@ void PresetManager::rescanUser (std::vector<std::string>* errors)
     std::error_code ec;
     if (! userDir.empty() && fs::is_directory (userDir, ec))
     {
+        // Ids in use. Files are scanned in name order, so which of two files with the same id keeps it is stable.
+        std::unordered_set<std::string> ids;
+        for (auto& o : factoryEntries) ids.insert (o.id);
         for (auto& f : presetFilesIn (userDir))
         {
             std::string text, err;
@@ -148,14 +152,10 @@ void PresetManager::rescanUser (std::vector<std::string>* errors)
                 // A file dropped into the folder by hand may carry the id of a factory preset or of
                 // another user file (an export, a Finder copy). Ids must be unique in the list, or
                 // that file would pose as the other preset: give it one derived from its file name.
-                const auto taken = [&] (const std::string& id) {
-                    if (id.empty()) return true;
-                    for (auto& o : factoryEntries) if (o.id == id) return true;
-                    for (auto& o : userEntries) if (o.id == id) return true;
-                    return false;
-                };
+                const auto taken = [&ids] (const std::string& id) { return id.empty() || ids.count (id) > 0; };
                 if (taken (e.id)) e.id = "user-file." + fs::path (f).stem().string();
                 for (int n = 2; taken (e.id); ++n) e.id = "user-file." + fs::path (f).stem().string() + "." + std::to_string (n);
+                ids.insert (e.id);
                 userEntries.push_back (std::move (e));
             }
             else if (errors) errors->push_back (f + ": " + err); // broken files are skipped, never fatal
@@ -243,7 +243,13 @@ std::string PresetManager::sanitiseFileName (const std::string& name)
     while (! s.empty() && (s.back() == ' ' || s.back() == '.')) s.pop_back();
     while (! s.empty() && (s.front() == ' ' || s.front() == '.')) s.erase (s.begin());
     if (s.empty()) s = "Untitled";
-    if (s.size() > 120) s.resize (120);
+    if (s.size() > kMaxFileNameBytes)
+    {
+        // cut at a character boundary: a split UTF-8 sequence is not a valid file name on APFS
+        size_t cut = kMaxFileNameBytes;
+        while (cut > 0 && ((unsigned char) s[cut] & 0xC0) == 0x80) --cut;
+        s.resize (cut);
+    }
     return s;
 }
 
@@ -255,7 +261,7 @@ bool PresetManager::userPresetExists (const std::string& name) const
     return ! userDir.empty() && fs::exists (userPathFor (name), ec);
 }
 
-bool PresetManager::saveUser (Preset preset, const std::string& name, bool overwrite, std::string* error)
+bool PresetManager::saveUser (Preset preset, const std::string& name, bool overwrite, std::string* error, Preset* saved)
 {
     if (userDir.empty()) { if (error) *error = "no user preset directory configured"; return false; }
     std::error_code ec;
@@ -273,6 +279,13 @@ bool PresetManager::saveUser (Preset preset, const std::string& name, bool overw
     preset.meta.modifiedAt = nowIso8601();
     if (! exportTo (path, preset, error)) return false;
     rescanUser();
+    if (saved != nullptr)
+    {
+        // as the list knows it (its id is the file's own unless that was taken, see rescanUser)
+        for (auto& e : userEntries)
+            if (e.path == path) return load (findById (e.id), *saved, error);
+        *saved = preset;
+    }
     return true;
 }
 
@@ -298,25 +311,33 @@ bool PresetManager::exportTo (const std::string& path, const Preset& preset, std
     return true;
 }
 
-bool PresetManager::importFrom (const std::string& path, Preset& out, std::string* error)
+bool PresetManager::importFrom (const std::string& path, Preset& out, std::string* error, std::vector<std::string>* warnings)
 {
     std::string text, why;
     if (! readFile (path, text, &why)) { if (error) *error = why + ": " + path; return false; }
-    return presetFromJson (text, out, error);
+    return presetFromJson (text, out, error, warnings);
 }
 
-bool PresetManager::importIntoUser (const std::string& path, Preset& out, std::string* error)
+bool PresetManager::importIntoUser (const std::string& path, Preset& out, std::string* error, std::vector<std::string>* warnings)
 {
     Preset p;
-    if (! importFrom (path, p, error)) return false;
-    const std::string base = p.meta.displayName.empty() ? fs::path (path).stem().string() : p.meta.displayName;
+    if (! importFrom (path, p, error, warnings)) return false;
+    // The numbered name must lead to a different file: shorten the base so that the file name
+    // (which is cut to kMaxFileNameBytes) still ends with the number.
+    std::string base = p.meta.displayName.empty() ? fs::path (path).stem().string() : p.meta.displayName;
+    if (base.size() > kMaxFileNameBytes - 8)
+    {
+        size_t cut = kMaxFileNameBytes - 8;
+        while (cut > 0 && ((unsigned char) base[cut] & 0xC0) == 0x80) --cut;
+        base.resize (cut);
+    }
     std::string name = base;
-    for (int n = 2; userPresetExists (name); ++n) name = base + " " + std::to_string (n);
-    if (! saveUser (p, name, false, error)) return false;
-    for (auto& e : userEntries)
-        if (e.name == name) return load (findById (e.id), out, error);
-    if (error) *error = "the imported preset could not be read back";
-    return false;
+    for (int n = 2; userPresetExists (name); ++n)
+    {
+        if (n > 9999) { if (error) *error = "too many presets with this name"; return false; }
+        name = base + " " + std::to_string (n);
+    }
+    return saveUser (p, name, false, error, &out);
 }
 
 void PresetManager::setFavourite (const std::string& id, bool on)

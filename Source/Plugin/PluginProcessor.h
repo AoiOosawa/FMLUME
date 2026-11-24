@@ -65,10 +65,14 @@ public:
     juce::String loadPresetIndex (int listIndex);
     juce::String savePreset (const juce::String& name, bool overwrite);
     juce::String exportPreset (const juce::File& file);
-    juce::String importPreset (const juce::File& file, juce::String* importedName = nullptr); // adds it to the user presets and loads it
+    // Adds the file to the user presets and loads it. `notice`: something the user should know (e.g. an old
+    // Morph preset whose second sound was dropped).
+    juce::String importPreset (const juce::File& file, juce::String* importedName = nullptr, juce::String* notice = nullptr);
     int currentPresetIndex();
     // Why the last project-state restore was refused (empty if it worked). Reading clears it.
     juce::String takeStateError();
+    // Something to tell the user about the last restored project state (empty if nothing). Reading clears it.
+    juce::String takeStateNotice();
     void stepPreset (int delta);
 
     // On-screen keyboard / audition notes (lock-free hand-over to the audio thread).
@@ -101,7 +105,7 @@ private:
     fmlume::PresetManager presets;
     std::recursive_mutex modelMutex;
     std::atomic<uint32_t> modelVersion { 1 };
-    juce::String stateError; // guarded by modelMutex
+    juce::String stateError, stateNotice; // guarded by modelMutex
 
     // Parameter atomics (owned by APVTS)
     std::atomic<float>* pGain = nullptr; std::atomic<float>* pPan = nullptr; std::atomic<float>* pPoly = nullptr;

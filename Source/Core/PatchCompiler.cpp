@@ -71,9 +71,9 @@ bool finite (float v) { return std::isfinite (v); }
 
 bool inRange (float v, float lo, float hi) { return finite (v) && v >= lo - 1.0e-6f && v <= hi + 1.0e-6f; }
 
-std::string validateEngine (const EnginePatch& e, const char* side)
+std::string validateEngine (const EnginePatch& e, const char* path)
 {
-    const std::string s = side;
+    const std::string s = path;
     if (e.numEdges < 0 || e.numEdges > kMaxEdges) return s + ": edge count out of range";
     PatchData tmp;
     tmp.sound.engine = e;
@@ -150,7 +150,6 @@ std::string validateSound (const SoundPatch& s, const char* name)
         if (! inRange (m.depth, -1.0f, 1.0f)) return w + ": depth out of range";
         if ((int) m.curve >= (int) Curve::Count) return w + ": bad curve";
         if (m.target >= 0 && ! isModTarget (m.target)) return w + ": target is not a modulation target";
-        if (m.target >= pc::total) return w + ": bad target";
     }
     return {};
 }

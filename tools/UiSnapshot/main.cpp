@@ -281,7 +281,7 @@ struct SnapshotApp final : public juce::JUCEApplication
             save (*editor, dir.getChildFile ("feedback_" + juce::String (t + 1) + ".png"));
         }
         clickButton (*editor, "SIMPLE");
-        editor->setSize (960, 620);
+        editor->setSize (960, 660); // the smallest size the editor allows (setResizeLimits)
         pump();
         save (*editor, dir.getChildFile ("simple_min_size.png"));
         clickButton (*editor, "ADVANCED");

@@ -342,7 +342,7 @@ void FmlumeAudioProcessor::getStateInformation (juce::MemoryBlock& destData)
     {
         std::lock_guard<std::recursive_mutex> lock (modelMutex);
         const HostParams host = currentHostParams();
-        if (! stateToJson (controller.presetForSave (host), host, json, &error)) return;
+        if (! stateToJson (controller.presetForSave (host), host, json, &error, controller.isDirty (host))) return;
     }
     juce::ValueTree tree ("FMLUME_STATE");
     tree.setProperty ("version", 1, nullptr);
@@ -369,20 +369,29 @@ void FmlumeAudioProcessor::setStateInformation (const void* data, int sizeInByte
     Preset preset;
     HostParams host;
     std::string error;
-    if (! stateFromJson (json, preset, host, &error)) { refuse (juce::String (juce::CharPointer_UTF8 (error.c_str()))); return; }
+    std::vector<std::string> warnings;
+    bool edited = false;
+    if (! stateFromJson (json, preset, host, &error, &warnings, &edited)) { refuse (juce::String (juce::CharPointer_UTF8 (error.c_str()))); return; }
 
     // Apply as one transaction: audio is suspended (silence) while parameters and patch change together.
+    // The patch goes first: if it is refused, no host parameter has been touched either.
     suspendProcessing (true);
+    bool applied = false;
     {
         std::lock_guard<std::recursive_mutex> lock (modelMutex);
-        setParam ("master.gainDb", host.gainDb);
-        setParam ("master.pan", host.pan);
-        setParam ("master.quality", (float) host.quality);
-        setParam ("fx.bypassAll", host.fxBypassAll ? 1.0f : 0.0f);
-        applyHostValues (host);
-        controller.setState (preset);
+        applied = controller.setState (preset, edited);
+        if (applied)
+        {
+            setParam ("master.gainDb", host.gainDb);
+            setParam ("master.pan", host.pan);
+            setParam ("master.quality", (float) host.quality);
+            setParam ("fx.bypassAll", host.fxBypassAll ? 1.0f : 0.0f);
+            applyHostValues (host);
+            if (! warnings.empty()) stateNotice = juce::String (juce::CharPointer_UTF8 (warnings.front().c_str()));
+        }
     }
     suspendProcessing (false);
+    if (! applied) { refuse (juce::String (juce::CharPointer_UTF8 (controller.lastError().c_str()))); return; }
     modelVersion.fetch_add (1);
 }
 
@@ -403,6 +412,14 @@ juce::String FmlumeAudioProcessor::takeStateError()
     const juce::String e = stateError;
     stateError.clear();
     return e;
+}
+
+juce::String FmlumeAudioProcessor::takeStateNotice()
+{
+    std::lock_guard<std::recursive_mutex> lock (modelMutex);
+    const juce::String n = stateNotice;
+    stateNotice.clear();
+    return n;
 }
 
 int FmlumeAudioProcessor::currentPresetIndex()
@@ -426,15 +443,10 @@ juce::String FmlumeAudioProcessor::savePreset (const juce::String& name, bool ov
     Preset p = controller.presetForSave (currentHostParams());
     if (p.meta.author.empty() || p.meta.author == "FMLUME") p.meta.author = "User";
     std::string error;
-    if (! presets.saveUser (p, name.toStdString(), overwrite, &error)) return error;
+    Preset saved;
+    if (! presets.saveUser (p, name.toStdString(), overwrite, &error, &saved)) return error;
     // Adopt the saved identity (id / name) so the header shows the user preset and Dirty clears.
-    for (auto& e : presets.entries())
-        if (! e.factory && e.name == name.toStdString())
-        {
-            Preset saved;
-            if (presets.load (presets.findById (e.id), saved)) controller.markSaved (saved);
-            break;
-        }
+    controller.markSaved (saved);
     controller.setHostBaseline (currentHostParams()); // the file holds the live host values
     return {};
 }
@@ -448,7 +460,7 @@ juce::String FmlumeAudioProcessor::exportPreset (const juce::File& file)
     return PresetManager::exportTo (file.getFullPathName().toStdString(), p, &error) ? juce::String() : juce::String (error);
 }
 
-juce::String FmlumeAudioProcessor::importPreset (const juce::File& file, juce::String* importedName)
+juce::String FmlumeAudioProcessor::importPreset (const juce::File& file, juce::String* importedName, juce::String* notice)
 {
     // The file becomes a user preset of its own (new id, numbered name if taken). Loading it under
     // the id stored in the file would make it pose as the preset it was exported from: an edited
@@ -456,9 +468,11 @@ juce::String FmlumeAudioProcessor::importPreset (const juce::File& file, juce::S
     std::lock_guard<std::recursive_mutex> lock (modelMutex);
     Preset p;
     std::string error;
-    if (! presets.importIntoUser (file.getFullPathName().toStdString(), p, &error)) return error;
+    std::vector<std::string> warnings;
+    if (! presets.importIntoUser (file.getFullPathName().toStdString(), p, &error, &warnings)) return error;
     controller.loadPreset (p);
     if (importedName != nullptr) *importedName = juce::String (juce::CharPointer_UTF8 (p.meta.displayName.c_str()));
+    if (notice != nullptr && ! warnings.empty()) *notice = juce::String (juce::CharPointer_UTF8 (warnings.front().c_str()));
     return {};
 }
 

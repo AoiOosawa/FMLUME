@@ -173,15 +173,24 @@ uint64_t mix64 (uint64_t x)
 // by: A-weighted (the ear hears a brighter sound as louder at the same RMS) and taken over the
 // loudest 400 ms, so a slower attack or a longer tail is not mistaken for a quieter sound
 // (docs/DECISIONS.md D-058).
-float renderRms (const PatchData& d, bool& finite, float& peak, float* loudnessDb = nullptr, double holdSeconds = 0.8)
+struct Measurement
 {
+    bool finite = false;
+    float peak = 0.0f, rms = 0.0f;
+    float loudnessDb = -200.0f;
+};
+
+Measurement measureRender (const PatchData& d, double holdSeconds = 0.8)
+{
+    Measurement m;
+    bool finite = true;
+    float peak = 0.0f;
     SynthEngine eng;
     const double sr = 44100.0;
     eng.prepare (sr, 512);
     finite = true;
     peak = 0.0f;
-    if (loudnessDb != nullptr) *loudnessDb = -200.0f;
-    if (! eng.setPatch (d)) { finite = false; return 0.0f; }
+    if (! eng.setPatch (d)) return m;
     HostParams h = d.host;
     h.quality = 0;
     h.gainDb = 0.0f;
@@ -232,8 +241,11 @@ float renderRms (const PatchData& d, bool& finite, float& peak, float* loudnessD
             loudest = std::max (loudest, windowSum);
         }
     }
-    if (loudnessDb != nullptr && finite) *loudnessDb = (float) (10.0 * std::log10 (std::max (loudest, 0.0) / window + 1.0e-18) + 3.0); // +3: A-weighting is about -3 dB on a sum of the two channels
-    return (float) std::sqrt (acc / std::max (count, 1));
+    m.finite = finite;
+    m.peak = peak;
+    m.rms = (float) std::sqrt (acc / std::max (count, 1));
+    if (finite) m.loudnessDb = (float) (10.0 * std::log10 (std::max (loudest, 0.0) / window + 1.0e-18) + 3.0); // +3: A-weighting is about -3 dB on a sum of the two channels
+    return m;
 }
 
 std::string describe (const ExploreScores& p, const ExploreScores& c, std::string& tendency)
@@ -301,7 +313,7 @@ ExploreScores SoundExplorer::score (const PatchData& d)
             motion += std::fabs (m.depth) * (0.5f + toNorm (paramDesc (pc::lfo1Rate), e.lfo[m.source == ModSource::LFO1 ? 0 : 1].rateHz));
     const auto& ch = d.fx.proc[(size_t) FxType::Chorus];
     s.motion = motion * 0.8f + (ch.enabled ? ch.p[1] * ch.p[3] * 0.15f : 0.0f);
-    s.warmth = eqLow * 0.4f - eqHigh * 0.2f + (dr.enabled ? dr.p[0] * dr.p[2] * 0.5f : 0.0f) - idxSum * 0.3f - (cutoffN - 1.0f) * -0.0f + (1.0f - cutoffN) * 0.4f;
+    s.warmth = eqLow * 0.4f - eqHigh * 0.2f + (dr.enabled ? dr.p[0] * dr.p[2] * 0.5f : 0.0f) - idxSum * 0.3f + (1.0f - cutoffN) * 0.4f;
     return s;
 }
 
@@ -377,10 +389,7 @@ double SoundExplorer::measuringHold (const PatchData& d)
 
 float SoundExplorer::loudnessDb (const PatchData& d, double holdSeconds)
 {
-    bool finite = true;
-    float peak = 0.0f, loudness = -200.0f;
-    renderRms (d, finite, peak, &loudness, holdSeconds);
-    return loudness;
+    return measureRender (d, holdSeconds).loudnessDb;
 }
 
 bool SoundExplorer::isSafe (const PatchData& d, float* rmsOut, std::string* why)
@@ -388,13 +397,11 @@ bool SoundExplorer::isSafe (const PatchData& d, float* rmsOut, std::string* why)
     auto no = [why] (const char* msg) { if (why) *why = msg; return false; };
     const auto v = validatePatch (d);
     if (! v.ok) { if (why) *why = v.error; return false; }
-    bool finite = true;
-    float peak = 0.0f;
-    const float rms = renderRms (d, finite, peak);
-    if (rmsOut) *rmsOut = rms;
-    if (! finite) return no ("non-finite output");
-    if (rms < 0.003f) return no ("silent");
-    if (peak > 0.999f) return no ("output too hot");
+    const Measurement m = measureRender (d);
+    if (rmsOut) *rmsOut = m.rms;
+    if (! m.finite) return no ("non-finite output");
+    if (m.rms < 0.003f) return no ("silent");
+    if (m.peak > 0.999f) return no ("output too hot");
     return true;
 }
 
@@ -410,8 +417,14 @@ struct ExploreRun::State
     uint64_t parentSum = 0;
     ExploreScores parentScores;
     double hold = 0.8;
-    float parentLoudness = 0.0f;
+    Measurement parentSound;
     bool mayChangeGraph = false;
+    // Usable as a candidate: plays, is not clipping, and is not near-silent compared with the
+    // original (relative, so a quiet original still gets variations).
+    bool acceptable (const Measurement& m) const
+    {
+        return m.finite && m.peak <= 0.999f && m.rms >= std::max (1.0e-5f, parentSound.rms * 0.03f);
+    }
 };
 
 ExploreRun::ExploreRun (const PatchData& parentIn, const ExploreSettings& settingsIn, uint64_t seedIn) : s (std::make_unique<State>())
@@ -427,9 +440,7 @@ ExploreRun::ExploreRun (const PatchData& parentIn, const ExploreSettings& settin
     st.parentSum = patchChecksum (st.parent);
     st.parentScores = SoundExplorer::score (st.parent);
     st.hold = SoundExplorer::measuringHold (st.parent);
-    bool finite = true;
-    float peak = 0.0f;
-    renderRms (st.parent, finite, peak, &st.parentLoudness, st.hold);
+    st.parentSound = measureRender (st.parent, st.hold);
     bool anyMacroLock = false;
     for (bool b : st.settings.locks.macros) anyMacroLock = anyMacroLock || b;
     st.mayChangeGraph = st.settings.strength == ExploreStrength::Wild && ! st.settings.locks.graph && ! st.settings.locks.ratios && ! anyMacroLock;
@@ -452,7 +463,7 @@ bool ExploreRun::next (const std::atomic<bool>* cancel)
     const uint64_t parentSum = st.parentSum;
     const ExploreScores& parentScores = st.parentScores;
     const double hold = st.hold;
-    const float parentLoudness = st.parentLoudness;
+    const float parentLoudness = st.parentSound.loudnessDb;
     const bool mayChangeGraph = st.mayChangeGraph;
     const int i = (int) result.size();
 
@@ -566,19 +577,17 @@ bool ExploreRun::next (const std::atomic<bool>* cancel)
         // 5. Validate, check locks / safety / uniqueness, normalise loudness.
         if (! validatePatch (d).ok) continue;
         if (! SoundExplorer::locksRespected (parent, d, settings.locks)) continue;
-        if (! SoundExplorer::isSafe (d)) continue;
-        float loudness = 0.0f;
-        {
-            bool finite = true;
-            float peak = 0.0f;
-            renderRms (d, finite, peak, &loudness, hold);
-        }
+        const Measurement heard = measureRender (d, hold); // one render: safety and loudness
+        if (! st.acceptable (heard)) continue;
+        const float loudness = heard.loudnessDb;
         // Level it to the original. A candidate that would need more than 9 dB of correction is
         // far quieter or louder than the original (a carrier pushed out of range, a filter shut):
         // not a variation of the same sound, so it is dropped rather than half-corrected.
+        // The preset level only goes from -24 to +12 dB: near those limits a candidate may stay up to
+        // 3 dB off (better than finding none at all for a very quiet or very loud original).
         const float gainDb = parentLoudness - loudness;
-        const float level = parent.out.levelDb + gainDb;
-        if (std::fabs (gainDb) > 9.0f || level < -24.0f || level > 12.0f) continue;
+        const float wanted = parent.out.levelDb + gainDb, level = clampf (wanted, -24.0f, 12.0f);
+        if (std::fabs (gainDb) > 9.0f || std::fabs (level - wanted) > 3.0f) continue;
         d.out.levelDb = level;
         if (SoundExplorer::distance (parent, d) < kMinDistance[strength]) continue;
         bool duplicate = false;
@@ -591,12 +600,14 @@ bool ExploreRun::next (const std::atomic<bool>* cancel)
     }
     if (! found)
     {
-        // Fallback: a guaranteed-safe small change relative to the parent.
+        // Fallback: a guaranteed-safe small change relative to the parent. (If the parent itself does
+        // not pass, no small change will either: it is used as it is.)
         PatchData d = parent;
         const float step = 0.03f * (float) (i + 1) * ((i % 2) ? -1.0f : 1.0f);
-        bool changed = false;
+        bool changed = ! st.acceptable (st.parentSound);
         for (int c = 0; c < pc::total && ! changed; ++c)
         {
+            if (cancel != nullptr && cancel->load (std::memory_order_relaxed)) return false;
             if (! explorable (d, c) || lockedByMacro (parent, settings.locks, c)) continue;
             if ((settings.locks.envelopes && isEnvCode (c)) || (settings.locks.fx && pc::isFx (c))) continue;
             const auto& desc = paramDesc (c);
@@ -606,7 +617,7 @@ bool ExploreRun::next (const std::atomic<bool>* cancel)
             if (std::fabs (n2 - n) < 1.0e-4f) continue;
             PatchData trial = d;
             setParam (trial, c, fromNorm (desc, n2));
-            if (SoundExplorer::isSafe (trial)) { d = trial; changed = true; }
+            if (validatePatch (trial).ok && st.acceptable (measureRender (trial, hold))) { d = trial; changed = true; }
         }
         best.data = d;
         best.seed = mix64 (seed ^ (uint64_t) (i + 1000));

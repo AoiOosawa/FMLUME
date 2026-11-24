@@ -21,16 +21,16 @@ double syncDivBeats (int div)
 
 const char* syncDivName (int div)
 {
-    static char names[kNumSyncDivs][8];
-    static bool init = false;
-    if (! init)
-    {
+    struct Names { char text[kNumSyncDivs][8]; };
+    // built once, thread-safe (function-local static); used from the UI and from state saving on host threads
+    static const Names names = [] {
+        Names n {};
         for (int i = 0; i < kNumSyncDivs; ++i)
-            std::snprintf (names[i], sizeof (names[i]), "%s%s", kDivBase[i / 3], i % 3 == 1 ? "." : (i % 3 == 2 ? "T" : ""));
-        init = true;
-    }
+            std::snprintf (n.text[i], sizeof (n.text[i]), "%s%s", kDivBase[i / 3], i % 3 == 1 ? "." : (i % 3 == 2 ? "T" : ""));
+        return n;
+    }();
     if (div < 0 || div >= kNumSyncDivs) div = 12;
-    return names[div];
+    return names.text[div];
 }
 
 int syncDivFromName (const std::string& s)

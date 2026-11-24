@@ -1,47 +1,11 @@
 #pragma once
-#include "UI/Common/Bindings.h"
-#include "UI/Advanced/AlgoDiagram.h"
-#include "UI/Advanced/AlgorithmTab.h"
+#include "UI/Advanced/OperatorGraphs.h"
+#include "UI/Advanced/RoutingGraph.h"
 
 namespace ui
 {
-// Interactive ADSR graph: the envelope of the selected operator, or the Mod Envelope.
-class EnvelopeView final : public juce::Component, public juce::SettableTooltipClient
-{
-public:
-    enum class Source { SelectedOperator, ModEnvelope };
-    explicit EnvelopeView (Ctx&, Source = Source::SelectedOperator);
-    void paint (juce::Graphics&) override;
-    void mouseDown (const juce::MouseEvent&) override;
-    void mouseDrag (const juce::MouseEvent&) override;
-    void mouseUp (const juce::MouseEvent&) override;
-    void mouseMove (const juce::MouseEvent&) override;
-    void refresh (const fmlume::Preset&);
-    // Draws an ADSR curve into `area`; returns the three handle points (attack, decay/sustain, release).
-    // `firstCode` is the parameter code of the attack time (decay, sustain and release follow it):
-    // operator and Mod Envelope times have different ranges.
-    static std::array<juce::Point<float>, 3> drawEnvelope (juce::Graphics&, juce::Rectangle<float> area, const fmlume::ADSR&, juce::Colour, bool fill, float lineWidth,
-                                                           int firstCode = fmlume::pc::op (0, fmlume::kOpEnvA));
-
-private:
-    int handleAt (juce::Point<float>) const;
-    int firstCode() const; // attack-time code of the envelope being shown
-    Ctx& ctx;
-    Source source;
-    fmlume::ADSR env;
-    juce::Colour colour;
-    std::array<juce::Point<float>, 3> handles {};
-    int dragging = -1, hover = -1;
-};
-
-// One or two cycles of the selected operator's own waveform (including its feedback).
-class WaveView final : public juce::Component
-{
-public:
-    void paint (juce::Graphics&) override;
-    fmlume::OperatorState state;
-};
-
+// Advanced > Operators: the routing on top (editable; Expand gives it the whole page) and the selected
+// operator's oscillator, envelope and level below.
 class OperatorsTab final : public juce::Component
 {
 public:
@@ -52,26 +16,40 @@ public:
 
 private:
     void select (int op);
+    void applyTemplate (int index);
     void showTemplates();
     void setExpanded (bool);
     void fitMacros();
+    void bindOperator (int op, fmlume::PitchMode); // points every per-operator knob at `op`
+    void layoutRouting (juce::Rectangle<int> area);
+    void layoutSide (juce::Rectangle<int> side);
+    void layoutOperatorPanels (juce::Rectangle<int> bottom);
+    void refreshRouting (const fmlume::Preset&);
+    void refreshSide (const fmlume::Preset&, int op);
+    void updateSideVisibility();
+
     Ctx& ctx;
     GraphView graph;
     AlgoGallery strip;   // the 18 templates in a row: shown while the routing is expanded
     bool expanded = false;
-    juce::Label algoName, opTitle, edgeTitle;
+    juce::Label algoName, opTitle, edgeTitle, role;
     juce::ToggleButton opEnabled { "On" };
-    ModelKnob index;
+    ModelKnob index;     // depth of the selected connection
     ModelKnob sideRatio, sideLevel, sideOutput, sideFeedback; // the selected operator, while the routing is expanded
-    juce::TextButton templates { "Templates..." }, expand { "Expand" }, removeEdge { "Remove" }, resetMacros { "Fit macros 1-4 to routing" };
+    juce::TextButton templates { "Templates..." }, expand { "Expand" }, removeEdge { "Remove" }, fitMacrosButton { "Fit macros 1-4 to routing" };
     WaveView wave;
     EnvelopeView envelope;
     BoundCombo waveform, pitchMode;
     BoundToggle keySync;
     juce::ToggleButton snap { "Snap ratio" };
     ModelKnob ratio, detune, feedback, phase, attack, decay, sustain, release, level, output, velLevel, velFm, keyTrack;
-    juce::Label role;
+    std::vector<juce::Component*> operatorPanelParts; // hidden while the routing is expanded
     juce::Rectangle<int> routingArea, sideArea, oscArea, envArea, levelArea;
-    int shown = -1;
+    int legendRight = 0;    // the legend in the routing header stops before the algorithm name
+    bool edgeKnobFits = true;
+    // Results that only depend on the routing and macros 1-4, recomputed when those change.
+    juce::String routingSignature;
+    int templateMatch = -1;
+    bool macrosNeedFit = false;
 };
 } // namespace ui

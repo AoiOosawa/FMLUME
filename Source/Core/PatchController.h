@@ -1,6 +1,7 @@
 // Single owner of the editable patch (Canonical Model) on the non-realtime side.
 // Every UI edit, preset load and Explorer action goes through here, so
-// Simple and Advanced always edit the same state (SPEC §6.4). Message-thread only.
+// Simple and Advanced always edit the same state (SPEC §6.4). Not thread-safe: the owner calls it
+// under its own mutex (the plug-in: modelMutex; that includes host threads restoring a project).
 #pragma once
 #include "Core/Model.h"
 #include "Exploration/SoundExplorer.h"
@@ -32,7 +33,7 @@ public:
     // ---- model access -------------------------------------------------------------------
     const Preset& preset() const { return current; }
     const PatchData& data() const { return current.data; }
-    bool isDirty() const { return dirty; }
+    bool isModelDirty() const { return dirty; } // the patch itself; see isDirty (HostParams) for the header's mark
     // The preset also stores host values (macros, quick FX, unison, ...) that live in
     // the host parameters, not in the model. The owner records them whenever they match the preset
     // (after a load / state restore / save); moving one of them afterwards makes the preset dirty too.
@@ -60,7 +61,7 @@ public:
     void markSaved (const Preset& saved); // after a successful save: adopt id / name, clear dirty
     // The current preset with live host values folded in (what gets written to disk / state).
     Preset presetForSave (const HostParams& live) const;
-    bool setState (const Preset& p); // host project state: not dirty
+    bool setState (const Preset& p, bool edited = false); // host project state; `edited` = it was edited when saved
 
     // ---- Sound Explorer (SPEC §8, §14.3) ----------------------------------------------------
     ExploreSettings exploreSettings;
@@ -96,6 +97,8 @@ private:
     bool push (bool forceNew);
     void notify() { if (changed) changed(); }
     bool runExplore (const PatchData& parent, bool keepHistory);
+    bool adopt (const Preset&, bool edited); // shared by loadPreset / setState
+    void endPreview();                       // back to the current patch if a candidate was being heard
     void stopWorker();
 
     Preset current;

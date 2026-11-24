@@ -18,8 +18,10 @@ bool presetFromJson (const std::string& text, Preset& out, std::string* error = 
 bool presetFromJsonValue (const Json& root, Preset& out, std::string* error = nullptr, std::vector<std::string>* warnings = nullptr);
 
 // Complete plug-in state: canonical model + host-owned parameter values.
-bool stateToJson (const Preset& p, const HostParams& host, std::string& out, std::string* error = nullptr);
-bool stateFromJson (const std::string& text, Preset& out, HostParams& host, std::string* error = nullptr);
+// `edited`: the sound differs from the preset it came from (the header's "*"), restored with the project.
+bool stateToJson (const Preset& p, const HostParams& host, std::string& out, std::string* error = nullptr, bool edited = false);
+bool stateFromJson (const std::string& text, Preset& out, HostParams& host, std::string* error = nullptr,
+                    std::vector<std::string>* warnings = nullptr, bool* edited = nullptr);
 
 // Stable content checksum of the sound-relevant data (used by Explorer candidates).
 uint64_t patchChecksum (const PatchData& d);

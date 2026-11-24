@@ -277,7 +277,7 @@ FM_TEST ("integration", "PRS-02 saved state restores an identical render (every 
         fresh.prepare (sr, 256);
         ctl2.sendPatch = [&] (const PatchData& d, bool f) { return fresh.setPatch (d, f); };
         CHECK (ctl2.setState (restored));
-        CHECK (! ctl2.isDirty());
+        CHECK (! ctl2.isModelDirty());
         auto b = renderSeq (fresh, sr, 256, 2.5, seq, host2, tr);
         CHECK (peak (a.l) > 0.01f);
         CHECK (maxAbsDiff (a.l, b.l) < 1.0e-5);
@@ -619,4 +619,65 @@ FM_TEST ("integration", "Init sounds of every category are level-matched to the 
         CHECK (pk < 0.8f);
         CHECK (pk > 0.05f);
     }
+}
+
+FM_TEST ("integration", "Review: import never hangs on long names, returns the preset it stored, and keeps the edited mark of a project")
+{
+    const std::string dir = (fs::temp_directory_path() / ("fmlume-review-" + makePatchId())).string();
+    PresetManager pm;
+    pm.setUserDirectory (dir);
+    std::string err;
+
+    // A name longer than the file-name limit: importing it twice used to loop forever (both
+    // numbered names cut down to the same file).
+    Preset longName = makeCategoryPreset (Category::Bell);
+    longName.meta.displayName = std::string (130, 'x') + "\xE9\x9F\xB3"; // and a multi-byte character at the end
+    const std::string file = dir + "/long-export.fmlume";
+    fs::create_directories (dir);
+    CHECK (PresetManager::exportTo (file, longName, &err));
+    Preset a, b;
+    CHECK (pm.importIntoUser (file, a, &err));
+    CHECK (pm.importIntoUser (file, b, &err));
+    CHECK (a.meta.patchId != b.meta.patchId);
+    CHECK (pm.findById (a.meta.patchId) >= 0 && pm.findById (b.meta.patchId) >= 0);
+
+    // Another user file already shows the same name: the import still returns its own sound.
+    Preset other = makeCategoryPreset (Category::Pad);
+    other.meta.displayName = "Zed";
+    CHECK (PresetManager::exportTo (dir + "/Aaa.fmlume", other, &err));
+    pm.rescanUser();
+    Preset mine = makeCategoryPreset (Category::Keys);
+    mine.meta.displayName = "Zed";
+    mine.data.out.levelDb = 3.0f;
+    CHECK (PresetManager::exportTo (dir + "/to-import.fmlume", mine, &err));
+    Preset imported;
+    CHECK (pm.importIntoUser (dir + "/to-import.fmlume", imported, &err));
+    CHECK (imported.meta.category == Category::Keys);
+    CHECK (std::fabs (imported.data.out.levelDb - 3.0f) < 1.0e-6f);
+
+    // saveUser reports the preset as stored
+    Preset saved;
+    CHECK (pm.saveUser (mine, "Zed", false, &err, &saved) == false); // "Zed" exists now
+    CHECK (pm.saveUser (mine, "Zed Two", false, &err, &saved));
+    CHECK (saved.meta.displayName == "Zed Two" && pm.findById (saved.meta.patchId) >= 0);
+
+    // The edited mark travels with the project; older projects without it restore as not edited.
+    const Preset keys = makeCategoryPreset (Category::Keys);
+    std::string state;
+    CHECK (stateToJson (keys, keys.data.host, state, &err, true));
+    Preset back;
+    HostParams host;
+    bool edited = false;
+    CHECK (stateFromJson (state, back, host, &err, nullptr, &edited));
+    CHECK (edited);
+    CHECK (stateToJson (keys, keys.data.host, state, &err));
+    const auto at = state.find (",\"edited\":false");
+    CHECK (at != std::string::npos);
+    if (at != std::string::npos) state.erase (at, std::string (",\"edited\":false").size());
+    edited = true;
+    CHECK (stateFromJson (state, back, host, &err, nullptr, &edited));
+    CHECK (! edited);
+
+    std::error_code ec;
+    fs::remove_all (dir, ec);
 }

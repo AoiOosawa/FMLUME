@@ -15,7 +15,7 @@ constexpr int kMaxSeqEvents = 1024;
 constexpr int kDecimK2 = 11; // 2x -> 1x stage (47 taps)
 constexpr int kDecimK1 = 4;  // 4x -> 2x stage (19 taps)
 
-struct SideRt
+struct PatchRt
 {
     float baseNorm[pc::engineCount] {};
     float basePhys[pc::engineCount] {};
@@ -28,8 +28,8 @@ struct SideRt
 struct PatchSlot
 {
     CompiledPatch cp;
-    SideRt rt;
-    float fxBaseNorm[kNumFx * kFxParams + 1] {}; // shared codes: fx params + portamento
+    PatchRt rt;
+    float fxBaseNorm[kNumFx * kFxParams + 1] {}; // fx params + portamento (codes fxBase..total)
 };
 
 struct OpRt
@@ -75,7 +75,7 @@ struct SynthEngine::Impl
 
     // ---- configuration
     double sr = 48000.0, isr = 96000.0;
-    int maxBlock = 512, os = 2;
+    int os = 2;
     bool prepared = false;
     const Tables* tables = nullptr;
 
@@ -145,12 +145,13 @@ struct SynthEngine::Impl
         }
     };
     static constexpr double kDcBlockHz = 5.0;
+    static constexpr double kTailSeconds = 0.25; // > 7 time constants of the 5 Hz DC blocker
     DcBlock dcBlock[2];
     StereoFilter filter;
     TranceGate gate;
     FxChain fx;
     Performer performer;
-    std::vector<float> bus[2]; // [ch], internal rate
+    float bus[2][kMaxChunk] {}; // [ch], internal rate
     float hostBuf[2][kControlInterval] {};
     float ampBuf[kNumOps][kMaxChunk] {}, outBuf[kNumOps][kMaxChunk] {};
     float modBuf[kMaxChunk] {}, mixBuf[kMaxChunk] {}, gainBuf[kMaxChunk] {};
@@ -158,8 +159,9 @@ struct SynthEngine::Impl
     MidiEvent inBuf[kMaxSeqEvents];
     MidiEvent carry[64];
     int numCarry = 0;
-    int pendingQuality = -1;
-    int silentBlocks = 0;
+    // Samples rendered since the last voice ended. Rendering goes on for kTailSamples after that, so
+    // the DC blocker and the filter settle instead of being cut to zero (a click).
+    int silentSamples = 0;
     bool tickStart = true;
 
     // =====================================================================================
@@ -210,7 +212,7 @@ struct SynthEngine::Impl
         wasPlaying = false;
         numCarry = 0;
         snapNext = true;
-        silentBlocks = 0;
+        silentSamples = 0;
     }
 
     void setOversampling (int quality)
@@ -218,7 +220,7 @@ struct SynthEngine::Impl
         os = quality <= 0 ? 1 : (quality == 1 ? 2 : 4);
         isr = sr * os;
         owner.activeQuality.store (quality <= 0 ? 0 : (quality == 1 ? 1 : 2));
-        for (int ch = 0; ch < 2; ++ch) { dec2[ch].reset(); dec1[ch].reset(); dcBlock[ch].reset(); }
+        for (int ch = 0; ch < 2; ++ch) { dec2[ch].reset(); dec1[ch].reset(); } // the DC blocker runs at the host rate: its state stays valid
         snapNext = true;
     }
 
@@ -312,7 +314,7 @@ struct SynthEngine::Impl
     void evalModulation (PatchSlot& sl, float* delta)
     {
         const SoundPatch& es = sl.cp.data.sound;
-        const SideRt& rt = sl.rt;
+        const PatchRt& rt = sl.rt;
         std::memset (delta, 0, sizeof (float) * (size_t) pc::total);
         for (int i = 0; i < kNumMacros; ++i)
         {
@@ -336,7 +338,7 @@ struct SynthEngine::Impl
     void advanceModSources (PatchSlot& sl, float dt)
     {
         const SoundPatch& es = sl.cp.data.sound;
-        const SideRt& rt = sl.rt;
+        const PatchRt& rt = sl.rt;
         for (int i = 0; i < 2; ++i)
         {
             const auto& ls = es.engine.lfo[(size_t) i];
@@ -366,7 +368,7 @@ struct SynthEngine::Impl
         atSm += cH * (atTarget - atSm);
 
         PatchSlot& sl = slots[(size_t) cur];
-        SideRt& rt = sl.rt;
+        PatchRt& rt = sl.rt;
         const EnginePatch& ep = sl.cp.data.sound.engine;
 
         // Global mod envelope gate.
@@ -707,7 +709,7 @@ struct SynthEngine::Impl
     {
         const CompiledEngine& ce = sl.cp.engine;
         const EnginePatch& ep = sl.cp.data.sound.engine;
-        SideRt& rt = sl.rt;
+        PatchRt& rt = sl.rt;
         const float velInv = 1.0f - v.vel;
 
         bool alive = false;
@@ -745,8 +747,8 @@ struct SynthEngine::Impl
         // Frequency glides are scheduled once per control tick so the result is block-size independent.
         const double tickSmooth = 1.0 - std::exp (-(double) kControlInterval / (0.004 * sr));
         const double maxInc = kTwoPi * 0.45;
-        float* bl = bus[0].data();
-        float* br = bus[1].data();
+        float* bl = bus[0];
+        float* br = bus[1];
 
         for (int u = 0; u < v.unison; ++u)
         {
@@ -895,18 +897,18 @@ struct SynthEngine::Impl
         for (int i = 0; i < kMaxPolyphony; ++i) activeNotes += voices[(size_t) i].active ? 1 : 0;
 
         float* host[2] = { hostBuf[0], hostBuf[1] };
-        const bool voiceWork = activeNotes > 0 || silentBlocks < 4;
+        const bool voiceWork = activeNotes > 0 || silentSamples < (int) (kTailSeconds * sr);
         if (voiceWork)
         {
-            for (int ch = 0; ch < 2; ++ch) std::memset (bus[ch].data(), 0, sizeof (float) * (size_t) ilen);
+            for (int ch = 0; ch < 2; ++ch) std::memset (bus[ch], 0, sizeof (float) * (size_t) ilen);
             for (int i = 0; i < kMaxPolyphony; ++i)
                 if (voices[(size_t) i].active) renderVoice (voices[(size_t) i], ilen);
-            silentBlocks = activeNotes > 0 ? 0 : silentBlocks + 1;
+            silentSamples = activeNotes > 0 ? 0 : silentSamples + len;
             tickStart = false;
 
             for (int ch = 0; ch < 2; ++ch)
             {
-                const float* in = bus[ch].data();
+                const float* in = bus[ch];
                 float* out = host[ch];
                 if (os == 1) std::memcpy (out, in, sizeof (float) * (size_t) len);
                 else if (os == 2) for (int i = 0; i < len; ++i) out[i] = dec2[ch].decimate (in[2 * i], in[2 * i + 1]);
@@ -928,7 +930,7 @@ struct SynthEngine::Impl
             std::memset (host[1], 0, sizeof (float) * (size_t) len);
         }
 
-        // Advance shared ramps and free-running phases.
+        // Advance the current slot's ramps and the free-running phases.
         {
             PatchSlot& sl = slots[(size_t) cur];
             for (int r = 0; r < kNumRamps; ++r) sl.rt.cur[r] += sl.rt.inc[r] * (float) ilen;
@@ -1008,8 +1010,6 @@ void SynthEngine::prepare (double sampleRate, int maxBlockSize)
     auto& d = *impl;
     d.tables = &Tables::get();
     d.sr = sampleRate > 1000.0 ? sampleRate : 48000.0;
-    d.maxBlock = std::max (maxBlockSize, 1);
-    for (auto& ch : d.bus) ch.assign ((size_t) kMaxChunk, 0.0f);
     d.filter.prepare (d.sr);
     d.gate.prepare (d.sr);
     d.fx.prepare (d.sr);

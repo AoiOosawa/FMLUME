@@ -14,6 +14,8 @@ struct AlgoLayout
     float outY = 0.0f;   // y of the output bar
     // Polyline of a connection (from the modulator's bottom edge to the target's top edge).
     juce::Path edgePath (int from, int to) const;
+    // y of the horizontal part of that polyline (the target's top when the two are in line).
+    float busY (int from, int to) const;
     juce::Rectangle<float> boxOf (int k) const { return juce::Rectangle<float> (box, box).withCentre (pos[k]); }
 };
 
@@ -26,6 +28,9 @@ struct AlgoStyle
     int selectedOp = -1, selectedFrom = -1, selectedTo = -1;
 };
 void drawAlgorithm (juce::Graphics& g, const fmlume::EnginePatch& e, const AlgoLayout& l, const AlgoStyle& style);
+
+// The carrier / modulator / feedback key. Items that do not fit in `area` are left out.
+void drawRoutingLegend (juce::Graphics& g, juce::Rectangle<int> area);
 
 inline juce::Colour roleColour (const fmlume::OperatorState& op) { return op.carrierGain > 0.0f ? col::accent : col::violet; }
 } // namespace ui

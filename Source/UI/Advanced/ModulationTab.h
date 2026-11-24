@@ -1,6 +1,6 @@
 #pragma once
 #include "UI/Common/Bindings.h"
-#include "UI/Advanced/OperatorsTab.h"
+#include "UI/Advanced/OperatorGraphs.h"
 
 namespace ui
 {

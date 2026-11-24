@@ -32,7 +32,6 @@ file(GLOB_RECURSE FMLUME_CORE_SOURCES CONFIGURE_DEPENDS
     Source/Core/*.cpp Source/Core/*.h
     Source/DSP/*.cpp Source/DSP/*.h
     Source/Exploration/*.cpp Source/Exploration/*.h
-    Source/Morph/*.cpp Source/Morph/*.h
     Source/Presets/*.cpp Source/Presets/*.h)
 add_library(FMLUMECore STATIC ${FMLUME_CORE_SOURCES})
 target_include_directories(FMLUMECore PUBLIC Source)

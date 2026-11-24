@@ -5,6 +5,12 @@ namespace ui
 {
 using namespace fmlume;
 
+float AlgoLayout::busY (int from, int to) const
+{
+    const auto a = pos[from].translated (0.0f, box * 0.5f), b = pos[to].translated (0.0f, -box * 0.5f);
+    return std::abs (a.x - b.x) > 1.0f ? b.y - juce::jmin (box * 0.32f, (b.y - a.y) * 0.5f) : b.y; // elbow just above the target
+}
+
 juce::Path AlgoLayout::edgePath (int from, int to) const
 {
     juce::Path p;
@@ -12,13 +18,29 @@ juce::Path AlgoLayout::edgePath (int from, int to) const
     p.startNewSubPath (a);
     if (std::abs (a.x - b.x) > 1.0f)
     {
-        // elbow just above the target; offset slightly by source so parallel lines stay apart
-        const float busY = b.y - juce::jmin (box * 0.32f, (b.y - a.y) * 0.5f);
-        p.lineTo (a.x, busY);
-        p.lineTo (b.x, busY);
+        const float y = busY (from, to);
+        p.lineTo (a.x, y);
+        p.lineTo (b.x, y);
     }
     p.lineTo (b);
     return p;
+}
+
+void drawRoutingLegend (juce::Graphics& g, juce::Rectangle<int> legend)
+{
+    g.setFont (font (11.5f));
+    const auto item = [&] (juce::Colour c, const juce::String& text) {
+        const int width = 12 + 5 + juce::roundToInt (juce::GlyphArrangement::getStringWidth (g.getCurrentFont(), text)) + 22;
+        if (width > legend.getWidth()) { legend = {}; return; } // and nothing after it
+        auto r = legend.removeFromLeft (width);
+        g.setColour (c);
+        g.fillRoundedRectangle (r.removeFromLeft (12).withSizeKeepingCentre (11, 11).toFloat(), 2.5f);
+        g.setColour (col::textDim);
+        g.drawText (text, r.withTrimmedLeft (5), juce::Justification::centredLeft);
+    };
+    item (col::accent, "Carrier (heard)");
+    item (col::violet, "Modulator (shapes the tone)");
+    item (col::warm, "Feedback");
 }
 
 AlgoLayout layoutAlgorithm (const EnginePatch& e, juce::Rectangle<float> area, bool includeDisabled, float maxBox)
@@ -132,7 +154,7 @@ void drawAlgorithm (juce::Graphics& g, const EnginePatch& e, const AlgoLayout& l
         if (! l.shown[ed.from] || ! l.shown[ed.to]) continue;
         const bool sel = ed.from == st.selectedFrom && ed.to == st.selectedTo;
         const bool live = e.operators[(size_t) ed.from].enabled && e.operators[(size_t) ed.to].enabled;
-        if (! live && st.mini) continue;
+        if (! live) continue; // a connection to a switched-off operator has no effect (and no sensible place to draw it)
         const auto path = l.edgePath (ed.from, ed.to);
         g.setColour (sel ? col::accentB : (live ? col::violet.brighter (0.15f) : col::outline));
         g.strokePath (path, juce::PathStrokeType (sel ? lineW + 1.4f : lineW, juce::PathStrokeType::mitered, juce::PathStrokeType::rounded));
@@ -159,7 +181,7 @@ void drawAlgorithm (juce::Graphics& g, const EnginePatch& e, const AlgoLayout& l
         const auto corners = [&] (const Edge& ed, juce::Point<float>& a, juce::Point<float>& b, float& busY) {
             a = l.pos[ed.from].translated (0.0f, l.box * 0.5f);
             b = l.pos[ed.to].translated (0.0f, -l.box * 0.5f);
-            busY = std::abs (a.x - b.x) > 1.0f ? b.y - juce::jmin (l.box * 0.32f, (b.y - a.y) * 0.5f) : b.y;
+            busY = l.busY (ed.from, ed.to);
         };
         for (int i = 0; i < e.numEdges; ++i)
         {

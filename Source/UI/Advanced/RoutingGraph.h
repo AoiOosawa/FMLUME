@@ -2,9 +2,12 @@
 #include "UI/Common/Bindings.h"
 #include "UI/Advanced/AlgoDiagram.h"
 
+// The routing pieces of Advanced > Operators: the editable diagram and the template thumbnails.
+
 namespace ui
 {
 // Editable routing: drag from one operator to another to connect them, click a box or a line to select it.
+// Switched-off operators are shown (dimmed) so they can be selected and switched on.
 class GraphView final : public juce::Component
 {
 public:
@@ -17,10 +20,7 @@ public:
     void refresh (const fmlume::Preset&);
     int selectedEdgeFrom = -1, selectedEdgeTo = -1;
     std::function<void()> onSelection;
-    bool showLegend = true;
     float maxBox = 76.0f;
-    // the carrier / modulator / feedback key, for drawing it elsewhere (e.g. a panel header)
-    static void drawLegend (juce::Graphics&, juce::Rectangle<int> area);
 
 private:
     void relayout();

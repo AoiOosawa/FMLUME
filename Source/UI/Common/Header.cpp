@@ -12,7 +12,7 @@ Header::Header (Ctx& c) : ctx (c)
     next.setTooltip ("Next preset");
     save.setTooltip ("Save the current sound as a user preset");
     simpleBtn.setTooltip ("Simple view: macros, effects and variations");
-    advancedBtn.setTooltip ("Advanced view: operators, algorithm, filter and modulation, effects, rhythm, performance");
+    advancedBtn.setTooltip ("Advanced view: operators and routing, filter and modulation, effects, rhythm, performance");
     simpleBtn.setClickingTogglesState (true);
     advancedBtn.setClickingTogglesState (true);
     simpleBtn.setRadioGroupId (4203);

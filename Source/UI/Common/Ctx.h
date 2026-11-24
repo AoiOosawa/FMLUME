@@ -13,8 +13,7 @@ struct Ctx
     FmlumeAudioProcessor& proc;
     std::function<void (const juce::String&, bool isError)> status;
     std::function<void()> refreshAll;
-    std::function<void()> openBrowser; // full-page preset browser
-    int selectedOp = 0;             // operator selected in the Operators / Algorithm tabs
+    int selectedOp = 0;             // operator selected in Advanced > Operators
     bool snapRatios = true;
 
     fmlume::Preset snapshot() { return proc.withModel ([] (fmlume::PatchController& c) { return c.preset(); }); }

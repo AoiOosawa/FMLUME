@@ -12,7 +12,7 @@ struct Refreshable
     virtual void refreshFrom (const fmlume::Preset&) = 0;
 };
 
-// The operator selected in the Operators / Algorithm tabs.
+// The operator selected in Advanced > Operators.
 inline fmlume::OperatorState& selectedOperator (fmlume::Preset& p, Ctx& ctx) { return p.data.sound.engine.operators[(size_t) ctx.selectedOp]; }
 inline const fmlume::OperatorState& selectedOperator (const fmlume::Preset& p, Ctx& ctx) { return p.data.sound.engine.operators[(size_t) ctx.selectedOp]; }
 

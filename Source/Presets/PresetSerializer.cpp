@@ -754,7 +754,7 @@ bool presetFromJson (const std::string& text, Preset& out, std::string* error, s
 }
 
 // =================================================================================== state
-bool stateToJson (const Preset& p, const HostParams& host, std::string& out, std::string* error)
+bool stateToJson (const Preset& p, const HostParams& host, std::string& out, std::string* error, bool edited)
 {
     const auto v = validatePatch (p.data);
     if (! v.ok)
@@ -783,11 +783,12 @@ bool stateToJson (const Preset& p, const HostParams& host, std::string& out, std
     h.set ("arpEnabled", host.arpEnabled);
     h.set ("gateEnabled", host.gateEnabled);
     j.set ("host", std::move (h));
+    j.set ("edited", edited);
     out = j.dump (0);
     return true;
 }
 
-bool stateFromJson (const std::string& text, Preset& out, HostParams& host, std::string* error)
+bool stateFromJson (const std::string& text, Preset& out, HostParams& host, std::string* error, std::vector<std::string>* warnings, bool* edited)
 {
     auto failWith = [error] (const std::string& msg) { if (error) *error = msg; return false; };
     Json root;
@@ -799,7 +800,12 @@ bool stateFromJson (const std::string& text, Preset& out, HostParams& host, std:
     const Json* h = root.find ("host");
     if (preset == nullptr || h == nullptr || ! h->isObject()) return failWith ("state is missing 'preset' or 'host'");
     Preset p;
-    if (! presetFromJsonValue (*preset, p, error)) return false;
+    if (! presetFromJsonValue (*preset, p, error, warnings)) return false;
+    if (edited != nullptr)
+    {
+        const Json* ed = root.find ("edited"); // optional: older states have no such key
+        *edited = ed != nullptr && ed->isBool() && ed->boolean;
+    }
 
     Reader r;
     HostParams hp;
