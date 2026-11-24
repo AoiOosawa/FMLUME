@@ -12,11 +12,11 @@
 | ビルド | `cmake --build build --config Release --parallel` | **BUILD SUCCEEDED**。`FMLUME.component`（AU）、`FMLUME.vst3`、`FMLUME.app`（Standalone）を生成、いずれも Universal 2（arm64 + x86_64）、アドホック署名 |
 | 自動テスト | `ctest --test-dir build -C Release` | **4/4 グループ通過**（54テストケース、失敗0、約50秒。2026-11-24 の Morph 削除後に再実行） |
 | Standalone | `open build/FMLUME_artefacts/Release/Standalone/FMLUME.app` | 起動しエディタが表示されること、正常終了することを確認（クラッシュなし）。**発音・MIDI入力・Audio設定ダイアログは人手で未確認** |
-| x86_64 スライス | `arch -x86_64 build/tests/Release/FMLUMETests` | 41ケース全通過（Rosetta 2 上。Intel実機は未検証） |
+| x86_64（Intel 向け） | `cmake -S . -B build-x86 -G "Unix Makefiles" -DCMAKE_BUILD_TYPE=Release -DFMLUME_BUILD_PLUGIN=OFF -DCMAKE_OSX_ARCHITECTURES=x86_64` → `ctest --test-dir build-x86` | 54ケース全通過（2026-11-24、Morph 削除後。Rosetta 2 上。Intel実機は未検証） |
 | AU 検証 | `auval -v aumu Fmld Chbw`（開発用。製品版は `Fmlu`） | **AU VALIDATION SUCCEEDED** |
 | VST3 検証 | `pluginval --strictness-level 10 --validate FMLUME.vst3`（GUIテスト含む） | **SUCCESS** |
 | AU を pluginval | `pluginval --strictness-level 10 --validate FMLUME.component` | SUCCESS（警告1件: "Current program is -1"。AUラッパー由来で実害なし） |
-| JSON Schema | Draft 2020-12 バリデーターで照合 | ファクトリー152＋フィクスチャ2を受理、この結果は schemaVersion 1 当時のもの。schemaVersion 2 のスキーマでは**未再照合**（照合に使う `jsonschema` がこの環境に入っていない）。読み込み側の検証は自動テストで確認済み |
+| JSON Schema | Draft 2020-12 バリデーターで照合 | ファクトリー152＋フィクスチャ2を受理、schemaVersion 2 のスキーマで再照合（2026-11-24）: ファクトリー152＋新形式フィクスチャ2を受理、破損フィクスチャ21のうち15を構造で拒否（残り6はローダー専用規則で拒否）。旧形式（schemaVersion 1）のフィクスチャはスキーマでは拒否され、ローダーがマイグレーションして読む |
 
 ### 性能（`fmlume-bench`、48 kHz / 256 frames / 単一スレッド / Release / M1 Max、実時間1コア比）
 
@@ -81,12 +81,12 @@
 
 | 項目 | 状態 |
 |---|---|
-| **実DAWでの確認（HOST-01）** | **一部実施**。Cubase（VST3、開発用ビルド）: 読み込み・演奏・保存は利用者が確認し問題なし（2026-11-23）。このとき「マクロ等を動かしてもプリセット名に `*` が付かない」不具合が見つかり修正済み（原因は全形式共通のコード。`fmlume-uisnap --check-edited` で実プロセッサー＋エディタ上の表示を確認済み、Cubase での再確認は未実施）。Cubase のオートメーション記録再生・オフライン書き出し、および Logic Pro / REAPER / Ableton Live は**未実施**で、人手での確認が必要（手順は `docs/TEST_PLAN.md`）。自動検証は auval と pluginval のみ |
+| **実DAWでの確認（HOST-01）** | **Cubase は確認済み**（VST3、開発用ビルド、利用者による確認）。2026-11-23: 読み込み・演奏・保存は問題なし。2026-11-24（Morph 削除後）: オートメーションの記録と再生は問題なし、スペースキーや Cmd+S などのキー操作がホストに届くことも問題なし、オフライン書き出し（オーディオミックスダウン）も利用者が聴いて「大丈夫そう」と確認。Morph 削除前に保存したプロジェクトの読み込みは、該当するプロジェクトが無いため実機では確認できない（旧形式の状態を読む経路は自動テストで確認済み）。Logic Pro / REAPER / Ableton Live は**未実施**（手順は `docs/TEST_PLAN.md`）。自動検証は auval と pluginval |
 | **耳による音質確認（§17.4）** | **未実施**（準備済み）。`python3 scripts/audition.py` が全音色の数値スクリーニング（`build/audition/report.md`）と試聴ページ（`build/audition/index.html`。1音色ずつ再生し、キー操作で評価を付けて結果をテキストにまとめる）を作る。2026-11-23 の実行で DC オフセットを発見し修正（D-051）。利用者の1回目の試聴で「他と似すぎ」等と指摘された 22 音色を作り直した（D-052）。2回目の試聴で残った指摘 4 件も修正し、利用者が「問題なし」と確認（D-053）。マクロの数値上の問題（リミッター・効きが聞こえない・音量が跳ねる）は生成時の自動ガード等で解消（D-054）。現在の指摘は 29 音色（主に A 特性で見たカテゴリ内の音量差 19 件と左右の偏り 4 件。壊れているものはない）。152音色とFXはFM設計の知識に基づいて作成し、自動検査（発音・レベル・全マクロの可聴性・非有限値なし）のみ通過。音楽的な良し悪し、マクロの効き方の自然さ、Explorer候補の「意味のある違い」は試聴と調整が必要 |
 | Intel Mac 実機 | 未検証（配布用の Universal ビルドと、x86_64 でビルドしたテストの Rosetta 上での実行のみ） |
-| GitHub Actions | `main` への push で実行され成功（2026-11-23 の 2 回）。Morph 削除後のコミットでは未実行 |
+| GitHub Actions | `main` への push ごとに実行され成功（Morph 削除後の `53fe9af` を含む 3 回）。`actions/checkout` を v7 に更新した変更は push 後に確認する |
 | 実機GUI操作 | 2026-11-23 のUI全面改訂後、エディタはオフスクリーン描画（`fmlume-uisnap`、全ページ・最小サイズ）と pluginval のGUIテストで確認。エンベロープのドラッグ編集、ゲートのステップ描画、アルゴリズム図のドラッグ接続、ブラウザの Delete / Import / Export は**人手で未確認**。マウス操作・キーボードTab移動・HiDPI以外の表示・ファイルダイアログは人手で未確認 |
-| コード署名・公証・インストーラー | Phase 8。現在はアドホック署名で、他のMacへそのまま配布はできない |
+| コード署名・公証・インストーラー | `scripts/package.sh` で**署名なし**の製品版インストーラーを作成できることを確認（2026-11-24、Morph 削除後。`FMLUME-0.1.0-macOS.pkg`、VST3 / AU / Standalone とも Universal、最低 macOS 12.0、識別子 `aumu Fmlu Chbw`。製品版 VST3 は pluginval 厳しさ 10 に arm64 と x86_64（Rosetta）の両方で合格）。署名・公証・インストールの実行・別の Mac での確認は未実施 |
 
 ## 5. 仕様との差異・既知の制約
 
@@ -94,16 +94,15 @@
 - Mod ソース（LFO/ModEnv/Velocity/Keytrack）はグローバル（D-004）。
 - FXチェーンの再構成はクロスフェードではなく約10msのディップ（D-012）。
 - ボイス終了判定はキャリアのみ（D-008）。パッチ受け渡しはFIFOではなく最新優先メールボックス（D-005）。
-- マクロ編集UIで `min/max`（クランプ窓）は編集できない（モデルとファイルは対応、既定 0/1）。
-- ユーザープリセットの削除は `File > Show user preset folder` からFinderで行う（UIに削除ボタンなし）。
 - Quality 切替時、発音中の音は短くフェードする。
 - プリセット読込はマスター音量/パン/Quality/全FXバイパスを変更しない（D-010）。
 - 操作マニュアルは未作成（ツールチップとステータス行のみ）。
 
 ## 6. 次のタスク候補
 
-1. **HOST-01 の残り**: Cubase でオートメーション記録再生とオフライン書き出しを確認。次に Logic Pro（AU）と REAPER。
-2. **試聴パス**: `build/audition/index.html` の試聴ページで評価を付け、その結果と `build/audition/report.md` の指摘をもとに、`tools/PresetGen/Factory.cpp` の値とカテゴリテンプレートのマクロ量を調整→ `fmlume-presetgen` で再生成。
-3. Explorer の方向別ヒューリスティックとカテゴリ別制約の調整（試聴ベース）。
-4. プラグインID・会社名・Bundle ID の確定（公開前に1回だけ、D-001）。
-5. Phase 8: 配布方針（AGPLv3 か JUCE 商用ライセンスか）の決定、署名・公証、インストーラー、マニュアル、商標調査。
+1. **HOST-01 の残り**（人手、任意）: Logic Pro（AU）と REAPER。Cubase は確認済み。
+2. **画面の実操作**（人手）: エンベロープのドラッグ、アルゴリズム図のドラッグ接続、ゲートのステップ描画、ブラウザーの Delete / Import / Export。
+3. 操作マニュアルの作成。
+4. ロゴの文字のアウトライン化（現在はシステムフォント依存）。
+5. Phase 8（`docs/RELEASE_CHECKLIST.md`）: バージョン番号とプラグイン ID の最終確認、署名・公証、別の Mac でのインストール確認、リポジトリの公開、GitHub Releases。配布方針は AGPL-3.0 で決定済み（D-049）。
+6. 任意: 数値スクリーニングに残る 29 音色の指摘（主にカテゴリ内の音量差）、Variations の方向づけの調整。
