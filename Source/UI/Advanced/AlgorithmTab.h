@@ -4,7 +4,8 @@
 
 namespace ui
 {
-class GraphView final : public juce::Component, public juce::SettableTooltipClient
+// Editable routing: drag from one operator to another to connect them, click a box or a line to select it.
+class GraphView final : public juce::Component
 {
 public:
     explicit GraphView (Ctx&);
@@ -16,6 +17,10 @@ public:
     void refresh (const fmlume::Preset&);
     int selectedEdgeFrom = -1, selectedEdgeTo = -1;
     std::function<void()> onSelection;
+    bool showLegend = true;
+    float maxBox = 76.0f;
+    // the carrier / modulator / feedback key, for drawing it elsewhere (e.g. a panel header)
+    static void drawLegend (juce::Graphics&, juce::Rectangle<int> area);
 
 private:
     void relayout();
@@ -29,11 +34,12 @@ private:
     bool dragging = false;
 };
 
-// The routing templates as a strip of thumbnails (like the algorithm chart on a classic FM synth).
+// The routing templates as thumbnails (like the algorithm chart on a classic FM synth).
 class AlgoGallery final : public juce::Component, public juce::SettableTooltipClient
 {
 public:
     AlgoGallery();
+    int columns = 0; // 0: one row
     void paint (juce::Graphics&) override;
     void mouseMove (const juce::MouseEvent&) override;
     void mouseExit (const juce::MouseEvent&) override { hover = -1; repaint(); }
@@ -47,24 +53,4 @@ private:
     int hover = -1;
 };
 
-class AlgorithmTab final : public juce::Component
-{
-public:
-    explicit AlgorithmTab (Ctx&);
-    void paint (juce::Graphics&) override;
-    void resized() override;
-    void refresh (const fmlume::Preset&);
-
-private:
-    void selectionChanged();
-    Ctx& ctx;
-    AlgoGallery gallery;
-    GraphView graph;
-    juce::Label algoName, opTitle, edgeTitle, hint;
-    juce::ToggleButton opEnabled { "On" };
-    ModelKnob level, carrier, feedback, ratio, index;
-    juce::TextButton removeEdge { "Remove connection" }, resetMacros { "Rebuild macros 1-4" };
-    juce::Rectangle<int> sideArea;
-    int shownOp = -1;
-};
 } // namespace ui

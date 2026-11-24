@@ -49,7 +49,7 @@
 ### Phase 2 — Simple / Advanced とマクロ
 - Canonical Model、`PatchCompiler`、パッチ世代管理（インプレース更新／新世代）、ロックフリーのパッチ受け渡し。
 - 8マクロ（正規化ドメイン合成、最大8マッピング、linear/exp/sCurve、bipolar/unipolar、min/max）、カテゴリテンプレート9種。
-- UI: Simple（Macros / Character / FX / Trance Gate / Arpeggiator / Variations）と Advanced（Operators / Algorithm / Filter & Mod / FX / Rhythm / Performance）。両モードは同一モデルを編集。プリセットブラウザはヘッダーのプリセット名から開く独立ページ。2026-11-23 に POLYBRISK とシリーズ共通の外観へ全面改訂（D-028）。
+- UI: Simple（Macros / Character / FX / Trance Gate / Arpeggiator / Variations）と Advanced（Operators / Filter & Mod / FX / Rhythm / Performance。Algorithm は Operators に統合、D-057）。両モードは同一モデルを編集。プリセットブラウザはヘッダーのプリセット名から開く独立ページ。2026-11-23 に POLYBRISK とシリーズ共通の外観へ全面改訂（D-028）。
 
 ### Phase 3 — 音色拡張と基本FX
 - 帯域制限Wavetable（triangle/saw/pulse）、TPT SVF（LP12/LP24/HP12/BP12＋Drive）、Unison（1〜8、detune、spread）、LFO×2（5波形、テンポ同期）、グローバルModEnv、Mod Matrix 8スロット。

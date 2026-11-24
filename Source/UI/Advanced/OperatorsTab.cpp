@@ -1,4 +1,5 @@
 #include "UI/Advanced/OperatorsTab.h"
+#include "Core/Templates.h"
 
 namespace ui
 {
@@ -12,6 +13,8 @@ static_assert (kOpEnvD == kOpEnvA + 1 && kOpEnvS == kOpEnvA + 2 && kOpEnvR == kO
 static_assert (pc::modEnvD == pc::modEnvA + 1 && pc::modEnvS == pc::modEnvA + 2 && pc::modEnvR == pc::modEnvA + 3, "Mod Envelope codes are consecutive");
 // Envelope graph geometry: each timed stage may take up to `kStage` of the width.
 constexpr float kStage = 0.27f, kHold = 0.17f, kMinStage = 0.04f;
+// Width : height of the two graphs. Fixed, so a curve looks the same at every window size.
+constexpr float kWaveAspect = 3.0f, kEnvAspect = 2.4f;
 float stageWidth (float norm, float w) { return (kMinStage + (1.0f - kMinStage) * norm) * w * kStage; }
 float stageNorm (float width, float w) { return (width / (w * kStage) - kMinStage) / (1.0f - kMinStage); }
 
@@ -182,96 +185,11 @@ void WaveView::paint (juce::Graphics& g)
     g.strokePath (p, juce::PathStrokeType (2.2f, juce::PathStrokeType::curved, juce::PathStrokeType::rounded));
 }
 
-// ================================================================================= OpCard
-OpCard::OpCard (Ctx& c, int opIndex) : ctx (c), op (opIndex)
-{
-    power.setTooltip ("Switch this operator on or off");
-    power.onClick = [this] {
-        const bool v = power.getToggleState();
-        if (! ctx.run ([=, this] (PatchController& pc) { return pc.setOperatorEnabled (op, v); }))
-            power.setToggleState (! v, juce::dontSendNotification);
-    };
-    addAndMakeVisible (power);
-    setTooltip ("Click to edit this operator below. Drag the bar to change its level.");
-}
-
-juce::Rectangle<int> OpCard::levelBar() const { return getLocalBounds().reduced (10, 9).removeFromBottom (9); }
-
-void OpCard::resized() { power.setBounds (getLocalBounds().reduced (7, 6).removeFromTop (20).removeFromRight (34)); }
-
-void OpCard::refresh (const Preset& p)
-{
-    const auto& e = p.data.sound.engine;
-    state = e.operators[(size_t) op];
-    feeds = feedsText (e, op);
-    power.setToggleState (state.enabled, juce::dontSendNotification);
-    repaint();
-}
-
-void OpCard::paint (juce::Graphics& g)
-{
-    const bool selected = ctx.selectedOp == op;
-    const bool carrier = state.carrierGain > 0.0f;
-    const juce::Colour role = state.enabled ? roleColour (state) : col::textDim;
-    const auto r = getLocalBounds().toFloat().reduced (1.0f);
-    g.setColour (selected ? col::panelHi : col::panel);
-    g.fillRoundedRectangle (r, 8.0f);
-    g.setColour (selected ? role : col::outline.withAlpha (0.8f));
-    g.drawRoundedRectangle (r.reduced (0.5f), 8.0f, selected ? 2.0f : 1.0f);
-
-    auto t = getLocalBounds().reduced (10, 7);
-    auto head = t.removeFromTop (18);
-    g.setColour (state.enabled ? col::text : col::textDim);
-    g.setFont (font (15.0f, true));
-    g.drawText ("OP " + juce::String (op + 1), head.removeFromLeft (44), juce::Justification::centredLeft);
-    g.setColour (role);
-    g.setFont (font (10.5f, true));
-    g.drawText (! state.enabled ? "OFF" : (carrier ? "CARRIER" : "MOD"), head.withTrimmedRight (38), juce::Justification::centredLeft);
-
-    auto bar = levelBar().toFloat();
-    t.removeFromBottom (12);
-    auto info = t.removeFromBottom (15);
-    g.setColour (state.enabled ? col::text : col::textDim);
-    g.setFont (font (12.5f, true));
-    g.drawText (state.pitchMode == PitchMode::Ratio ? "x " + juce::String (state.ratio, 2) : juce::String (state.fixedHz, 0) + " Hz", info, juce::Justification::centredLeft);
-    g.setColour (col::textDim);
-    g.setFont (font (11.0f));
-    if (state.enabled)
-        g.drawText (carrier ? (feeds.isEmpty() ? juce::String ("> OUT") : "> " + feeds + " + OUT") : (feeds.isEmpty() ? juce::String ("unused") : "> OP " + feeds),
-                    info, juce::Justification::centredRight);
-    if (t.getHeight() > 14)
-        EnvelopeView::drawEnvelope (g, t.toFloat().reduced (1.0f, 4.0f), state.env, role.withAlpha (state.enabled ? 1.0f : 0.5f), state.enabled, 1.6f);
-
-    const float n = toNorm (paramDesc (pc::op (op, kOpLevel)), state.level);
-    g.setColour (col::bg);
-    g.fillRoundedRectangle (bar, 3.0f);
-    g.setColour (role.withAlpha (state.enabled ? 0.95f : 0.4f));
-    g.fillRoundedRectangle (bar.withWidth (juce::jmax (3.0f, bar.getWidth() * n)), 3.0f);
-}
-
-void OpCard::mouseDown (const juce::MouseEvent& e)
-{
-    draggingLevel = levelBar().expanded (0, 6).contains (e.getPosition());
-    if (onSelect) onSelect();
-    if (draggingLevel) mouseDrag (e);
-}
-
-void OpCard::mouseDrag (const juce::MouseEvent& e)
-{
-    if (! draggingLevel) return;
-    const auto bar = levelBar();
-    const float n = juce::jlimit (0.0f, 1.0f, (float) (e.x - bar.getX()) / (float) juce::jmax (1, bar.getWidth()));
-    ctx.set (pc::op (op, kOpLevel), fromNorm (paramDesc (pc::op (op, kOpLevel)), n));
-}
-
-void OpCard::mouseUp (const juce::MouseEvent&)
-{
-    draggingLevel = false;
-}
-
 // ================================================================================= tab
 OperatorsTab::OperatorsTab (Ctx& c)
-    : ctx (c), envelope (c),
+    : ctx (c), graph (c), index (c, -1, "FM Amount"),
+      sideRatio (c, pc::op (0, kOpRatio), "Ratio"), sideLevel (c, pc::op (0, kOpLevel), "Level"),
+      sideOutput (c, pc::op (0, kOpCarrierGain), "Output"), sideFeedback (c, pc::op (0, kOpFeedback), "Feedback"), envelope (c),
       waveform (c, "Waveform", labels::list (labels::waveform),
                 [this] (const Preset& p) { return (int) selectedOperator (p, ctx).waveform; },
                 [this] (Preset& p, int v) { selectedOperator (p, ctx).waveform = (Waveform) v; }),
@@ -291,27 +209,59 @@ OperatorsTab::OperatorsTab (Ctx& c)
       output (c, pc::op (0, kOpCarrierGain), "Output"), velLevel (c, pc::op (0, kOpVelToLevel), "Vel > Level"),
       velFm (c, pc::op (0, kOpVelToIndex), "Vel > Tone"), keyTrack (c, pc::op (0, kOpKeyTracking), "Key Track")
 {
-    for (int i = 0; i < kNumOps; ++i)
+    graph.onSelection = [this] { select (ctx.selectedOp); };
+    graph.showLegend = false; // drawn in the panel header
+    expand.setTooltip ("Give the whole page to the routing (bigger boxes, all 18 templates). Click again to return.");
+    expand.onClick = [this] { setExpanded (! expanded); };
+    strip.onChoose = [this] (int i) {
+        if (ctx.run ([=] (PatchController& pc) { return pc.applyAlgorithmTemplate (i); }))
+            ctx.say (juce::String ("Routing: ") + algorithmTemplate (i).name + ". Macros 1-4 were re-assigned for the new routing.");
+    };
+    templates.setTooltip ("Choose one of the 18 routing templates. The operators keep their tone settings.");
+    templates.onClick = [this] { showTemplates(); };
+    styleLabel (algoName, 13.0f, col::accent);
+    algoName.setFont (font (13.0f, true));
+    for (auto* l : { &opTitle, &edgeTitle })
     {
-        auto* card = cards.add (new OpCard (ctx, i));
-        card->onSelect = [this, i] { select (i); };
-        addAndMakeVisible (card);
+        styleLabel (*l, 14.0f, col::text);
+        l->setFont (font (14.0f, true));
     }
-    for (auto* comp : std::initializer_list<juce::Component*> { &wave, &envelope, &waveform, &pitchMode, &keySync, &snap, &role,
+    opEnabled.setTooltip ("Switch this operator on or off");
+    opEnabled.onClick = [this] {
+        const bool v = opEnabled.getToggleState();
+        const int op = ctx.selectedOp;
+        if (! ctx.run ([=] (PatchController& pc) { return pc.setOperatorEnabled (op, v); })) refresh (ctx.snapshot());
+    };
+    index.setAccent (col::accentB);
+    removeEdge.setTooltip ("Remove the selected connection");
+    removeEdge.onClick = [this] {
+        if (graph.selectedEdgeFrom < 0) return;
+        const int from = graph.selectedEdgeFrom, to = graph.selectedEdgeTo;
+        ctx.run ([=] (PatchController& pc) { return pc.removeEdge (from, to); });
+    };
+    resetMacros.setTooltip ("Point Brightness / Attack / Release / Character (macros 1-4) at the current routing. "
+                            "Choosing a template does this by itself; use it after connecting, removing or switching operators by hand.");
+    resetMacros.onClick = [this] { fitMacros(); };
+    for (auto* comp : std::initializer_list<juce::Component*> { &graph, &strip, &expand, &templates, &algoName, &opTitle, &opEnabled, &edgeTitle, &index, &sideRatio, &sideLevel, &sideOutput, &sideFeedback, &removeEdge, &resetMacros, &wave, &envelope, &waveform, &pitchMode, &keySync, &snap, &role,
                                                                  &ratio, &detune, &feedback, &phase, &attack, &decay, &sustain, &release,
                                                                  &level, &output, &velLevel, &velFm, &keyTrack })
         addAndMakeVisible (comp);
-    level.large = output.large = true;
     snap.setToggleState (ctx.snapRatios, juce::dontSendNotification);
     snap.setTooltip ("When on, the Ratio knob lands on multiples of 0.5 (1/8 steps below 1). Type a value for anything else.");
     snap.onClick = [this] { ctx.snapRatios = snap.getToggleState(); };
     styleLabel (role, 12.5f, col::textDim, juce::Justification::topLeft);
+    role.setJustificationType (juce::Justification::topLeft);
     role.setMinimumHorizontalScale (0.85f);
 }
 
 void OperatorsTab::paint (juce::Graphics& g)
 {
     const juce::String n = "OP " + juce::String (ctx.selectedOp + 1);
+    paintPanel (g, routingArea, "Routing");
+    GraphView::drawLegend (g, routingArea.withTrimmedLeft (118).removeFromTop (34).withTrimmedTop (10).withHeight (16).withWidth (400));
+    g.setColour (col::outline.withAlpha (0.7f));
+    g.drawVerticalLine (sideArea.getX() - 7, (float) sideArea.getY() + 4.0f, (float) sideArea.getBottom() - 4.0f);
+    if (expanded) return;
     paintPanel (g, oscArea, n + "  Oscillator");
     paintPanel (g, envArea, n + "  Envelope");
     paintPanel (g, levelArea, n + "  Level & Response");
@@ -320,43 +270,175 @@ void OperatorsTab::paint (juce::Graphics& g)
 void OperatorsTab::resized()
 {
     auto r = getLocalBounds().reduced (10, 8);
-    auto top = r.removeFromTop (juce::jlimit (92, 128, r.getHeight() * 24 / 100));
-    const int cw = (top.getWidth() + 6) / kNumOps;
-    for (auto* card : cards) card->setBounds (top.removeFromLeft (cw).withTrimmedRight (6));
-    r.removeFromTop (8);
-    oscArea = r.removeFromLeft (r.getWidth() * 35 / 100);
-    r.removeFromLeft (8);
-    envArea = r.removeFromLeft (r.getWidth() * 55 / 100);
-    r.removeFromLeft (8);
-    levelArea = r;
-
     const auto inner = [] (juce::Rectangle<int> a) { return panelContent (a, 12, 10, 2); };
+
+    // Bottom row: oscillator | envelope | level & response, exactly as tall as their contents.
+    // The graphs keep their shape at every window size (kWaveAspect / kEnvAspect), so this row
+    // has a natural height; whatever is left above it goes to the routing diagram, which looks
+    // right at any size.
+    const int colW = (r.getWidth() - 16) / 3;
+    const int innerW = inner (juce::Rectangle<int> (0, 0, colW, 400)).getWidth();
+    const int chrome = 400 - inner (juce::Rectangle<int> (0, 0, colW, 400)).getHeight(); // title + padding of a panel
+    const int waveH = juce::roundToInt ((float) innerW / kWaveAspect);
+    const int fixedOsc = waveH + 8 + 26 + 6 + 4 + 22; // graph, combos, toggles and the gaps (knob row comes on top)
+    int knobH = 104;
+    const int minRouting = 200;
+    while (knobH > 66 && r.getHeight() - (fixedOsc + knobH + chrome) - 8 < minRouting) knobH -= 2;
+    // still too little room for the diagram: the graphs give way (keeping their shape)
+    const int rowH = juce::jmax (chrome + 150, juce::jmin (fixedOsc + knobH + chrome, r.getHeight() - 8 - minRouting));
+    auto bottom = expanded ? juce::Rectangle<int>() : r.removeFromBottom (rowH);
+    if (! expanded) r.removeFromBottom (8);
+    routingArea = r;
+    for (auto* c : std::initializer_list<juce::Component*> { &wave, &envelope, &waveform, &pitchMode, &keySync, &snap, &ratio, &detune, &feedback, &phase,
+                                                             &attack, &decay, &sustain, &release, &level, &output, &velLevel, &velFm, &keyTrack })
+        c->setVisible (! expanded);
+    strip.setVisible (expanded);
+    for (auto* k : { &sideRatio, &sideLevel, &sideOutput, &sideFeedback }) k->setVisible (expanded);
+    templates.setVisible (! expanded);
+    expand.setButtonText (expanded ? "Collapse" : "Expand");
+    graph.maxBox = expanded ? 96.0f : 76.0f;
+    oscArea = bottom.removeFromLeft (colW);
+    bottom.removeFromLeft (8);
+    envArea = bottom.removeFromLeft (colW);
+    bottom.removeFromLeft (8);
+    levelArea = bottom;
+
+    // Routing band: the editable diagram, and beside it the selected operator / connection.
+    auto top = inner (routingArea);
+    {
+        auto head = routingArea.reduced (12, 0).removeFromTop (34).withTrimmedTop (6);
+        expand.setBounds (head.removeFromRight (96).withSizeKeepingCentre (96, 24));
+        head.removeFromRight (6);
+        if (! expanded) { templates.setBounds (head.removeFromRight (116).withSizeKeepingCentre (116, 24)); head.removeFromRight (10); }
+        algoName.setBounds (head.removeFromRight (juce::jmin (260, head.getWidth() / 3)));
+    }
+    if (expanded)
+    {
+        strip.setBounds (top.removeFromTop (juce::jlimit (64, 92, top.getHeight() * 16 / 100)));
+        top.removeFromTop (8);
+    }
+    sideArea = top.removeFromRight (juce::jlimit (220, 300, top.getWidth() * 24 / 100));
+    top.removeFromRight (14);
+    graph.setBounds (top);
+    auto side = sideArea;
+    auto row = side.removeFromTop (24);
+    opEnabled.setBounds (row.removeFromRight (64));
+    opTitle.setBounds (row);
+    side.removeFromTop (2);
+    resetMacros.setBounds (side.removeFromBottom (24));
+    side.removeFromBottom (6);
+    const int knobRow = juce::jlimit (0, 78, side.getHeight() - 24 - 26);
+    auto edgeRow = side.removeFromBottom (knobRow);
+    index.setBounds (edgeRow.removeFromLeft (juce::jmin (96, edgeRow.getWidth() / 2)));
+    removeEdge.setBounds (edgeRow.withSizeKeepingCentre (juce::jmin (edgeRow.getWidth() - 10, 110), 24));
+    index.setVisible (index.isVisible() && knobRow >= 56);
+    edgeTitle.setBounds (side.removeFromBottom (22));
+    side.removeFromBottom (2);
+    if (expanded)
+    {
+        // what the selected operator does in the routing: its description, then 2 x 2 knobs right under it
+        const int knobsH = juce::jmin (side.getHeight() - 40, 2 * 100);
+        role.setBounds (side.removeFromTop (juce::jmin (80, side.getHeight() - juce::jmax (0, knobsH) - 8)));
+        side.removeFromTop (8);
+        auto knobs = side.removeFromTop (juce::jmax (0, knobsH));
+        auto upper = knobs.removeFromTop (knobs.getHeight() / 2);
+        layoutKnobRow (upper.withTrimmedBottom (4), { &sideRatio, &sideLevel }, 100);
+        layoutKnobRow (knobs.withTrimmedTop (4), { &sideOutput, &sideFeedback }, 100);
+    }
+    else role.setBounds (side);
+    side = role.getBounds();
+    role.setVisible (side.getHeight() >= 30);
+
+    // Takes the graph's strip off the top of `area` and returns the graph bounds inside it.
+    const auto takeGraph = [] (juce::Rectangle<int>& area, float aspect, int controls) {
+        const int h = juce::jmax (30, juce::jmin (juce::roundToInt ((float) area.getWidth() / aspect), area.getHeight() - controls));
+        const auto strip = area.removeFromTop (h);
+        return strip.withSizeKeepingCentre (juce::jmin (strip.getWidth(), juce::roundToInt ((float) h * aspect)), h);
+    };
     auto o = inner (oscArea);
-    const int knobH = juce::jlimit (70, 96, o.getHeight() * 30 / 100);
+    wave.setBounds (takeGraph (o, kWaveAspect, 8 + 26 + 6 + 66 + 4 + 22));
+    o.removeFromTop (8);
+    auto combos = o.removeFromTop (26);
+    waveform.setBounds (combos.removeFromLeft (combos.getWidth() * 40 / 100));
+    combos.removeFromLeft (6);
+    pitchMode.setBounds (combos);
+    o.removeFromTop (6);
     auto toggles = o.removeFromBottom (22);
     keySync.setBounds (toggles.removeFromLeft (toggles.getWidth() / 2));
     snap.setBounds (toggles);
     o.removeFromBottom (4);
-    layoutKnobRow (o.removeFromBottom (knobH), { &ratio, &detune, &feedback, &phase }, 96);
-    o.removeFromBottom (6);
-    auto combos = o.removeFromBottom (26);
-    waveform.setBounds (combos.removeFromLeft (combos.getWidth() * 40 / 100));
-    combos.removeFromLeft (6);
-    pitchMode.setBounds (combos);
-    o.removeFromBottom (6);
-    wave.setBounds (o);
+    layoutKnobRow (o, { &ratio, &detune, &feedback, &phase }, 100);
 
     auto e = inner (envArea);
-    layoutKnobRow (e.removeFromBottom (knobH), { &attack, &decay, &sustain, &release }, 96);
-    e.removeFromBottom (6);
-    envelope.setBounds (e);
+    envelope.setBounds (takeGraph (e, kEnvAspect, 8 + 66));
+    e.removeFromTop (8);
+    layoutKnobRow (e, { &attack, &decay, &sustain, &release }, 100);
 
     auto l = inner (levelArea);
-    role.setBounds (l.removeFromTop (juce::jmin (64, l.getHeight() / 4)));
-    l.removeFromTop (4);
-    layoutKnobRow (l.removeFromBottom (knobH), { &velLevel, &velFm, &keyTrack }, 92);
-    l.removeFromBottom (6);
-    layoutKnobRow (l, { &level, &output }, 132);
+    layoutKnobRow (l.removeFromTop ((l.getHeight() - 6) / 2), { &level, &output }, 120);
+    l.removeFromTop (6);
+    layoutKnobRow (l, { &velLevel, &velFm, &keyTrack }, 100);
+}
+
+// Macros 1-4 are re-assigned from the routing (assignCommonMacros). Whatever they point at now is
+// replaced, including targets set by hand in the Macro Editor, so that is confirmed first.
+void OperatorsTab::fitMacros()
+{
+    const Preset now = ctx.snapshot();
+    Preset fitted = now;
+    assignCommonMacros (fitted.data);
+    const auto same = [] (const Macro& a, const Macro& b) {
+        if (a.numMappings != b.numMappings) return false;
+        for (int k = 0; k < a.numMappings; ++k)
+        {
+            const auto& x = a.mappings[(size_t) k];
+            const auto& y = b.mappings[(size_t) k];
+            if (x.target != y.target || x.amount != y.amount || x.min != y.min || x.max != y.max || x.curve != y.curve || x.polarity != y.polarity) return false;
+        }
+        return true;
+    };
+    bool changes = false;
+    for (int i = 0; i < 4; ++i) changes = changes || ! same (now.data.sound.macros[(size_t) i], fitted.data.sound.macros[(size_t) i]);
+    if (! changes) { ctx.say ("Macros 1-4 already fit the current routing."); return; }
+
+    juce::String names;
+    for (int i = 0; i < 4; ++i) names << (i ? ", " : "") << utf8 (now.meta.macroNames[(size_t) i]);
+    juce::AlertWindow::showAsync (juce::MessageBoxOptions()
+                                      .withIconType (juce::MessageBoxIconType::QuestionIcon)
+                                      .withTitle ("Fit macros 1-4 to the routing?")
+                                      .withMessage ("What " + names + " control will be re-assigned for the current routing.\n"
+                                                    "Targets you set for these four in the Macro Editor are replaced. Macros 5-8 and the knob positions stay as they are.")
+                                      .withButton ("Fit", 1)
+                                      .withButton ("Cancel", 0)
+                                      .withAssociatedComponent (this),
+                                  [safe = juce::Component::SafePointer<OperatorsTab> (this)] (int r) {
+                                      if (safe == nullptr || r != 1) return;
+                                      if (safe->ctx.edit ([] (Preset& p) { assignCommonMacros (p.data); }))
+                                          safe->ctx.say ("Macros 1-4 now follow the current routing.");
+                                  });
+}
+
+void OperatorsTab::setExpanded (bool e)
+{
+    expanded = e;
+    resized();
+    refresh (ctx.snapshot());
+}
+
+void OperatorsTab::showTemplates()
+{
+    auto gallery = std::make_unique<AlgoGallery>();
+    gallery->columns = 6;
+    gallery->setSize (6 * 92, 3 * 84);
+    bool renumbered = false;
+    gallery->current = matchAlgorithmShape (ctx.snapshot().data.sound.engine, &renumbered);
+    auto* g = gallery.get();
+    gallery->onChoose = [this, g] (int i) {
+        if (ctx.run ([=] (PatchController& pc) { return pc.applyAlgorithmTemplate (i); }))
+            ctx.say (juce::String ("Routing: ") + algorithmTemplate (i).name + ". Macros 1-4 were re-assigned for the new routing.");
+        if (auto* box = g->findParentComponentOfClass<juce::CallOutBox>()) box->dismiss();
+    };
+    juce::CallOutBox::launchAsynchronously (std::move (gallery), templates.getScreenBounds(), nullptr);
 }
 
 void OperatorsTab::select (int op)
@@ -367,8 +449,8 @@ void OperatorsTab::select (int op)
 
 void OperatorsTab::refresh (const Preset& p)
 {
-    const int op = juce::jlimit (0, kNumOps - 1, ctx.selectedOp);
     const auto& e = p.data.sound.engine;
+    const int op = juce::jlimit (0, kNumOps - 1, ctx.selectedOp);
     const auto& o = e.operators[(size_t) op];
     const int ratioCode = pc::op (op, o.pitchMode == PitchMode::Ratio ? kOpRatio : kOpFixedHz);
     if (shown != op || ratio.getCode() != ratioCode)
@@ -389,7 +471,45 @@ void OperatorsTab::refresh (const Preset& p)
         velFm.setCode (pc::op (op, kOpVelToIndex));
         keyTrack.setCode (pc::op (op, kOpKeyTracking));
     }
-    for (auto* card : cards) card->refresh (p);
+    graph.refresh (p);
+    {
+        bool renumbered = false;
+        const int match = matchAlgorithmShape (e, &renumbered);
+        algoName.setText (match < 0 ? juce::String ("Custom routing") : "Algorithm " + juce::String (match + 1) + "  " + algorithmTemplate (match).name,
+                          juce::dontSendNotification);
+        algoName.setColour (juce::Label::textColourId, match < 0 ? col::warm : col::accent);
+        algoName.setJustificationType (juce::Justification::centredRight);
+        if (strip.current != match) { strip.current = match; strip.repaint(); }
+        opTitle.setText ("OP " + juce::String (op + 1) + (o.enabled ? (o.carrierGain > 0.0f ? "  carrier" : "  modulator") : "  off"), juce::dontSendNotification);
+        opEnabled.setToggleState (o.enabled, juce::dontSendNotification);
+        const bool edge = graph.selectedEdgeFrom >= 0;
+        const int edgeCode = edge ? pc::edge (graph.selectedEdgeFrom, graph.selectedEdgeTo) : -1;
+        if (index.getCode() != edgeCode) index.setCode (edgeCode);
+        index.setVisible (edge && index.getHeight() >= 56);
+        removeEdge.setVisible (edge);
+        edgeTitle.setText (edge ? "Connection " + juce::String (graph.selectedEdgeFrom + 1) + " > " + juce::String (graph.selectedEdgeTo + 1)
+                                : juce::String ("Drag between boxes to connect. Click a line to edit it."), juce::dontSendNotification);
+        edgeTitle.setColour (juce::Label::textColourId, edge ? col::text : col::textDim);
+        edgeTitle.setFont (font (edge ? 14.0f : 12.0f, edge));
+        index.refresh();
+        const int ratioCode = pc::op (op, o.pitchMode == PitchMode::Ratio ? kOpRatio : kOpFixedHz);
+        if (sideRatio.getCode() != ratioCode)
+        {
+            sideRatio.setCode (ratioCode);
+            sideRatio.setCaption (o.pitchMode == PitchMode::Ratio ? "Ratio" : "Fixed Hz");
+        }
+        if (sideLevel.getCode() != pc::op (op, kOpLevel))
+        {
+            sideLevel.setCode (pc::op (op, kOpLevel));
+            sideOutput.setCode (pc::op (op, kOpCarrierGain));
+            sideFeedback.setCode (pc::op (op, kOpFeedback));
+        }
+        for (auto* k : { &sideRatio, &sideLevel, &sideOutput, &sideFeedback })
+        {
+            k->refresh();
+            k->setAlpha (o.enabled ? 1.0f : 0.45f);
+        }
+    }
     for (auto* k : { &ratio, &detune, &feedback, &phase, &attack, &decay, &sustain, &release, &level, &output, &velLevel, &velFm, &keyTrack })
     {
         k->refresh();
@@ -404,13 +524,13 @@ void OperatorsTab::refresh (const Preset& p)
 
     const juce::String feeds = feedsText (e, op);
     juce::String t;
-    if (! o.enabled) t = "This operator is switched off. Turn it on with the switch on its card.";
+    if (! o.enabled) t = "Switched off: not part of the sound. Turn it on with the switch above.";
     else if (o.carrierGain > 0.0f)
         t = "CARRIER: you hear this operator directly. Level and Output set how loud it is; its envelope shapes the volume."
             + (feeds.isNotEmpty() ? " It also modulates OP " + feeds + "." : juce::String());
     else if (feeds.isNotEmpty())
         t = "MODULATOR: not heard by itself. It colours OP " + feeds + ". Level = how much brightness it adds; its envelope shapes how the tone changes over time; Ratio sets the character.";
-    else t = "This operator is on but not connected to anything. Connect it in the Algorithm tab or raise Output to hear it.";
+    else t = "On but not connected to anything. Drag from it to another box, or raise Output to hear it.";
     role.setText (t, juce::dontSendNotification);
     role.setColour (juce::Label::textColourId, o.enabled ? col::text.withAlpha (0.85f) : col::textDim);
     repaint();

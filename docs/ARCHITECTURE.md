@@ -120,7 +120,7 @@ MIDI + UIノート ─▶ Performer（Chord → Arp → サンプルオフセッ
 ```text
 Header        ロゴ, プリセット名/カテゴリ/編集マーク, Prev/Next, Fav, Save, File, Undo/Redo, Simple/Advanced, CPU/Voices, 出力メーター
 SimplePage    BrowserPanel(Choose) | MacroPanel(Shape) / ExplorerPanel(Explore) + QuickFxPanel(Finish)
-AdvancedPage  Operators | Algorithm(GraphView) | Modulation(LFO, ModEnv, Matrix, Macro Editor) | FX | Performance
+AdvancedPage  Operators(GraphView + 選択オペレーター, Expand で結線図を全面) | Modulation(LFO, ModEnv, Matrix, Macro Editor) | FX | Performance
 ```
 
 - `ModelKnob` はパラメーターコードに、`HostKnob` / `HostToggle` はAPVTSにバインド。`BoundSlider / BoundCombo / BoundToggle` は任意フィールドに getter/setter でバインド。

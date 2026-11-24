@@ -172,7 +172,7 @@ voice[n] = (Σ_i carrierGain_i * output_i[n]) * normalization
 
 ### 4.4 アルゴリズムテンプレートとAdvanced接続UI
 
-- 16個以上（実装は18個）の初期接続テンプレートを提供。Advanced > Algorithm ではサムネイル一覧と DX 風の図（キャリア下段・OUT バー・モジュレーター上段）で表示し、現在の音がどのテンプレートに当たるかを示す（聞こえないオペレーターと番号の違いは無視して判定）。例: 1→2（2がキャリア）、1→2→3（3がキャリア）、独立2キャリア、パラレル3キャリア、1→(2,3)、(1,2)→3、モジュレーター共有、自己フィードバックを含む構成。
+- 16個以上（実装は18個）の初期接続テンプレートを提供。Advanced > Operators の結線図（`Templates...` または `Expand` でサムネイル一覧）と DX 風の図（キャリア下段・OUT バー・モジュレーター上段）で表示し、現在の音がどのテンプレートに当たるかを示す（聞こえないオペレーターと番号の違いは無視して判定）。例: 1→2（2がキャリア）、1→2→3（3がキャリア）、独立2キャリア、パラレル3キャリア、1→(2,3)、(1,2)→3、モジュレーター共有、自己フィードバックを含む構成。
 - ユーザーはAdvancedでノード（6オペレーター）と矢印をドラッグして作成、接続量/キャリアゲイン/自己フィードバックを個別編集できる。
 - 切断・再接続はクリックでプレビューが反映されるが、コンパイルしたグラフの安全な交換は§3.1に従う。作成途中の不正接続は音声へ反映しない。
 - DX7パッチ完全互換、従来の32アルゴリズムの完全再現はv1では保証しない。
@@ -252,7 +252,7 @@ voice[n] = (Σ_i carrierGain_i * output_i[n]) * normalization
 
 ### 6.4 Advanced
 
-タブ: `Operators`（6オペレーター、各ADSR/波形/比率）/ `Algorithm`（自由接続グラフ）/ `Modulation`（LFO/Matrix）/ `FX`（チェーン）/ `Performance`（演奏機能）。Simple⇄Advancedを切替えても**同じパッチ状態**を編集する。Simple編集結果はAdvancedにも反映、Advanced編集後もSimpleマクロが有効であること。
+タブ: `Operators`（自由接続グラフと、6オペレーターの各ADSR/波形/比率）/ `Modulation`（LFO/Matrix）/ `FX`（チェーン）/ `Performance`（演奏機能）。Simple⇄Advancedを切替えても**同じパッチ状態**を編集する。Simple編集結果はAdvancedにも反映、Advanced編集後もSimpleマクロが有効であること。
 
 ## 7. モジュレーション
 
@@ -449,7 +449,7 @@ tranceGate.enabled  [0, 1]
 
 **Simple（v1.1）:** MACROS（共通4）＋CHARACTER（カテゴリ別4）→ FX Quick Controls / Trance Gate / Arpeggiator → Variations（Sound Explorer）。詳細機能はAdvancedに隠すが、Simpleで初期音色を選び直してもゼロから音を作れる。
 
-**Advanced（v1.1）:** `Operators / Algorithm / Filter & Mod / FX / Rhythm / Performance` タブ。Operators は6枚のカードと、選択した1オペレーターの波形・エンベロープのグラフ編集。Filter & Mod の Mod Envelope も同じグラフで編集できる。FX の順番はドラッグ＆ドロップで並べ替える。ルーティング図、操作ノブ、値直接入力、右クリック初期化、双方向マクロ反映。
+**Advanced（v1.2）:** `Operators / Filter & Mod / FX / Rhythm / Performance` タブ。Operators は上段が編集できる結線図（ドラッグで接続、線をクリックで深さ、オペレーターのオン/オフ、`Templates...` で18種から選択）、下段が選択した1オペレーターの波形・エンベロープ・レベルのグラフ編集。`Expand` で結線図をタブ全体に広げ、テンプレート一覧と選択中オペレーターの Ratio / Level / Output / Feedback を並べる。Filter & Mod の Mod Envelope も同じグラフで編集できる。FX の順番はドラッグ＆ドロップで並べ替える。ルーティング図、操作ノブ、値直接入力、右クリック初期化、双方向マクロ反映。
 
 ### 14.2 画面品質
 
@@ -666,6 +666,7 @@ FMLUME/
 
 | 項目 | 変更 | 記録 |
 |---|---|---|
+| Advanced | Algorithm タブを Operators タブに統合。結線図を常時表示し、`Expand` で拡大 | D-057 |
 | Sound Morph | 機能を削除（§9）。ホストパラメーター `morph.amount` / `morph.enabled` を廃止、プリセット形式は schemaVersion 2 | D-055 |
 | ファクトリー音色 | 152 音色。試聴に基づく作り直し、出力の DC カット、マクロの音量ガード | D-051〜D-054 |
 

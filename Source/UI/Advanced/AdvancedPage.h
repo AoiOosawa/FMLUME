@@ -1,4 +1,4 @@
-// The Advanced view: the tab strip with the six editing pages.
+// The Advanced view: the tab strip with the five editing pages.
 #pragma once
 #include "UI/Advanced/AdvancedTabs.h"
 
@@ -15,7 +15,6 @@ public:
 private:
     Ctx& ctx;
     OperatorsTab operators;
-    AlgorithmTab algorithm;
     ModulationTab modulation;
     FxTab fx;
     RhythmTab rhythm;

@@ -83,7 +83,7 @@ auval -v aumu Fmld Chbw   # 開発用。製品版は Fmlu
 2. **MACROS / CHARACTER** — `Brightness / Attack / Release / Character` とカテゴリ別の4マクロ。50%が元の音。
 3. **FX / TRANCE GATE / ARPEGGIATOR** — `Warmth / Width / Space / Echo`、ゲートのパターン（POLYBRISK と同じパターン集）、アルペジオのモードとレート。
 4. **VARIATIONS** — `Generate` で8つのバリエーションを作り、タイル（A〜H）をクリックして試聴、気に入ったら `Keep this sound`（元の音と置き換わります）。`More like this` でさらに派生、`Original` で元の音に戻ります。
-5. **ADVANCED** — Operators（オペレーターカード＋波形・エンベロープのグラフ編集）/ Algorithm（テンプレート一覧と DX 風ダイアグラム、ドラッグで接続）/ Filter & Mod（Mod Envelope もグラフをドラッグして編集）/ FX / Rhythm / Performance。
+5. **ADVANCED** — Operators（上段が結線図。ドラッグで接続、箱をクリックしてオペレーターを選び、下段で波形・エンベロープ・レベルを編集。`Expand` で結線図を全面に広げ、18 種のテンプレートを並べる）/ Filter & Mod（Mod Envelope もグラフをドラッグして編集）/ FX / Rhythm / Performance。
 
 ロゴとアイコンは `assets/branding/`（`python3 tools/branding/make_assets.py` で SVG を再生成、`fmlume-uisnap --icon` で PNG 化）。
 

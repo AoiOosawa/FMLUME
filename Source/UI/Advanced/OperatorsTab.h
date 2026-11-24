@@ -1,32 +1,10 @@
 #pragma once
 #include "UI/Common/Bindings.h"
 #include "UI/Advanced/AlgoDiagram.h"
+#include "UI/Advanced/AlgorithmTab.h"
 
 namespace ui
 {
-// Compact overview of one operator: click to select, drag the bar to set its level.
-class OpCard final : public juce::Component, public juce::SettableTooltipClient
-{
-public:
-    OpCard (Ctx&, int opIndex);
-    void paint (juce::Graphics&) override;
-    void resized() override;
-    void mouseDown (const juce::MouseEvent&) override;
-    void mouseDrag (const juce::MouseEvent&) override;
-    void mouseUp (const juce::MouseEvent&) override;
-    void refresh (const fmlume::Preset&);
-    std::function<void()> onSelect;
-
-private:
-    juce::Rectangle<int> levelBar() const;
-    Ctx& ctx;
-    int op;
-    fmlume::OperatorState state;
-    juce::String feeds;
-    juce::ToggleButton power;
-    bool draggingLevel = false;
-};
-
 // Interactive ADSR graph: the envelope of the selected operator, or the Mod Envelope.
 class EnvelopeView final : public juce::Component, public juce::SettableTooltipClient
 {
@@ -74,8 +52,18 @@ public:
 
 private:
     void select (int op);
+    void showTemplates();
+    void setExpanded (bool);
+    void fitMacros();
     Ctx& ctx;
-    juce::OwnedArray<OpCard> cards;
+    GraphView graph;
+    AlgoGallery strip;   // the 18 templates in a row: shown while the routing is expanded
+    bool expanded = false;
+    juce::Label algoName, opTitle, edgeTitle;
+    juce::ToggleButton opEnabled { "On" };
+    ModelKnob index;
+    ModelKnob sideRatio, sideLevel, sideOutput, sideFeedback; // the selected operator, while the routing is expanded
+    juce::TextButton templates { "Templates..." }, expand { "Expand" }, removeEdge { "Remove" }, resetMacros { "Fit macros 1-4 to routing" };
     WaveView wave;
     EnvelopeView envelope;
     BoundCombo waveform, pitchMode;
@@ -83,7 +71,7 @@ private:
     juce::ToggleButton snap { "Snap ratio" };
     ModelKnob ratio, detune, feedback, phase, attack, decay, sustain, release, level, output, velLevel, velFm, keyTrack;
     juce::Label role;
-    juce::Rectangle<int> oscArea, envArea, levelArea;
+    juce::Rectangle<int> routingArea, sideArea, oscArea, envArea, levelArea;
     int shown = -1;
 };
 } // namespace ui

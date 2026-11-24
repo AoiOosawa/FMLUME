@@ -92,7 +92,7 @@ struct SnapshotApp final : public juce::JUCEApplication
             pump(); walkAll();                                   // browser
             clickButton (*ed, "Close");
             clickButton (*ed, "ADVANCED");
-            for (int i = 0; i < 6; ++i)
+            for (int i = 0; i < 5; ++i)
             {
                 if (auto* t = findOf<juce::TabbedComponent> (*ed)) t->setCurrentTabIndex (i);
                 pump(); walkAll();                               // every Advanced tab
@@ -176,13 +176,20 @@ struct SnapshotApp final : public juce::JUCEApplication
         clickButton (*editor, "Close");
         clickButton (*editor, "ADVANCED");
         pump();
-        static const char* const tabs[] = { "Operators", "Algorithm", "FilterMod", "FX", "Rhythm", "Performance" };
-        for (int i = 0; i < 6; ++i)
+        static const char* const tabs[] = { "Operators", "FilterMod", "FX", "Rhythm", "Performance" };
+        for (int i = 0; i < 5; ++i)
         {
             if (auto* t = findOf<juce::TabbedComponent> (*editor)) t->setCurrentTabIndex (i);
             pump();
             save (*editor, dir.getChildFile (juce::String ("advanced_") + tabs[i] + ".png"));
-            if (i == 4)
+            if (i == 0)
+            {
+                clickButton (*editor, "Expand");
+                pump();
+                save (*editor, dir.getChildFile ("advanced_Operators_expanded.png"));
+                clickButton (*editor, "Collapse");
+            }
+            if (juce::String (tabs[i]) == "Rhythm")
             {
                 // a stereo factory pattern with the gate switched on
                 if (auto* box = findOf<ui::GatePatternBox> (*editor))
@@ -197,23 +204,41 @@ struct SnapshotApp final : public juce::JUCEApplication
             }
         }
         // other presets: is the current algorithm recognisable?
-        if (auto* t = findOf<juce::TabbedComponent> (*editor)) t->setCurrentTabIndex (1);
+        if (auto* t = findOf<juce::TabbedComponent> (*editor)) t->setCurrentTabIndex (0);
         for (int i = 0; i < 3; ++i)
         {
             for (int k = 0; k < 13; ++k) clickButton (*editor, ">");
             pump();
             save (*editor, dir.getChildFile ("algorithm_preset_" + juce::String (i) + ".png"));
         }
+        // A wide routing with feedback on a top-row operator: the loop must stay inside the diagram.
+        for (int t : { 14, 15, 17 })
+        {
+            processor->withModel ([t] (fmlume::PatchController& pc) {
+                pc.applyAlgorithmTemplate (t);
+                for (int k = 0; k < fmlume::kNumOps; ++k)
+                    if (pc.data().sound.engine.operators[(size_t) k].enabled && pc.data().sound.engine.operators[(size_t) k].carrierGain <= 0.0f)
+                        pc.setParam (fmlume::pc::op (k, fmlume::kOpFeedback), 0.8f);
+                return true;
+            });
+            if (auto* tc = findOf<juce::TabbedComponent> (*editor)) tc->setCurrentTabIndex (0);
+            pump();
+            save (*editor, dir.getChildFile ("feedback_" + juce::String (t + 1) + ".png"));
+        }
         clickButton (*editor, "SIMPLE");
         editor->setSize (960, 620);
         pump();
         save (*editor, dir.getChildFile ("simple_min_size.png"));
         clickButton (*editor, "ADVANCED");
-        for (int i = 0; i < 2; ++i)
+        for (int i = 0; i < 1; ++i)
         {
             if (auto* t = findOf<juce::TabbedComponent> (*editor)) t->setCurrentTabIndex (i);
             pump();
             save (*editor, dir.getChildFile (juce::String ("advanced_min_") + tabs[i] + ".png"));
+            clickButton (*editor, "Expand");
+            pump();
+            save (*editor, dir.getChildFile ("advanced_min_Operators_expanded.png"));
+            clickButton (*editor, "Collapse");
         }
         editor.reset();
         processor.reset();
