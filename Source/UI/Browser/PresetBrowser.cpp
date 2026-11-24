@@ -46,7 +46,7 @@ PresetBrowser::PresetBrowser (Ctx& c) : ctx (c)
     };
     saveAs.setTooltip ("Save the current sound as a user preset");
     saveAs.onClick = [this] { if (onSaveAs) onSaveAs(); };
-    import.setTooltip ("Open a .fmlume file");
+    import.setTooltip ("Add a .fmlume file to your user presets and load it");
     import.onClick = [this] { if (onImport) onImport(); };
     exportBtn.setTooltip ("Write the current sound to a .fmlume file");
     exportBtn.onClick = [this] { if (onExport) onExport(); };

@@ -357,6 +357,60 @@ FM_TEST ("integration", "PresetManager: save, rescan, search, favourites, import
         CHECK (PresetManager::importFrom (ext, imp, &err));
         CHECK (imp.meta.category == Category::SFX);
         CHECK (! PresetManager::importFrom (dir + "/does-not-exist.fmlume", imp, &err));
+
+        // Import as the browser does it: an edited export of a factory preset becomes a user preset
+        // of its own and never stands in for the factory preset it came from (D-056).
+        {
+            const std::string outside = (fs::temp_directory_path() / ("fmlume-export-" + makePatchId() + ".fmlume")).string();
+            Preset factoryBass;
+            const int bassIndex = pm.search ("", (int) Category::Bass)[0];
+            CHECK (pm.load (bassIndex, factoryBass, &err));
+            CHECK (pm.entries()[(size_t) bassIndex].factory);
+            Preset edited = factoryBass;                       // same id and name as the factory preset
+            setParam (edited.data, pc::filterCutoff, 333.0f);
+            CHECK (! patchDataEqual (edited.data, factoryBass.data));
+            CHECK (PresetManager::exportTo (outside, edited, &err));
+            pm.rescanUser(); // the export above was written into the user folder
+            const size_t before = pm.entries().size();
+            {
+                // That file carries the id of the factory SFX preset. In the list it must not share it.
+                int sameId = 0, userSfx = -1;
+                for (size_t i = 0; i < pm.entries().size(); ++i)
+                {
+                    if (pm.entries()[i].id == "template.SFX") ++sameId;
+                    if (! pm.entries()[i].factory && pm.entries()[i].category == Category::SFX) userSfx = (int) i;
+                }
+                CHECK (sameId == 1);
+                CHECK (userSfx >= 0);
+                Preset dropped;
+                CHECK (pm.load (userSfx, dropped, &err));
+                CHECK (dropped.meta.patchId != "template.SFX");
+                CHECK (pm.findById (dropped.meta.patchId) == userSfx);
+                CHECK (pm.entries()[(size_t) pm.findById ("template.SFX")].factory);
+            }
+
+            Preset first, second;
+            CHECK (pm.importIntoUser (outside, first, &err));
+            CHECK (pm.entries().size() == before + 1);
+            CHECK (first.meta.patchId != factoryBass.meta.patchId);
+            CHECK (first.meta.displayName == factoryBass.meta.displayName);
+            CHECK (patchDataEqual (first.data, edited.data));
+            CHECK (! pm.entries()[(size_t) pm.findById (first.meta.patchId)].factory);
+            // the factory preset is untouched and still found under its own id
+            Preset again;
+            CHECK (pm.load (pm.findById (factoryBass.meta.patchId), again, &err));
+            CHECK (patchDataEqual (again.data, factoryBass.data));
+            // importing the same file again makes a second, numbered user preset
+            CHECK (pm.importIntoUser (outside, second, &err));
+            CHECK (pm.entries().size() == before + 2);
+            CHECK (second.meta.displayName == factoryBass.meta.displayName + " 2");
+            CHECK (second.meta.patchId != first.meta.patchId);
+            CHECK (! pm.importIntoUser (dir + "/does-not-exist.fmlume", again, &err));
+            CHECK (pm.deleteUser (pm.findById (first.meta.patchId), &err));
+            CHECK (pm.deleteUser (pm.findById (second.meta.patchId), &err));
+            std::error_code ec;
+            fs::remove (outside, ec);
+        }
         CHECK (pm.deleteUser (pm.findById (loaded.meta.patchId), &err));
         CHECK (! pm.deleteUser (0, &err)); // factory presets are read-only
     }

@@ -210,12 +210,13 @@ void FmlumeAudioProcessorEditor::fileDialog (bool save)
         juce::File f = fc.getResult();
         if (f == juce::File()) return;
         if (save && ! f.hasFileExtension ("fmlume")) f = f.withFileExtension ("fmlume");
-        const juce::String err = save ? safe->processor.exportPreset (f) : safe->processor.importPreset (f);
+        juce::String imported;
+        const juce::String err = save ? safe->processor.exportPreset (f) : safe->processor.importPreset (f, &imported);
         if (err.isNotEmpty()) safe->setStatus ((save ? "Export failed: " : "Import refused: ") + err, true);
         else
         {
-            safe->setStatus ((save ? "Exported " : "Imported ") + f.getFileName() + (save ? "" : ". Use Save to keep it in your library."), false);
-            if (! save) safe->showBrowser (false);
+            safe->setStatus (save ? "Exported " + f.getFileName() : "Imported as user preset \"" + imported + "\".", false);
+            safe->refreshAll(); // the browser stays open and shows the new user preset
         }
     });
 }

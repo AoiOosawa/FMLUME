@@ -447,13 +447,17 @@ juce::String FmlumeAudioProcessor::exportPreset (const juce::File& file)
     return PresetManager::exportTo (file.getFullPathName().toStdString(), p, &error) ? juce::String() : juce::String (error);
 }
 
-juce::String FmlumeAudioProcessor::importPreset (const juce::File& file)
+juce::String FmlumeAudioProcessor::importPreset (const juce::File& file, juce::String* importedName)
 {
+    // The file becomes a user preset of its own (new id, numbered name if taken). Loading it under
+    // the id stored in the file would make it pose as the preset it was exported from: an edited
+    // export of a factory preset looked as if it had replaced the factory one (D-056).
+    std::lock_guard<std::recursive_mutex> lock (modelMutex);
     Preset p;
     std::string error;
-    if (! PresetManager::importFrom (file.getFullPathName().toStdString(), p, &error)) return error;
-    std::lock_guard<std::recursive_mutex> lock (modelMutex);
+    if (! presets.importIntoUser (file.getFullPathName().toStdString(), p, &error)) return error;
     controller.loadPreset (p);
+    if (importedName != nullptr) *importedName = juce::String (juce::CharPointer_UTF8 (p.meta.displayName.c_str()));
     return {};
 }
 

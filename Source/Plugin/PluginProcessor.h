@@ -65,7 +65,7 @@ public:
     juce::String loadPresetIndex (int listIndex);
     juce::String savePreset (const juce::String& name, bool overwrite);
     juce::String exportPreset (const juce::File& file);
-    juce::String importPreset (const juce::File& file);
+    juce::String importPreset (const juce::File& file, juce::String* importedName = nullptr); // adds it to the user presets and loads it
     int currentPresetIndex();
     // Why the last project-state restore was refused (empty if it worked). Reading clears it.
     juce::String takeStateError();

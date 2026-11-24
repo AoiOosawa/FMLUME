@@ -44,6 +44,10 @@ public:
     bool deleteUser (int index, std::string* error = nullptr);
     static bool exportTo (const std::string& path, const Preset& preset, std::string* error = nullptr);
     static bool importFrom (const std::string& path, Preset& out, std::string* error = nullptr);
+    // Import as the browser does it: the file is copied into the user presets under its own name
+    // (numbered if that name is taken) and with a new id, so it can never stand in for the factory
+    // or user preset it was exported from. `out` is the stored user preset.
+    bool importIntoUser (const std::string& path, Preset& out, std::string* error = nullptr);
 
     bool isFavourite (const std::string& id) const { return favourites.count (id) > 0; }
     void setFavourite (const std::string& id, bool on);

@@ -145,6 +145,17 @@ void PresetManager::rescanUser (std::vector<std::string>* errors)
                 PresetEntry e = entryFor (p);
                 e.path = f;
                 if (e.name.empty()) e.name = fs::path (f).stem().string();
+                // A file dropped into the folder by hand may carry the id of a factory preset or of
+                // another user file (an export, a Finder copy). Ids must be unique in the list, or
+                // that file would pose as the other preset: give it one derived from its file name.
+                const auto taken = [&] (const std::string& id) {
+                    if (id.empty()) return true;
+                    for (auto& o : factoryEntries) if (o.id == id) return true;
+                    for (auto& o : userEntries) if (o.id == id) return true;
+                    return false;
+                };
+                if (taken (e.id)) e.id = "user-file." + fs::path (f).stem().string();
+                for (int n = 2; taken (e.id); ++n) e.id = "user-file." + fs::path (f).stem().string() + "." + std::to_string (n);
                 userEntries.push_back (std::move (e));
             }
             else if (errors) errors->push_back (f + ": " + err); // broken files are skipped, never fatal
@@ -215,7 +226,9 @@ bool PresetManager::load (int index, Preset& out, std::string* error) const
     if (index < 0 || index >= (int) list.size()) { if (error) *error = "preset index out of range"; return false; }
     const auto& e = list[(size_t) index];
     if (e.factory) { out = factoryStore[(size_t) e.storeIndex]; return true; }
-    return importFrom (e.path, out, error);
+    if (! importFrom (e.path, out, error)) return false;
+    out.meta.patchId = e.id; // the list's id (see rescanUser: unique even if the file's own id is not)
+    return true;
 }
 
 std::string PresetManager::sanitiseFileName (const std::string& name)
@@ -290,6 +303,20 @@ bool PresetManager::importFrom (const std::string& path, Preset& out, std::strin
     std::string text, why;
     if (! readFile (path, text, &why)) { if (error) *error = why + ": " + path; return false; }
     return presetFromJson (text, out, error);
+}
+
+bool PresetManager::importIntoUser (const std::string& path, Preset& out, std::string* error)
+{
+    Preset p;
+    if (! importFrom (path, p, error)) return false;
+    const std::string base = p.meta.displayName.empty() ? fs::path (path).stem().string() : p.meta.displayName;
+    std::string name = base;
+    for (int n = 2; userPresetExists (name); ++n) name = base + " " + std::to_string (n);
+    if (! saveUser (p, name, false, error)) return false;
+    for (auto& e : userEntries)
+        if (e.name == name) return load (findById (e.id), out, error);
+    if (error) *error = "the imported preset could not be read back";
+    return false;
 }
 
 void PresetManager::setFavourite (const std::string& id, bool on)
