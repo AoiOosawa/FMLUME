@@ -449,7 +449,7 @@ tranceGate.enabled  [0, 1]
 
 **Simple（v1.1）:** MACROS（共通4）＋CHARACTER（カテゴリ別4）→ FX Quick Controls / Trance Gate / Arpeggiator → Variations（Sound Explorer）。詳細機能はAdvancedに隠すが、Simpleで初期音色を選び直してもゼロから音を作れる。
 
-**Advanced（v1.1）:** `Operators / Algorithm / Filter & Mod / FX / Rhythm / Performance` タブ。Operators は6枚のカードと、選択した1オペレーターの波形・エンベロープのグラフ編集。FX の順番はドラッグ＆ドロップで並べ替える。ルーティング図、操作ノブ、値直接入力、右クリック初期化、双方向マクロ反映。
+**Advanced（v1.1）:** `Operators / Algorithm / Filter & Mod / FX / Rhythm / Performance` タブ。Operators は6枚のカードと、選択した1オペレーターの波形・エンベロープのグラフ編集。Filter & Mod の Mod Envelope も同じグラフで編集できる。FX の順番はドラッグ＆ドロップで並べ替える。ルーティング図、操作ノブ、値直接入力、右クリック初期化、双方向マクロ反映。
 
 ### 14.2 画面品質
 

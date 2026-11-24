@@ -1,5 +1,6 @@
 #pragma once
 #include "UI/Common/Bindings.h"
+#include "UI/Advanced/OperatorsTab.h"
 
 namespace ui
 {
@@ -19,6 +20,7 @@ private:
     void rebuildTargets (const fmlume::Preset&);
     Ctx& ctx;
     std::unique_ptr<LfoBox> lfos[2];
+    EnvelopeView envGraph;
     juce::OwnedArray<ModelKnob> envKnobs, filterKnobs;
     std::unique_ptr<BoundCombo> filterType;
     juce::OwnedArray<MatrixRow> matrix;

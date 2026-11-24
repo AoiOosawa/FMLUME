@@ -27,11 +27,12 @@ private:
     bool draggingLevel = false;
 };
 
-// Interactive ADSR graph of the selected operator.
+// Interactive ADSR graph: the envelope of the selected operator, or the Mod Envelope.
 class EnvelopeView final : public juce::Component, public juce::SettableTooltipClient
 {
 public:
-    explicit EnvelopeView (Ctx&);
+    enum class Source { SelectedOperator, ModEnvelope };
+    explicit EnvelopeView (Ctx&, Source = Source::SelectedOperator);
     void paint (juce::Graphics&) override;
     void mouseDown (const juce::MouseEvent&) override;
     void mouseDrag (const juce::MouseEvent&) override;
@@ -39,12 +40,18 @@ public:
     void mouseMove (const juce::MouseEvent&) override;
     void refresh (const fmlume::Preset&);
     // Draws an ADSR curve into `area`; returns the three handle points (attack, decay/sustain, release).
-    static std::array<juce::Point<float>, 3> drawEnvelope (juce::Graphics&, juce::Rectangle<float> area, const fmlume::ADSR&, juce::Colour, bool fill, float lineWidth);
+    // `firstCode` is the parameter code of the attack time (decay, sustain and release follow it):
+    // operator and Mod Envelope times have different ranges.
+    static std::array<juce::Point<float>, 3> drawEnvelope (juce::Graphics&, juce::Rectangle<float> area, const fmlume::ADSR&, juce::Colour, bool fill, float lineWidth,
+                                                           int firstCode = fmlume::pc::op (0, fmlume::kOpEnvA));
 
 private:
     int handleAt (juce::Point<float>) const;
+    int firstCode() const; // attack-time code of the envelope being shown
     Ctx& ctx;
-    fmlume::OperatorState state;
+    Source source;
+    fmlume::ADSR env;
+    juce::Colour colour;
     std::array<juce::Point<float>, 3> handles {};
     int dragging = -1, hover = -1;
 };

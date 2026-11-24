@@ -273,8 +273,9 @@ struct ModulationTab::MappingRow final : public juce::Component
     bool updating = false;
 };
 
-ModulationTab::ModulationTab (Ctx& c) : ctx (c)
+ModulationTab::ModulationTab (Ctx& c) : ctx (c), envGraph (c, EnvelopeView::Source::ModEnvelope)
 {
+    addAndMakeVisible (envGraph);
     for (int i = 0; i < 2; ++i) { lfos[i] = std::make_unique<LfoBox> (ctx, i); addAndMakeVisible (*lfos[i]); }
     static const char* const envNames[4] = { "Attack", "Decay", "Sustain", "Release" };
     for (int i = 0; i < 4; ++i) addAndMakeVisible (envKnobs.add (new ModelKnob (ctx, pc::modEnvA + i, envNames[i])));
@@ -359,8 +360,12 @@ void ModulationTab::resized()
     lfos[0]->setBounds (l.removeFromTop (l.getHeight() / 2).reduced (0, 2));
     lfos[1]->setBounds (l.reduced (0, 2));
     auto e = envArea.reduced (8).withTrimmedTop (24);
-    const int kw = e.getWidth() / 4;
-    for (auto* k : envKnobs) k->setBounds (e.removeFromLeft (kw).withHeight (juce::jmin (e.getHeight(), 96)));
+    // graph on top, the four knobs (exact values) below it
+    auto knobRow = e.removeFromBottom (juce::jlimit (64, 88, e.getHeight() * 46 / 100));
+    e.removeFromBottom (4);
+    envGraph.setBounds (e);
+    const int kw = knobRow.getWidth() / 4;
+    for (auto* k : envKnobs) k->setBounds (knobRow.removeFromLeft (kw));
     auto m = matrixArea.reduced (8).withTrimmedTop (26);
     const int rh = juce::jmin (30, juce::jmax (22, m.getHeight() / kNumModSlots));
     for (auto* row : matrix) row->setBounds (m.removeFromTop (rh).reduced (0, 2));
@@ -394,6 +399,7 @@ void ModulationTab::refresh (const Preset& p)
     rebuildTargets (p);
     for (auto& l : lfos) l->refresh (p);
     for (auto* k : envKnobs) k->refresh();
+    envGraph.refresh (p);
     filterType->refreshFrom (p);
     const bool filterOn = p.data.sound.engine.filter.type != FilterType::Off;
     for (auto* k : filterKnobs) { k->refresh(); k->setAlpha (filterOn ? 1.0f : 0.45f); }

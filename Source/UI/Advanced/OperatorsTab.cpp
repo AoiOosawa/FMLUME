@@ -6,8 +6,10 @@ using namespace fmlume;
 
 namespace
 {
-float timeNorm (int field, float seconds) { return toNorm (paramDesc (pc::op (0, field)), seconds); }
-float timeFromNorm (int field, float n) { return fromNorm (paramDesc (pc::op (0, field)), juce::jlimit (0.0f, 1.0f, n)); }
+float timeNorm (int code, float seconds) { return toNorm (paramDesc (code), seconds); }
+float timeFromNorm (int code, float n) { return fromNorm (paramDesc (code), juce::jlimit (0.0f, 1.0f, n)); }
+static_assert (kOpEnvD == kOpEnvA + 1 && kOpEnvS == kOpEnvA + 2 && kOpEnvR == kOpEnvA + 3, "ADSR fields are consecutive");
+static_assert (pc::modEnvD == pc::modEnvA + 1 && pc::modEnvS == pc::modEnvA + 2 && pc::modEnvR == pc::modEnvA + 3, "Mod Envelope codes are consecutive");
 // Envelope graph geometry: each timed stage may take up to `kStage` of the width.
 constexpr float kStage = 0.27f, kHold = 0.17f, kMinStage = 0.04f;
 float stageWidth (float norm, float w) { return (kMinStage + (1.0f - kMinStage) * norm) * w * kStage; }
@@ -23,14 +25,14 @@ juce::String feedsText (const EnginePatch& e, int op)
 }
 
 // ================================================================================= EnvelopeView
-std::array<juce::Point<float>, 3> EnvelopeView::drawEnvelope (juce::Graphics& g, juce::Rectangle<float> r, const ADSR& env, juce::Colour colour, bool fill, float lineWidth)
+std::array<juce::Point<float>, 3> EnvelopeView::drawEnvelope (juce::Graphics& g, juce::Rectangle<float> r, const ADSR& env, juce::Colour colour, bool fill, float lineWidth, int firstCode)
 {
     const float w = r.getWidth(), top = r.getY(), bottom = r.getBottom();
     const float x0 = r.getX();
-    const float x1 = x0 + stageWidth (timeNorm (kOpEnvA, env.a), w);
-    const float x2 = x1 + stageWidth (timeNorm (kOpEnvD, env.d), w);
+    const float x1 = x0 + stageWidth (timeNorm (firstCode, env.a), w);
+    const float x2 = x1 + stageWidth (timeNorm (firstCode + 1, env.d), w);
     const float x3 = x2 + w * kHold;
-    const float x4 = x3 + stageWidth (timeNorm (kOpEnvR, env.r), w);
+    const float x4 = x3 + stageWidth (timeNorm (firstCode + 3, env.r), w);
     const float ys = bottom - juce::jlimit (0.0f, 1.0f, env.s) * r.getHeight();
     juce::Path p;
     p.startNewSubPath (x0, bottom);
@@ -50,16 +52,25 @@ std::array<juce::Point<float>, 3> EnvelopeView::drawEnvelope (juce::Graphics& g,
     return { juce::Point<float> (x1, top), juce::Point<float> (x2, ys), juce::Point<float> (x4, bottom) };
 }
 
-EnvelopeView::EnvelopeView (Ctx& c) : ctx (c)
+EnvelopeView::EnvelopeView (Ctx& c, Source s) : ctx (c), source (s), colour (col::violet)
 {
     setTooltip ("Drag the dots: first = attack time, second = decay time (sideways) and sustain level (up/down), third = release time.");
 }
 
 void EnvelopeView::refresh (const Preset& p)
 {
-    state = p.data.sound.engine.operators[(size_t) ctx.selectedOp];
+    const auto& e = p.data.sound.engine;
+    if (source == Source::ModEnvelope) { env = e.modEnv; colour = col::violet; }
+    else
+    {
+        const auto& op = e.operators[(size_t) ctx.selectedOp];
+        env = op.env;
+        colour = op.enabled ? roleColour (op) : col::textDim;
+    }
     repaint();
 }
+
+int EnvelopeView::firstCode() const { return source == Source::ModEnvelope ? pc::modEnvA : pc::op (ctx.selectedOp, kOpEnvA); }
 
 void EnvelopeView::paint (juce::Graphics& g)
 {
@@ -69,8 +80,8 @@ void EnvelopeView::paint (juce::Graphics& g)
     g.setColour (col::outline.withAlpha (0.5f));
     for (int i = 1; i < 4; ++i) g.drawHorizontalLine (juce::roundToInt (bounds.getY() + bounds.getHeight() * (float) i / 4.0f), bounds.getX() + 4.0f, bounds.getRight() - 4.0f);
     const auto r = bounds.reduced (12.0f, 12.0f);
-    const juce::Colour c = state.enabled ? roleColour (state) : col::textDim;
-    handles = drawEnvelope (g, r, state.env, c, true, 2.4f);
+    const juce::Colour c = colour;
+    handles = drawEnvelope (g, r, env, c, true, 2.4f, firstCode());
     static const char* const names[3] = { "A", "D / S", "R" };
     for (int i = 0; i < 3; ++i)
     {
@@ -111,22 +122,24 @@ void EnvelopeView::mouseDrag (const juce::MouseEvent& e)
     if (dragging < 0) return;
     const auto r = getLocalBounds().toFloat().reduced (12.0f, 12.0f);
     const float w = r.getWidth();
+    const int code = firstCode();
+    const bool mod = source == Source::ModEnvelope;
     const int op = ctx.selectedOp;
     if (dragging == 0)
-        ctx.set (pc::op (op, kOpEnvA), timeFromNorm (kOpEnvA, stageNorm (e.position.x - r.getX(), w)));
+        ctx.set (code, timeFromNorm (code, stageNorm (e.position.x - r.getX(), w)));
     else if (dragging == 1)
     {
         // both values in one validated edit
-        const float decay = timeFromNorm (kOpEnvD, stageNorm (e.position.x - handles[0].x, w));
+        const float decay = timeFromNorm (code + 1, stageNorm (e.position.x - handles[0].x, w));
         const float sustain = juce::jlimit (0.0f, 1.0f, (r.getBottom() - e.position.y) / r.getHeight());
         ctx.edit ([=] (Preset& p) {
-            auto& env = p.data.sound.engine.operators[(size_t) op].env;
-            env.d = decay;
-            env.s = sustain;
+            auto& target = mod ? p.data.sound.engine.modEnv : p.data.sound.engine.operators[(size_t) op].env;
+            target.d = decay;
+            target.s = sustain;
         });
     }
     else
-        ctx.set (pc::op (op, kOpEnvR), timeFromNorm (kOpEnvR, stageNorm (e.position.x - (handles[1].x + w * kHold), w)));
+        ctx.set (code + 3, timeFromNorm (code + 3, stageNorm (e.position.x - (handles[1].x + w * kHold), w)));
 }
 
 void EnvelopeView::mouseUp (const juce::MouseEvent&)
