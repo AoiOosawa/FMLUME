@@ -202,6 +202,66 @@ struct SnapshotApp final : public juce::JUCEApplication
             quit();
             return;
         }
+        // "--guide <dir>": the pictures of docs/USER_GUIDE.md, with a preset that uses most operators.
+        if (tokens.size() >= 2 && tokens[0] == "--guide")
+        {
+            const juce::File dir (tokens[1]);
+            dir.createDirectory();
+            auto processor = std::make_unique<FmlumeAudioProcessor>();
+            processor->prepareToPlay (48000.0, 512);
+            const auto& list = processor->presetManager().entries();
+            for (int i = 0; i < (int) list.size(); ++i)
+                if (list[(size_t) i].name == "Classic Tines") processor->loadPresetIndex (i);
+            std::unique_ptr<juce::AudioProcessorEditor> editor (processor->createEditor());
+            auto pump = [] { juce::MessageManager::getInstance()->runDispatchLoopUntil (200); };
+            auto tab = [&] (int i) { if (auto* t = findOf<juce::TabbedComponent> (*editor)) t->setCurrentTabIndex (i); pump(); };
+            editor->setVisible (true);
+            editor->addToDesktop (0);
+            pump();
+            save (*editor, dir.getChildFile ("simple.png"));
+            clickButton (*editor, "Generate");
+            for (int i = 0; i < 60; ++i)
+            {
+                pump();
+                if (! processor->withModel ([] (fmlume::PatchController& pc) { return pc.exploreBusy(); })) break;
+            }
+            processor->withModel ([] (fmlume::PatchController& pc) { return pc.preview (1); });
+            pump();
+            save (*editor, dir.getChildFile ("variations.png"));
+            clickButton (*editor, "Done");
+            if (auto* header = findOf<ui::Header> (*editor); header != nullptr && header->onBrowse) header->onBrowse();
+            pump();
+            save (*editor, dir.getChildFile ("browser.png"));
+            clickButton (*editor, "Close");
+            clickButton (*editor, "ADVANCED");
+            tab (0);
+            save (*editor, dir.getChildFile ("operators.png"));
+            clickButton (*editor, "Templates...");
+            pump();
+            save (*editor, dir.getChildFile ("templates.png"));
+            if (auto* box = findOf<juce::CallOutBox> (*editor)) box->dismiss();
+            for (int i = 0; i < 5; ++i) pump();
+            clickButton (*editor, "Expand");
+            pump();
+            save (*editor, dir.getChildFile ("operators_expanded.png"));
+            clickButton (*editor, "Collapse");
+            tab (1);
+            save (*editor, dir.getChildFile ("filter_mod.png"));
+            tab (2);
+            save (*editor, dir.getChildFile ("fx.png"));
+            tab (3);
+            if (auto* box = findOf<ui::GatePatternBox> (*editor))
+                for (int k = 0; k < box->getNumItems(); ++k)
+                    if (box->getItemText (k) == "Split Gallop") box->setSelectedItemIndex (k, juce::sendNotificationSync);
+            pump();
+            save (*editor, dir.getChildFile ("rhythm.png"));
+            tab (4);
+            save (*editor, dir.getChildFile ("performance.png"));
+            editor.reset();
+            processor.reset();
+            quit();
+            return;
+        }
         const juce::File dir (args.unquoted().isEmpty() ? juce::File::getCurrentWorkingDirectory().getFullPathName() : args.unquoted());
         dir.createDirectory();
         auto processor = std::make_unique<FmlumeAudioProcessor>();

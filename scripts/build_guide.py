@@ -97,6 +97,16 @@ def convert(md: str):
             body.append('<h%d id="%s">%s</h%d>' % (level, anchor, inline(text), level))
             i += 1
             continue
+        m_img = re.match(r"^!\[([^\]]*)\]\(([^)\s]+)\)$", stripped)
+        if m_img:
+            # 画像だけの行: 図にする。docs/ からの相対パス（../site/...）を site/ からのパスにする
+            flush_para()
+            src = re.sub(r"^\.\./site/", "", m_img.group(2))
+            cap = inline(m_img.group(1))
+            body.append('<figure><a href="%s"><img src="%s" alt="%s" loading="lazy"></a><figcaption>%s</figcaption></figure>'
+                        % (html.escape(src), html.escape(src), html.escape(m_img.group(1)), cap))
+            i += 1
+            continue
         if stripped.startswith(">"):
             flush_para()
             quote = []
@@ -204,6 +214,10 @@ STYLE = """
   th, td { text-align: left; padding: 9px 12px; border-bottom: 1px solid var(--line); vertical-align: top; }
   th { color: var(--muted); font-weight: 600; font-size: 12.5px; letter-spacing: 0.06em; background: var(--bg-raised); }
   td:first-child { white-space: nowrap; }
+  figure { margin: 18px 0 22px; }
+  figure img { display: block; width: 100%; height: auto; border-radius: 12px; border: 1px solid var(--line); }
+  figure.narrow img, figure img[src*="templates"] { max-width: 640px; }
+  figcaption { margin-top: 8px; color: var(--muted); font-size: 13px; }
   footer { border-top: 1px solid var(--line); padding: 30px 0 50px; color: var(--muted); font-size: 12.5px; }
   @media (max-width: 860px) {
     .layout { grid-template-columns: 1fr; gap: 0; }

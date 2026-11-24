@@ -45,6 +45,8 @@ Cubase は Audio Unit に対応していないため、Cubase では VST3 を使
 
 上部のバーは常に表示されます。
 
+![上部のバー。左からプリセットの切り替え、プリセット名、Save、表示の切り替え、OUT](../site/assets/guide/header.jpg)
+
 | 部品 | 働き |
 |---|---|
 | `<` `>` | 前 / 次のプリセット（一覧の端まで行くと反対の端へ戻ります） |
@@ -70,6 +72,8 @@ OUT スライダーだけは、ダブルクリックで 0 dB に戻ります（�
 
 普段はここだけで足ります。
 
+![Simple 表示（音色は E.Piano の Classic Tines）](../site/assets/guide/simple.jpg)
+
 - **Macros**: 大きな 4 つのノブ（マクロ 1〜4）。すべての音色で **Brightness**（明るさ）、**Attack**（立ち上がり）、**Release**（余韻）、**Character**（音の癖）です。
 - **Character**: マクロ 5〜8。名前と効き方は音色のカテゴリごとに違います（例: E.Piano なら Tine / Body / Bell / Tremolo。7 章の表）。
 
@@ -93,6 +97,8 @@ OUT スライダーだけは、ダブルクリックで 0 dB に戻ります（�
 ### Variations
 
 いまの音を元に、少しずつ違う音色の候補を 8 つ作ります。
+
+![Variations。候補 B を試聴しているところ](../site/assets/guide/variations.jpg)
 
 1. **Generate** を押すと、候補 A〜H が作られます。候補はできた順にタイルに現れます（待っている間もほかの操作はできます）。
 2. タイルをクリックすると、その候補で短い和音（C4 と G4）が鳴ります。別のタイルを選ぶまでは、鍵盤もその候補の音で鳴ります。**Original** を押すと、元の音に戻ります。
@@ -121,6 +127,8 @@ OUT スライダーだけは、ダブルクリックで 0 dB に戻ります（�
 
 FM の音は、6 つのオペレーター（OP 1〜6）のつなぎ方で決まります。**キャリア**（Carrier）は直接聞こえる音、**モジュレーター**（Modulator）は、つないだ先の音色を変える（明るさや金属っぽさを足す）役目です。上段が結線図（Routing）、下段が選んだオペレーターの設定です。
 
+![Operators タブ（Classic Tines。結線は Algorithm 9 Twin Stacks）](../site/assets/guide/operators.jpg)
+
 **結線図**
 
 - 箱をクリックすると、そのオペレーターを選びます。下段と右側の表示が切り替わります。
@@ -137,7 +145,11 @@ FM の音は、6 つのオペレーター（OP 1〜6）のつなぎ方で決ま�
 **Templates... / Expand**
 
 - **Templates...**: 18 種類の結線のテンプレートから選びます。変わるのは、つなぎ方、使うオペレーター（使わないものはオフ）、どれがキャリアか、フィードバックの有無です。各オペレーターの比率やエンベロープなどはそのまま残り、すでにあった接続の深さも引き継がれます。マクロ 1〜4 も自動で割り当て直されます。
+
+![Templates... の一覧。いまの結線に当たるテンプレートが枠で示される](../site/assets/guide/templates.jpg)
 - **Expand**: 結線図をタブ全体に広げます。テンプレートが上に一列で並び、右側に選んだオペレーターの Ratio / Level / Output / Feedback が出ます。**Collapse** で元に戻ります。
+
+![Expand で結線図を広げたところ](../site/assets/guide/operators_expanded.jpg)
 
 **下段（OP n）**
 
@@ -148,6 +160,8 @@ FM の音は、6 つのオペレーター（OP 1〜6）のつなぎ方で決ま�
 | Level & Response | **Level**（キャリアなら音量、モジュレーターなら掛かる強さ）、**Output**（そのオペレーターを直接聞かせる量。0 より大きいとキャリアになる）、**Vel > Level**（弱く弾くと音量が下がる度合い）、**Vel > Tone**（弱く弾くと、このオペレーターが掛ける変調が弱まる度合い）、**Key Track**（音程が鍵盤にどれだけ付いていくか） |
 
 ### Filter & Mod
+
+![Filter & Mod タブ](../site/assets/guide/filter_mod.jpg)
 
 **Filter**: 種類（Off / Low-pass 12 dB / Low-pass 24 dB / High-pass 12 dB / Band-pass 12 dB）と、**Cutoff**、**Resonance**、**Drive**。Off のときノブは薄く表示されます。フィルターは全部の音に 1 つだけ掛かります（音ごとではありません）。
 
@@ -182,6 +196,8 @@ FM の音は、6 つのオペレーター（OP 1〜6）のつなぎ方で決ま�
 
 ### FX
 
+![FX タブ](../site/assets/guide/fx.jpg)
+
 9 種類のエフェクトが、左の一覧の上から順に掛かります。
 
 - 行をクリックすると、そのエフェクトの設定が右に出ます。行の左のスイッチで ON/OFF します。オフのエフェクトは処理されません。
@@ -203,6 +219,8 @@ FM の音は、6 つのオペレーター（OP 1〜6）のつなぎ方で決ま�
 Delay と Reverb の余韻は、音を離したあとも、Trance Gate が閉じたあとも鳴り続けます。
 
 ### Rhythm
+
+![Rhythm タブ。Trance Gate のパターンに Stereo の「Split Gallop」を選んだところ（上段が左、下段が右）](../site/assets/guide/rhythm.jpg)
 
 **Trance Gate** は、音量を 16 ステップのパターンで刻みます。
 
@@ -232,6 +250,8 @@ Delay と Reverb の余韻は、音を離したあとも、Trance Gate が閉じ
 
 ### Performance
 
+![Performance タブ](../site/assets/guide/performance.jpg)
+
 **Voices**
 
 | 設定 | 内容 |
@@ -255,6 +275,8 @@ Delay と Reverb の余韻は、音を離したあとも、Trance Gate が閉じ
 Master、Pan、Quality はプロジェクトの設定で、プリセットを切り替えても変わりません。
 
 ## 7. プリセット
+
+![プリセットブラウザー](../site/assets/guide/browser.jpg)
 
 ブラウザーでは次のことができます。
 

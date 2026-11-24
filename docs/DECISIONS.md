@@ -425,7 +425,7 @@
 ## D-061 ユーザーガイドを作り、製品ページと同じ見た目の HTML でも出す（2026-11-24）
 - ユーザーの指示（「マニュアルは作りましょう」「md だけではなくて、Pages で HTML も公開したい」）。
 - 採用: 本文は `docs/USER_GUIDE.md`（日本語。POLYBRISK のガイドと同じ構成）。すべての部品名・範囲・動作をソースで確かめて書いた。HTML は `scripts/build_guide.py` が Markdown から `site/guide.html` を作る（外部ライブラリなし。製品ページと同じ配色、目次つき、スマートフォン幅にも対応）。手で HTML を直さない。CI（`build.yml`）が `--check` で両者の一致を確かめる。製品ページのナビゲーションに「使い方」を追加。
-- 画像は入れていない（手元のスクリーンショットに、統合前の Algorithm タブが残っているため）。
+- 画像: 11 枚（`site/assets/guide/`、JPEG、幅 1600 px 以下、計約 1.4 MB）。`fmlume-uisnap --guide <dir>` が E.Piano の Classic Tines（オペレーターを 5 つ使う）で各ページを撮り、それを切り出した。Markdown では `../site/assets/guide/...` を参照し（GitHub 上でも表示される）、HTML では `assets/guide/...` に直す。画面が変わったら撮り直す。
 - 書く途中で見つけて直したもの: FX の ON/OFF が `forceNew` に文字列を渡していた（D-060 と同じ誤り）、Mod Matrix のツールチップ「0.01 は四分音くらい」（実際は約 1/4 半音）、README の開発版のプリセットの場所、実装状況の最小サイズ・テンプレート数・試聴の状況の記述。
 - 公開: ユーザーの指示でリポジトリを public にし、GitHub Pages を有効にした（`.github/workflows/pages.yml`、POLYBRISK と同じ。`site/` の変更を `main` に push すると公開される）。URL は https://cheebow.github.io/FMLUME/ 。
 - 互換性への影響: なし。
