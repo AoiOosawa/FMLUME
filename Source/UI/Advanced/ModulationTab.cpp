@@ -122,7 +122,7 @@ struct ModulationTab::MatrixRow final : public juce::Component
                  [&c, i] (Preset& p, float v) { p.data.sound.matrix[(size_t) i].depth = v; })
     {
         depth.captionWidth = 0;
-        depth.slider.setTooltip ("Depth: 1.0 moves the target across its whole range. Small values go a long way for pitch (0.01 = about a quarter tone).");
+        depth.slider.setTooltip ("Depth: 1.0 moves the target across its whole range. Small values go a long way for pitch (0.01 = about a quarter of a semitone).");
         target.setTooltip ("Modulation target. Only existing connections can be modulated; the matrix never creates new FM connections.");
         target.onChange = [this] {
             const int id = target.getSelectedId();

@@ -112,8 +112,6 @@ FM_TEST ("integration", "PRS-03 broken, unknown-version and extreme presets are 
         { "negative schema", mutate ("\"schemaVersion\": 2", "\"schemaVersion\": -1") },
         { "schema as string", mutate ("\"schemaVersion\": 2", "\"schemaVersion\": \"2\"") },
         { "missing engine", mutate ("\"engine\"", "\"engineX\"") },
-        { "bad category", mutate ("\"category\": \"Bell\"", "\"category\": \"Kazoo\"") },
-        { "bad waveform", mutate ("\"waveform\": \"saw\"", "\"waveform\": \"noise\"") },
         { "ratio out of range", mutate ("\"ratio\": 3.5", "\"ratio\": 1e9") },
         { "negative level", mutate ("\"level\": 0.5", "\"level\": -0.5") },
         { "NaN token", mutate ("\"ratio\": 3.5", "\"ratio\": NaN") },
@@ -121,7 +119,6 @@ FM_TEST ("integration", "PRS-03 broken, unknown-version and extreme presets are 
         { "wrong type", mutate ("\"enabled\": true", "\"enabled\": 1") },
         { "self edge", mutate ("\"from\": 0", "\"from\": 2") },
         { "edge op out of range", mutate ("\"to\": 2", "\"to\": 9") },
-        { "unknown macro target", mutate ("\"targetParamId\": \"edge.1.3.index\"", "\"targetParamId\": \"op9.level\"") },
         { "too few macros", mutate ("\"id\": \"macro.8\"", "\"id\": \"macro.9\"") },
         { "fx order not a permutation", mutate ("\"order\": [\"reverb\", \"eq\"", "\"order\": [\"reverb\", \"reverb\"") },
         { "bad gate division", mutate ("\"tranceGate\": {\n      \"enabled\": false,", "\"tranceGate\": {\n      \"enabled\": 5,") },
@@ -680,4 +677,69 @@ FM_TEST ("integration", "Review: import never hangs on long names, returns the p
 
     std::error_code ec;
     fs::remove_all (dir, ec);
+}
+
+FM_TEST ("integration", "Compatibility: a preset from a newer FMLUME loads; names this version does not know keep their defaults, with a warning")
+{
+    // COMPATIBILITY.md: a newer version may add effect types, waveforms, mod sources, categories,
+    // parameters, divisions ... An older version must still open the file and say what it skipped.
+    Preset rich = makeCategoryPreset (Category::Bell);
+    rich.data.sound.matrix[0] = ModSlot {};
+    rich.data.sound.matrix[0].source = ModSource::LFO1;
+    rich.data.sound.matrix[0].target = (int16_t) pc::filterCutoff;
+    rich.data.sound.matrix[0].depth = 0.3f;
+    rich.data.sound.matrix[0].enabled = true;
+    std::string good;
+    CHECK (presetToJson (rich, good));
+    auto mutate = [&] (std::string s, const std::string& from, const std::string& to) {
+        const auto pos = s.find (from);
+        CHECK (pos != std::string::npos);
+        if (pos != std::string::npos) s.replace (pos, from.size(), to);
+        return s;
+    };
+    auto loadsWithWarning = [] (const std::string& text, const char* what, Preset& p) {
+        std::string err;
+        std::vector<std::string> warnings;
+        const bool ok = presetFromJson (text, p, &err, &warnings);
+        CHECK (ok);
+        if (! ok) std::printf ("    rejected %s: %s\n", what, err.c_str());
+        bool warned = false;
+        for (auto& w : warnings) warned = warned || w.find ("does not know") != std::string::npos;
+        CHECK (warned);
+        return ok;
+    };
+    Preset p;
+    if (loadsWithWarning (mutate (good, "\"category\": \"Bell\"", "\"category\": \"Choir\""), "category", p))
+        CHECK (p.meta.category == Preset {}.meta.category);
+    if (loadsWithWarning (mutate (good, "\"waveform\": \"sine\"", "\"waveform\": \"supersaw\""), "waveform", p))
+        CHECK (p.data.sound.engine.operators[0].waveform == Waveform::Sine);
+    loadsWithWarning (mutate (good, "\"source\": \"lfo1\"", "\"source\": \"lfo3\""), "mod source", p);
+    CHECK (! p.data.sound.matrix[0].enabled || p.data.sound.matrix[0].target < 0);
+    // a new effect: listed in the order and among the processors
+    std::string withFx = mutate (good, "\"order\": [", "\"order\": [\"granular\", ");
+    withFx = mutate (withFx, "\"processors\": [", "\"processors\": [{ \"type\": \"granular\", \"enabled\": true, \"params\": { \"grain\": 0.5 } }, ");
+    if (loadsWithWarning (withFx, "effect", p))
+        CHECK (p.data.fx.order == rich.data.fx.order);
+
+    // A file that only adds keys loads silently except for the "newer version" note.
+    std::string added = mutate (good, "\"pluginVersion\": \"" FMLUME_VERSION_STRING "\"", "\"pluginVersion\": \"99.0.0\", \"futureFeature\": { \"x\": 1 }");
+    std::vector<std::string> warnings;
+    std::string err;
+    CHECK (presetFromJson (added, p, &err, &warnings));
+    CHECK (warnings.size() == 1 && warnings[0].find ("newer FMLUME") != std::string::npos);
+
+    // The fixtures that stand for such files.
+    const std::string dir = std::string (FMLUME_SOURCE_DIR) + "/tests/Fixtures/newer";
+    std::error_code ec;
+    int n = 0;
+    for (auto& it : fs::directory_iterator (dir, ec))
+        if (it.path().extension() == ".fmlume")
+        {
+            Preset q;
+            std::vector<std::string> w;
+            CHECK (PresetManager::importFrom (it.path().string(), q, &err, &w));
+            CHECK (! w.empty());
+            ++n;
+        }
+    CHECK (n >= 2);
 }

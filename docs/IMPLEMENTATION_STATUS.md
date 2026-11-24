@@ -10,7 +10,7 @@
 |---|---|---|
 | 構成 | `cmake -S . -B build -G Xcode` | 成功 |
 | ビルド | `cmake --build build --config Release --parallel` | **BUILD SUCCEEDED**。`FMLUME.component`（AU）、`FMLUME.vst3`、`FMLUME.app`（Standalone）を生成、いずれも Universal 2（arm64 + x86_64）、アドホック署名 |
-| 自動テスト | `ctest --test-dir build -C Release` | **4/4 グループ通過**（59テストケース、失敗0。2026-11-24 の見直し D-060 後に再実行） |
+| 自動テスト | `ctest --test-dir build -C Release` | **4/4 グループ通過**（61テストケース、失敗0。2026-11-24、互換性のテスト D-062 を含む） |
 | Standalone | `open build/FMLUME_artefacts/Release/Standalone/FMLUME.app` | 起動しエディタが表示されること、正常終了することを確認（クラッシュなし）。**発音・MIDI入力・Audio設定ダイアログは人手で未確認** |
 | x86_64（Intel 向け） | `cmake -S . -B build-x86 -G "Unix Makefiles" -DCMAKE_BUILD_TYPE=Release -DFMLUME_BUILD_PLUGIN=OFF -DCMAKE_OSX_ARCHITECTURES=x86_64` → `ctest --test-dir build-x86` | 54ケース全通過（2026-11-24、Morph 削除後。Rosetta 2 上。Intel実機は未検証） |
 | AU 検証 | `auval -v aumu Fmld Chbw`（開発用。製品版は `Fmlu`） | **AU VALIDATION SUCCEEDED** |
@@ -40,7 +40,7 @@
 
 ### Phase 0 — 基盤
 - Git、JUCE 9.0.6 submodule、CMake（`FMLUMECore` / `FMLUME` AU+VST3 / `FMLUMETests` / ツール群）、`CMakePresets.json`、GitHub Actions ワークフロー定義（`.github/workflows/build.yml`）。
-- オフライン MIDI→WAV レンダラー `fmlume-render`（SMF読込、プリセット/テンプレート/マクロ/モーフ指定、検証モード）。
+- オフライン MIDI→WAV レンダラー `fmlume-render`（SMF読込、プリセット/テンプレート/マクロ指定、検証モード）。
 
 ### Phase 1 — FMエンジン
 - 6オペレーター位相変調、DAG検証とトポロジカルソート、エッジ最大30、セルフフィードバック（前サンプル参照）、指数ADSR、Ratio/Fixed、detune、key tracking、key sync/フリーラン位相、velocity→level/index。
@@ -49,7 +49,7 @@
 
 ### Phase 2 — Simple / Advanced とマクロ
 - Canonical Model、`PatchCompiler`、パッチ世代管理（インプレース更新／新世代）、ロックフリーのパッチ受け渡し。
-- 8マクロ（正規化ドメイン合成、最大8マッピング、linear/exp/sCurve、bipolar/unipolar、min/max）、カテゴリテンプレート9種。
+- 8マクロ（正規化ドメイン合成、最大8マッピング、linear/exp/sCurve、bipolar/unipolar、min/max）、カテゴリテンプレート11種。
 - UI: Simple（Macros / Character / FX / Trance Gate / Arpeggiator / Variations）と Advanced（Operators / Filter & Mod / FX / Rhythm / Performance。Algorithm は Operators に統合、D-057）。両モードは同一モデルを編集。プリセットブラウザはヘッダーのプリセット名から開く独立ページ。2026-11-23 に POLYBRISK とシリーズ共通の外観へ全面改訂（D-028）。
 
 ### Phase 3 — 音色拡張と基本FX
@@ -72,18 +72,18 @@
 - ファクトリープリセット**152音色**（11カテゴリ。Arp 30、Bell と Poly は13、他は各12。`fmlume-presetgen` で生成・検証）。
 - 出力メーター（ヘッダーの OUT スライダー下）、実効最大ノート数表示（Performance タブ）、Dual×4x の負荷制御。CPU / Voice の数値表示は UI から削除（D-028。エンジン側の計測値は残存）。
 - 5分ストレステスト、RT割当て検査、44.1〜192 kHz・ブロック32〜2048・0フレームの検証、x86_64 スライスのテスト実行。
-- ツールチップとステータス行による操作ヘルプ、リサイズ（960×620〜1920×1200）。
+- ツールチップとステータス行による操作ヘルプ、リサイズ（960×660〜1920×1240）。
 
 ## 3. ホスト公開パラメーター（不変）
 
-`master.gainDb` `master.pan` `master.polyphony` `master.unison` `master.detune` `master.spread` `master.quality` `macro.1`〜`macro.8` `fx.bypassAll` `fx.quick.warmth` `fx.quick.width` `fx.quick.space` `fx.quick.echo` `arp.enabled` `tranceGate.enabled`（計22。`morph.amount` と `morph.enabled` は D-055 で廃止）。プラグインID: manufacturer `Chbw` / plugin `Fmlu` / bundle `info.cheebow.fmlume`（**暫定**、DECISIONS D-001）。
+`master.gainDb` `master.pan` `master.polyphony` `master.unison` `master.detune` `master.spread` `master.quality` `macro.1`〜`macro.8` `fx.bypassAll` `fx.quick.warmth` `fx.quick.width` `fx.quick.space` `fx.quick.echo` `arp.enabled` `tranceGate.enabled`（計22。`morph.amount` と `morph.enabled` は D-055 で廃止）。プラグインID: manufacturer `Chbw` / plugin `Fmlu` / bundle `info.cheebow.fmlume`（D-048 で確定。公開後は変更しない: `docs/COMPATIBILITY.md`）。
 
 ## 4. 未検証・未実施（重要）
 
 | 項目 | 状態 |
 |---|---|
 | **実DAWでの確認（HOST-01）** | **Cubase は確認済み**（VST3、開発用ビルド、利用者による確認）。2026-11-23: 読み込み・演奏・保存は問題なし。2026-11-24（Morph 削除後）: オートメーションの記録と再生は問題なし、スペースキーや Cmd+S などのキー操作がホストに届くことも問題なし、オフライン書き出し（オーディオミックスダウン）も利用者が聴いて「大丈夫そう」と確認。Morph 削除前に保存したプロジェクトの読み込みは、該当するプロジェクトが無いため実機では確認できない（旧形式の状態を読む経路は自動テストで確認済み）。Logic Pro / REAPER / Ableton Live は**未実施**（手順は `docs/TEST_PLAN.md`）。自動検証は auval と pluginval |
-| **耳による音質確認（§17.4）** | **未実施**（準備済み）。`python3 scripts/audition.py` が全音色の数値スクリーニング（`build/audition/report.md`）と試聴ページ（`build/audition/index.html`。1音色ずつ再生し、キー操作で評価を付けて結果をテキストにまとめる）を作る。2026-11-23 の実行で DC オフセットを発見し修正（D-051）。利用者の1回目の試聴で「他と似すぎ」等と指摘された 22 音色を作り直した（D-052）。2回目の試聴で残った指摘 4 件も修正し、利用者が「問題なし」と確認（D-053）。マクロの数値上の問題（リミッター・効きが聞こえない・音量が跳ねる）は生成時の自動ガード等で解消（D-054）。現在の指摘は 29 音色（主に A 特性で見たカテゴリ内の音量差 19 件と左右の偏り 4 件。壊れているものはない）。152音色とFXはFM設計の知識に基づいて作成し、自動検査（発音・レベル・全マクロの可聴性・非有限値なし）のみ通過。音楽的な良し悪し、マクロの効き方の自然さ、Explorer候補の「意味のある違い」は試聴と調整が必要 |
+| **耳による音質確認（§17.4）** | **利用者が全音色を 2 回試聴し「問題なし」**（音楽的な作り込みは今後も調整の余地あり）。`python3 scripts/audition.py` が全音色の数値スクリーニング（`build/audition/report.md`）と試聴ページ（`build/audition/index.html`。1音色ずつ再生し、キー操作で評価を付けて結果をテキストにまとめる）を作る。2026-11-23 の実行で DC オフセットを発見し修正（D-051）。利用者の1回目の試聴で「他と似すぎ」等と指摘された 22 音色を作り直した（D-052）。2回目の試聴で残った指摘 4 件も修正し、利用者が「問題なし」と確認（D-053）。マクロの数値上の問題（リミッター・効きが聞こえない・音量が跳ねる）は生成時の自動ガード等で解消（D-054）。現在の指摘は 29 音色（主に A 特性で見たカテゴリ内の音量差 19 件と左右の偏り 4 件。壊れているものはない）。152音色とFXはFM設計の知識に基づいて作成し、自動検査（発音・レベル・全マクロの可聴性・非有限値なし）のみ通過。音楽的な良し悪し、マクロの効き方の自然さ、Explorer候補の「意味のある違い」は試聴と調整が必要 |
 | Intel Mac 実機 | 未検証（配布用の Universal ビルドと、x86_64 でビルドしたテストの Rosetta 上での実行のみ） |
 | GitHub Actions | `main` への push ごとに実行され成功（Morph 削除後の `53fe9af` を含む 3 回）。`actions/checkout` を v7 に更新した変更は push 後に確認する |
 | 実機GUI操作 | 利用者が実際に操作して「大丈夫そう」と確認（2026-11-24、Morph 削除後のビルド）: エンベロープのドラッグ編集、アルゴリズム図のドラッグ接続、ゲートのステップ描画、ブラウザーの Delete / Import / Export。自動では `fmlume-uisnap`（全ページ・最小サイズの描画、キー操作の検査）と pluginval の GUI テストで確認。キーボードの Tab 移動と HiDPI 以外の表示は未確認 |
@@ -97,12 +97,12 @@
 - ボイス終了判定はキャリアのみ（D-008）。パッチ受け渡しはFIFOではなく最新優先メールボックス（D-005）。
 - Quality 切替時、発音中の音は短くフェードする。
 - プリセット読込はマスター音量/パン/Quality/全FXバイパスを変更しない（D-010）。
-- 操作マニュアルは未作成（ツールチップとステータス行のみ）。
+- 操作マニュアルは `docs/USER_GUIDE.md`（日本語のみ。画面の中のヘルプはツールチップとステータス行）。
 
 ## 6. 次のタスク候補
 
 1. **HOST-01 の残り**（人手、任意）: Logic Pro（AU）と REAPER。Cubase は確認済み。
-2. 操作マニュアルの作成。
+2. 製品ページからのダウンロード案内（GitHub Releases を作るときに）。
 3. ロゴの文字のアウトライン化（現在はシステムフォント依存）。
 4. Phase 8（`docs/RELEASE_CHECKLIST.md`）: バージョン番号とプラグイン ID の最終確認、署名・公証、別の Mac でのインストール確認、リポジトリの公開、GitHub Releases。配布方針は AGPL-3.0 で決定済み（D-049）。
 5. 任意: 数値スクリーニングに残る 29 音色の指摘（主にカテゴリ内の音量差）、Variations の方向づけの調整。

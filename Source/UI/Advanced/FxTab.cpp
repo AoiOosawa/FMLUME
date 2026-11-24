@@ -17,7 +17,7 @@ struct FxTab::Row final : public juce::Component
         enabled.onClick = [this] {
             const int t = type;
             const bool v = enabled.getToggleState();
-            owner.ctx.edit ([t, v] (Preset& p) { p.data.fx.proc[(size_t) t].enabled = v; }, v ? "Enable Effect" : "Disable Effect");
+            owner.ctx.edit ([t, v] (Preset& p) { p.data.fx.proc[(size_t) t].enabled = v; });
         };
         addAndMakeVisible (enabled);
         setInterceptsMouseClicks (false, true); // the rest of the row belongs to the tab: click = select, drag = reorder

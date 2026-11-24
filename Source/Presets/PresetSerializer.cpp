@@ -2,6 +2,8 @@
 #include <iterator>
 #include "Core/Params.h"
 #include "Core/PatchCompiler.h"
+#include <array>
+#include <cctype>
 #include <chrono>
 #include <cstring>
 #include <ctime>
@@ -162,10 +164,35 @@ Json matrixJson (const std::array<ModSlot, kNumModSlots>& matrix)
 }
 
 // ------------------------------------------------------------------------------- reading
+// "1.10.2" > "1.9"? Missing parts count as 0; anything after the numbers (e.g. "-beta") is ignored.
+static bool isNewerVersion (const std::string& a, const std::string& b)
+{
+    auto parts = [] (const std::string& v) {
+        std::array<long, 3> n {};
+        size_t i = 0;
+        for (int k = 0; k < 3 && i < v.size() && std::isdigit ((unsigned char) v[i]); ++k)
+        {
+            long x = 0;
+            while (i < v.size() && std::isdigit ((unsigned char) v[i]) && x < 1000000) x = x * 10 + (v[i++] - '0');
+            n[(size_t) k] = x;
+            if (i < v.size() && v[i] == '.') ++i; else break;
+        }
+        return n;
+    };
+    return parts (a) > parts (b);
+}
+
 struct Reader
 {
     std::string error;
+    // Names this version does not know (an effect type, waveform, mod source, ... added by a newer
+    // FMLUME). They are not errors: the setting keeps its default and the user is told (COMPATIBILITY.md).
+    std::vector<std::string> unknown;
     bool ok() const { return error.empty(); }
+    void unknownValue (const std::string& path, const std::string& value)
+    {
+        if (unknown.size() < 32) unknown.push_back (path + " = '" + value + "'");
+    }
     bool fail (const std::string& path, const std::string& msg)
     {
         if (error.empty()) error = path + ": " + msg;
@@ -214,7 +241,7 @@ struct Reader
         std::string s;
         if (! str (obj, key, path, s)) return false;
         const int i = enumIndex (names, s);
-        if (i < 0) return fail (path + "." + key, "unknown value '" + s + "'");
+        if (i < 0) { unknownValue (path + "." + key, s); return false; }
         out = (E) i;
         return true;
     }
@@ -295,7 +322,7 @@ void readEngine (Reader& r, const Json& j, const std::string& path, EnginePatch&
             if (r.str (o, "division", p, div))
             {
                 const int d = syncDivFromName (div);
-                if (d < 0) r.fail (p + ".division", "unknown value '" + div + "'");
+                if (d < 0) r.unknownValue (p + ".division", div);
                 else l.syncDiv = (uint8_t) d;
             }
             r.num (o, "phase", p, l.phase);
@@ -319,7 +346,7 @@ void readMappings (Reader& r, const Json& parent, const std::string& path, Macro
             if (r.str (o, "targetParamId", p, id))
             {
                 const int code = paramIdToCode (id);
-                if (code < 0) { r.fail (p + ".targetParamId", "unknown parameter '" + id + "'"); return; }
+                if (code < 0) { r.unknownValue (p + ".targetParamId", id); continue; } // the mapping is left out
                 mp.target = (int16_t) code;
             }
             r.num (o, "amount", p, mp.amount);
@@ -360,7 +387,7 @@ void readMatrix (Reader& r, const Json& arr, const std::string& path, std::array
         if (r.str (o, "source", p, src))
         {
             const int s = modSourceFromName (src);
-            if (s < 0) { r.fail (p + ".source", "unknown source '" + src + "'"); return; }
+            if (s < 0) { r.unknownValue (p + ".source", src); m.target = -1; continue; } // the slot stays empty
             m.source = (ModSource) s;
         }
         if (r.str (o, "target", p, tgt))
@@ -585,7 +612,7 @@ bool presetFromJsonValue (const Json& rootIn, Preset& out, std::string* error, s
     if (r.str (root, "category", top, cat))
     {
         const int c = categoryFromName (cat);
-        if (c < 0) r.fail ("preset.category", "unknown category '" + cat + "'");
+        if (c < 0) r.unknownValue ("preset.category", cat);
         else p.meta.category = (Category) c;
     }
     if (const Json* tags = r.array (root, "tags", top, -1, 64))
@@ -622,7 +649,7 @@ bool presetFromJsonValue (const Json& rootIn, Preset& out, std::string* error, s
             std::string s;
             if (! r.str (o, key, path, s)) return;
             const int dv = syncDivFromName (s);
-            if (dv < 0) r.fail (path + "." + key, "unknown division '" + s + "'");
+            if (dv < 0) r.unknownValue (path + "." + key, s);
             else out = (uint8_t) dv;
         };
         if (const Json* a = r.object (*perf, "arp", pp))
@@ -678,16 +705,25 @@ bool presetFromJsonValue (const Json& rootIn, Preset& out, std::string* error, s
 
     if (const Json* fx = r.object (root, "fx", top))
     {
-        if (const Json* order = r.array (*fx, "order", "fx", kNumFx))
-            for (int i = 0; i < kNumFx && r.ok(); ++i)
+        // The order lists every effect once. Effects this version does not know are skipped; any
+        // it knows but the file does not mention (impossible today) go to the end in default order.
+        if (const Json* order = r.array (*fx, "order", "fx", -1, 64))
+        {
+            bool placed[kNumFx] {};
+            int n = 0;
+            for (auto& o : order->items)
             {
-                const Json& o = order->items[(size_t) i];
-                const int t = o.isString() ? fxTypeFromName (o.string) : -1;
-                if (t < 0) r.fail ("fx.order", "unknown effect type");
-                else d.fx.order[(size_t) i] = (uint8_t) t;
+                if (! o.isString()) { r.fail ("fx.order", "expected effect names"); break; }
+                const int t = fxTypeFromName (o.string);
+                if (t < 0) { r.unknownValue ("fx.order", o.string); continue; }
+                if (placed[t]) { r.fail ("fx.order", "effect '" + o.string + "' listed twice"); break; }
+                placed[t] = true;
+                d.fx.order[(size_t) n++] = (uint8_t) t;
             }
+            for (int t = 0; t < kNumFx && r.ok(); ++t) if (! placed[t]) d.fx.order[(size_t) n++] = (uint8_t) t;
+        }
         r.boolean (*fx, "bypassAll", "fx", d.host.fxBypassAll);
-        if (const Json* procs = r.array (*fx, "processors", "fx", kNumFx))
+        if (const Json* procs = r.array (*fx, "processors", "fx", -1, 64))
         {
             bool seen[kNumFx] {};
             for (auto& o : procs->items)
@@ -696,7 +732,8 @@ bool presetFromJsonValue (const Json& rootIn, Preset& out, std::string* error, s
                 std::string type;
                 if (! r.str (o, "type", "fx.processors[]", type)) break;
                 const int t = fxTypeFromName (type);
-                if (t < 0 || seen[t]) { r.fail ("fx.processors[]", "unknown or duplicate effect type '" + type + "'"); break; }
+                if (t < 0) { r.unknownValue ("fx.processors[]", type); continue; }
+                if (seen[t]) { r.fail ("fx.processors[]", "duplicate effect type '" + type + "'"); break; }
                 seen[t] = true;
                 const std::string pp = std::string ("fx.") + type;
                 r.boolean (o, "enabled", pp, d.fx.proc[(size_t) t].enabled);
@@ -731,6 +768,14 @@ bool presetFromJsonValue (const Json& rootIn, Preset& out, std::string* error, s
     }
 
     if (! r.ok()) return failWith (r.error);
+    if (warnings && ! r.unknown.empty())
+    {
+        std::string w = "this preset uses settings this version of FMLUME does not know (made with a newer version?); they were left at their defaults: ";
+        for (size_t i = 0; i < r.unknown.size(); ++i) w += (i ? ", " : "") + r.unknown[i];
+        warnings->push_back (w);
+    }
+    else if (warnings && isNewerVersion (p.meta.pluginVersion, FMLUME_VERSION_STRING))
+        warnings->push_back ("this preset was saved by a newer FMLUME (" + p.meta.pluginVersion + "); settings added since are ignored");
 
     const auto v = validatePatch (d);
     if (! v.ok) return failWith (v.error);

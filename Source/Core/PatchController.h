@@ -49,7 +49,7 @@ public:
     bool setParam (int code, float value);
     float getParam (int code) const;
 
-    // Graph editing helpers (Advanced > Algorithm). All keep the patch valid.
+    // Graph editing helpers (Advanced > Operators, routing diagram). All keep the patch valid.
     bool addEdge (int from, int to, float index = 1.5f);
     bool removeEdge (int from, int to);
     bool setOperatorEnabled (int op, bool enabled);

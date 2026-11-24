@@ -4,6 +4,8 @@
 
 macOS 用 AU（AUv2）/ VST3 / Standalone の6オペレーター FM/PM シンセサイザー。Simple モードの8マクロと Sound Explorer で、オペレーターやアルゴリズムを知らなくても音作りができ、Advanced モードでは自由接続FM・Mod Matrix・9種のFXを直接編集できます。
 
+- 使い方: [`docs/USER_GUIDE.md`](docs/USER_GUIDE.md)（公開用の HTML は `site/guide.html`。`python3 scripts/build_guide.py` で作る）
+- 互換性の方針: [`docs/COMPATIBILITY.md`](docs/COMPATIBILITY.md)
 - 仕様: [`SPEC.md`](SPEC.md)
 - 実装状況と実測結果: [`docs/IMPLEMENTATION_STATUS.md`](docs/IMPLEMENTATION_STATUS.md)
 - 構造: [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md) / 設計判断: [`docs/DECISIONS.md`](docs/DECISIONS.md)
@@ -40,7 +42,7 @@ cmake --build build-release --config Release --parallel
 | 名前 | FMLUME Dev | FMLUME |
 | AU | `aumu Fmld Chbw` | `aumu Fmlu Chbw` |
 | Bundle ID | `info.cheebow.fmlume.dev` | `info.cheebow.fmlume` |
-| ユーザープリセット | `~/Library/Application Support/FMLUME Dev/Presets` | `~/Library/Application Support/FMLUME/Presets` |
+| ユーザープリセット | `~/Library/Application Support/FMLUME/Presets`（製品版と共通） | `~/Library/Application Support/FMLUME/Presets` |
 | 画面 | ロゴの横に DEV の印 | 印なし |
 
 開発用で保存した DAW プロジェクトは製品版では開けません（識別子が違うため）。開発用はテスト用と割り切ってください。

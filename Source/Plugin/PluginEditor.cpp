@@ -132,7 +132,7 @@ void FmlumeAudioProcessorEditor::refreshAll()
     const juce::String stateNotice = processor.takeStateNotice();
     if (stateNotice.isNotEmpty())
     {
-        setStatus ("This project was saved with an older FMLUME: " + stateNotice + ".", false);
+        setStatus ("While restoring this project: " + stateNotice + ".", false);
         statusCountdown = 30 * 20;
     }
 }

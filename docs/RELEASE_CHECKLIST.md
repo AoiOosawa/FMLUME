@@ -9,6 +9,7 @@
 - [ ] `fmlume-presetgen Resources/Presets --check` が問題 0 件（全マクロの可聴性、音量）
 - [ ] `fmlume-uisnap --check-keys` が問題 0 件（ホストのキー操作を奪わない）
 - [ ] Intel 向けコード: テスト一式を x86_64 でビルドし、Rosetta 上で全件合格
+- [ ] `python3 scripts/build_guide.py --check`（使い方ページが `docs/USER_GUIDE.md` と一致）
 
 ## 2. 実機確認（自動化できないもの）
 - [ ] DAW での認識・発音・オートメーション・プロジェクトの保存と再読込・書き出し（`docs/TEST_PLAN.md` の HOST-01。Cubase / Logic Pro ほか）
@@ -19,7 +20,8 @@
 ## 3. 識別子とバージョン（配布後は変更しない）
 - [ ] 名前 `FMLUME`、Bundle ID `info.cheebow.fmlume`、AU `aumu Fmlu Chbw`
 - [ ] `CMakeLists.txt` の `project(FMLUME VERSION x.y.z)` が出したいバージョン
-- [ ] プリセット形式（`schemaVersion`）とホストパラメーター ID を、前回の配布から壊していない
+- [ ] プリセット形式（`schemaVersion`）とホストパラメーター ID を、前回の配布から壊していない（`docs/COMPATIBILITY.md` §5）
+- [ ] 音の指紋（`tests/Golden/sound_fingerprints.json`）を記録し直した場合は、理由が DECISIONS にある
 
 ## 4. インストーラー
 - [ ] `SIGN_APP` / `SIGN_PKG` / `NOTARY_PROFILE` を指定して `scripts/package.sh` を実行（署名と公証。Developer ID を使い Apple へ送信するので、実行は本人の判断で）
@@ -30,7 +32,8 @@
 - [ ] 開発環境のない別の Mac でインストールして起動
 
 ## 5. 公開
-- [ ] リポジトリの公開（AGPL-3.0 の「対応するソースコードの提供」を満たす）
+- [x] リポジトリの公開（AGPL-3.0 の「対応するソースコードの提供」を満たす。2026-11-24）
 - [ ] GitHub Releases にインストーラーと SHA-256 を掲載
 - [ ] 製品ページ（`site/`）と README にダウンロードの案内
+- [x] GitHub Pages で `site/`（製品紹介と使い方 `guide.html`）を公開（`.github/workflows/pages.yml`。2026-11-24）
 - [ ] ロゴの文字をアウトライン化（現在はシステムフォント依存）
