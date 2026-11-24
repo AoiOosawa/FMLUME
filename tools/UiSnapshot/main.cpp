@@ -104,6 +104,53 @@ struct SnapshotApp final : public juce::JUCEApplication
             quit();
             return;
         }
+        // "--check-fit": does "Fit macros 1-4 to routing" ask before it replaces the assignments?
+        if (tokens.size() >= 1 && tokens[0] == "--check-fit")
+        {
+            auto processor = std::make_unique<FmlumeAudioProcessor>();
+            processor->prepareToPlay (48000.0, 512);
+            std::unique_ptr<juce::AudioProcessorEditor> ed (processor->createEditor());
+            ed->setVisible (true);
+            ed->addToDesktop (0);
+            auto pump = [] { juce::MessageManager::getInstance()->runDispatchLoopUntil (300); };
+            clickButton (*ed, "ADVANCED");
+            pump();
+            const auto alerts = [] {
+                int n = 0;
+                for (int i = 0; i < juce::TopLevelWindow::getNumTopLevelWindows(); ++i)
+                    if (dynamic_cast<juce::AlertWindow*> (juce::TopLevelWindow::getTopLevelWindow (i)) != nullptr) ++n;
+                return n;
+            };
+            for (int step = 0; step < 2; ++step)
+            {
+                if (step == 1) processor->withModel ([] (fmlume::PatchController& pc) { return pc.addEdge (1, 2); }); // a new connection by hand (OP 2 > OP 3, both on)
+                pump();
+                bool enabled = false;
+                std::function<void (juce::Component&)> state = [&] (juce::Component& c) {
+                    if (auto* b = dynamic_cast<juce::Button*> (&c)) if (b->getButtonText() == "Fit macros 1-4 to routing") enabled = b->isEnabled();
+                    for (auto* ch : c.getChildren()) state (*ch);
+                };
+                state (*ed);
+                std::printf ("  button %s\n", enabled ? "enabled" : "disabled");
+                clickButton (*ed, "Fit macros 1-4 to routing");
+                pump();
+                juce::String status;
+                std::function<void (juce::Component&)> find = [&] (juce::Component& c) {
+                    if (auto* l = dynamic_cast<juce::Label*> (&c)) if (l->getText().contains ("acros 1-4")) status = l->getText();
+                    for (auto* ch : c.getChildren()) find (*ch);
+                };
+                find (*ed);
+                std::printf ("%s: alert windows %d, modal %d, status \"%s\"\n", step == 0 ? "as loaded" : "after adding a connection", alerts(),
+                             juce::ModalComponentManager::getInstance()->getNumModalComponents(), status.toRawUTF8());
+                for (int i = juce::TopLevelWindow::getNumTopLevelWindows(); --i >= 0;)
+                    if (auto* a = dynamic_cast<juce::AlertWindow*> (juce::TopLevelWindow::getTopLevelWindow (i))) a->exitModalState (0);
+                pump();
+            }
+            ed.reset();
+            processor.reset();
+            quit();
+            return;
+        }
         // "--check-edited <dir>": the "*" beside the preset name follows the host parameters a preset
         // stores (macros, ...), through the real processor and editor. Writes the header before / after.
         if (tokens.size() >= 1 && tokens[0] == "--check-edited")

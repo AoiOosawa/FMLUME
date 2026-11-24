@@ -380,11 +380,11 @@ void OperatorsTab::resized()
     layoutKnobRow (l, { &velLevel, &velFm, &keyTrack }, 100);
 }
 
-// Macros 1-4 are re-assigned from the routing (assignCommonMacros). Whatever they point at now is
-// replaced, including targets set by hand in the Macro Editor, so that is confirmed first.
-void OperatorsTab::fitMacros()
+namespace
 {
-    const Preset now = ctx.snapshot();
+// True when assignCommonMacros would change what macros 1-4 point at.
+bool macrosNeedFit (const Preset& now)
+{
     Preset fitted = now;
     assignCommonMacros (fitted.data);
     const auto same = [] (const Macro& a, const Macro& b) {
@@ -397,9 +397,18 @@ void OperatorsTab::fitMacros()
         }
         return true;
     };
-    bool changes = false;
-    for (int i = 0; i < 4; ++i) changes = changes || ! same (now.data.sound.macros[(size_t) i], fitted.data.sound.macros[(size_t) i]);
-    if (! changes) { ctx.say ("Macros 1-4 already fit the current routing."); return; }
+    for (int i = 0; i < 4; ++i)
+        if (! same (now.data.sound.macros[(size_t) i], fitted.data.sound.macros[(size_t) i])) return true;
+    return false;
+}
+} // namespace
+
+// Macros 1-4 are re-assigned from the routing (assignCommonMacros). Whatever they point at now is
+// replaced, including targets set by hand in the Macro Editor, so that is confirmed first.
+void OperatorsTab::fitMacros()
+{
+    const Preset now = ctx.snapshot();
+    if (! macrosNeedFit (now)) { ctx.say ("Macros 1-4 already fit the current routing."); return; }
 
     juce::String names;
     for (int i = 0; i < 4; ++i) names << (i ? ", " : "") << utf8 (now.meta.macroNames[(size_t) i]);
@@ -492,6 +501,12 @@ void OperatorsTab::refresh (const Preset& p)
         edgeTitle.setColour (juce::Label::textColourId, edge ? col::text : col::textDim);
         edgeTitle.setFont (font (edge ? 14.0f : 12.0f, edge));
         index.refresh();
+        // only clickable when it would change something (a click that does nothing looks broken)
+        const bool needFit = macrosNeedFit (p);
+        resetMacros.setEnabled (needFit);
+        resetMacros.setTooltip (needFit ? "Point Brightness / Attack / Release / Character (macros 1-4) at the current routing. "
+                                          "Choosing a template does this by itself; use it after connecting, removing or switching operators by hand."
+                                        : "Macros 1-4 already fit the current routing. This becomes available after you change the connections by hand.");
         const int ratioCode = pc::op (op, o.pitchMode == PitchMode::Ratio ? kOpRatio : kOpFixedHz);
         if (sideRatio.getCode() != ratioCode)
         {
