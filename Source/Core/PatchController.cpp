@@ -10,6 +10,38 @@ namespace fmlume
 {
 PatchController::PatchController() { current = makeCategoryPreset (Category::EPiano); }
 
+PatchController::~PatchController() { stopWorker(); }
+
+void PatchController::stopWorker()
+{
+    if (worker.joinable())
+    {
+        cancelWorker.store (true);
+        worker.join();
+    }
+    cancelWorker.store (false);
+    busy = false;
+}
+
+bool PatchController::pollExplore()
+{
+    if (! busy) return false;
+    bool changed = false, finished = false;
+    {
+        std::lock_guard<std::mutex> lock (workerMutex);
+        while (cands.size() < workerOut.size()) { cands.push_back (workerOut[cands.size()]); changed = true; }
+        finished = workerDone;
+    }
+    if (finished)
+    {
+        worker.join();
+        busy = false;
+        changed = true;
+    }
+    if (changed) notify();
+    return changed;
+}
+
 bool PatchController::presetHostValuesEqual (const HostParams& a, const HostParams& b)
 {
     // tolerant: values pass through the host's normalised 0..1 range and back
@@ -139,17 +171,42 @@ bool PatchController::setState (const Preset& p)
 // ------------------------------------------------------------------------------------- explorer
 bool PatchController::runExplore (const PatchData& parent, bool keepHistory)
 {
-    if (exploreActive && keepHistory)
+    const bool wasBusy = busy;
+    stopWorker();
+    if (exploreActive && keepHistory && ! wasBusy) // an unfinished set is not worth going back to
     {
         exploreHistory.push_back ({ exploreParent, cands, seed });
         if ((int) exploreHistory.size() > kMaxExploreHistory) exploreHistory.erase (exploreHistory.begin());
     }
     exploreParent = parent;
-    cands = SoundExplorer::generate (parent, exploreSettings, seed);
     exploreActive = true;
     if (previewing >= 0) { previewing = -1; push (true); }
+    if (! asyncExplore)
+    {
+        cands = SoundExplorer::generate (parent, exploreSettings, seed);
+        notify();
+        return ! cands.empty();
+    }
+    cands.clear();
+    {
+        std::lock_guard<std::mutex> lock (workerMutex);
+        workerOut.clear();
+        workerDone = false;
+    }
+    busy = true;
+    worker = std::thread ([this, parent, settings = exploreSettings, s = seed] {
+        ExploreRun run (parent, settings, s);
+        while (! run.done())
+        {
+            if (! run.next (&cancelWorker)) return;
+            std::lock_guard<std::mutex> lock (workerMutex);
+            workerOut.push_back (run.candidates().back());
+        }
+        std::lock_guard<std::mutex> lock (workerMutex);
+        workerDone = true;
+    });
     notify();
-    return ! cands.empty();
+    return true;
 }
 
 bool PatchController::explore()
@@ -177,6 +234,7 @@ bool PatchController::exploreFromThis (int candidate)
 bool PatchController::exploreBack()
 {
     if (exploreHistory.empty()) return false;
+    stopWorker();
     ExploreStep s = std::move (exploreHistory.back());
     exploreHistory.pop_back();
     exploreParent = s.parent;
@@ -220,6 +278,7 @@ bool PatchController::useCandidate (int candidate)
 
 void PatchController::closeExplorer()
 {
+    stopWorker();
     const bool wasPreviewing = previewing >= 0;
     exploreActive = false;
     cands.clear();

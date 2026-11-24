@@ -135,6 +135,7 @@ void FmlumeAudioProcessorEditor::refreshAll()
 void FmlumeAudioProcessorEditor::timerCallback()
 {
     header.tick();
+    processor.withModel ([] (PatchController& pc) { return pc.pollExplore(); }); // finished variations (bumps the model version)
     float wheel = 0.0f;
     if (processor.takeMidiPitchBend (wheel)) bendWheel.setDisplayValue (wheel);
     if (processor.takeMidiModWheel (wheel)) modWheel.setDisplayValue (wheel);

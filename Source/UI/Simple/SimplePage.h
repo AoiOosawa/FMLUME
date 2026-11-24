@@ -53,7 +53,7 @@ private:
 };
 
 // Sound Explorer, presented as "Variations": generate -> click tiles to listen -> keep one.
-class ExplorerPanel final : public juce::Component
+class ExplorerPanel final : public juce::Component, private juce::Timer
 {
 public:
     explicit ExplorerPanel (Ctx&);
@@ -70,11 +70,15 @@ private:
         void mouseExit (const juce::MouseEvent&) override { repaint(); }
         juce::String letter, name, detail;
         bool selected = false, original = false;
+        bool pending = false;  // being made: a shimmer instead of text
+        float reveal = 1.0f;   // 0 -> 1 as a finished variation fades in
+        float phase = 0.0f;    // shimmer position
         std::function<void()> onClick;
     };
     void pushSettings();
     bool run (const std::function<bool (fmlume::PatchController&)>& fn);
     void keepMenu();
+    void timerCallback() override;
 
     Ctx& ctx;
     juce::ComboBox direction, strength;
@@ -85,6 +89,7 @@ private:
     juce::OwnedArray<Tile> tiles;
     fmlume::ExploreLocks locks;
     int previewing = -1;
+    bool busy = false;
 };
 
 class SimplePage final : public juce::Component

@@ -1,3 +1,5 @@
+#include <thread>
+#include <chrono>
 #include "TestFramework.h"
 #include "TestUtil.h"
 #include "Core/PatchController.h"
@@ -332,4 +334,51 @@ FM_TEST ("integration", "Variations sound as loud as the original (no jump when 
     std::printf ("    %d candidates, largest loudness difference %.1f dB (%s)\n", checked, worst, worstCat >= 0 ? categoryName ((Category) worstCat) : "-");
     CHECK (checked == (int) Category::Count * 2 * kNumCandidates);
     CHECK (worst < 3.0f);
+}
+
+FM_TEST ("integration", "Variations made in the background arrive one by one and match the synchronous ones")
+{
+    const Preset start = makeCategoryPreset (Category::Pluck);
+    PatchController sync;
+    sync.loadPreset (start);
+    CHECK (sync.explore());
+    const auto expected = sync.candidates();
+    CHECK (expected.size() == (size_t) kNumCandidates);
+
+    PatchController ctl;
+    ctl.asyncExplore = true;
+    ctl.loadPreset (start);
+    CHECK (ctl.explore());
+    CHECK (ctl.exploring());
+    CHECK (ctl.exploreBusy());
+    std::vector<size_t> seen;
+    for (int i = 0; i < 2000 && ctl.exploreBusy(); ++i)
+    {
+        if (ctl.pollExplore()) seen.push_back (ctl.candidates().size());
+        std::this_thread::sleep_for (std::chrono::milliseconds (5));
+    }
+    CHECK (! ctl.exploreBusy());
+    CHECK (ctl.candidates().size() == expected.size());
+    for (size_t i = 0; i < expected.size() && i < ctl.candidates().size(); ++i)
+        CHECK (patchDataEqual (ctl.candidates()[i].data, expected[i].data)); // same seed, same candidates
+    CHECK (seen.size() >= 2); // they did not all arrive at once
+
+    // A new set while one is still being made: the old one is dropped, only the new one arrives.
+    CHECK (ctl.regenerate());
+    CHECK (ctl.regenerate());
+    CHECK (ctl.candidates().empty());
+    for (int i = 0; i < 2000 && ctl.exploreBusy(); ++i) { ctl.pollExplore(); std::this_thread::sleep_for (std::chrono::milliseconds (5)); }
+    CHECK (ctl.candidates().size() == (size_t) kNumCandidates);
+
+    // Loading a preset or closing stops the work; destroying the controller mid-run is safe.
+    CHECK (ctl.regenerate());
+    ctl.loadPreset (makeCategoryPreset (Category::Bass));
+    CHECK (! ctl.exploreBusy());
+    CHECK (! ctl.exploring());
+    {
+        PatchController shortLived;
+        shortLived.asyncExplore = true;
+        shortLived.loadPreset (start);
+        CHECK (shortLived.explore());
+    }
 }

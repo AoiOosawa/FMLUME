@@ -2,6 +2,8 @@
 // No machine learning, no network access; everything runs locally on a non-realtime thread.
 #pragma once
 #include "Core/Model.h"
+#include <atomic>
+#include <memory>
 #include <string>
 #include <vector>
 
@@ -46,6 +48,23 @@ constexpr int kNumCandidates = 8;
 
 const char* exploreDirectionName (ExploreDirection d);
 const char* exploreStrengthName (ExploreStrength s);
+
+// The same generation as SoundExplorer::generate, one candidate per next() call, so a worker
+// thread can hand each candidate over as soon as it is ready. Deterministic like generate().
+class ExploreRun
+{
+public:
+    ExploreRun (const PatchData& parent, const ExploreSettings& settings, uint64_t seed);
+    ~ExploreRun();
+    bool done() const;
+    // Adds the next candidate. Returns false (and adds nothing) if `cancel` was raised meanwhile.
+    bool next (const std::atomic<bool>* cancel = nullptr);
+    const std::vector<ExploreCandidate>& candidates() const;
+
+private:
+    struct State;
+    std::unique_ptr<State> s;
+};
 
 class SoundExplorer
 {

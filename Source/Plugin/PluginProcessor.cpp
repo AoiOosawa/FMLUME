@@ -78,6 +78,7 @@ FmlumeAudioProcessor::FmlumeAudioProcessor()
     controller.sendPatch = [this] (const PatchData& d, bool forceNew) { return engine.setPatch (d, forceNew); };
     controller.applyHostValues = [this] (const HostParams& h) { applyHostValues (h); };
     controller.changed = [this] { modelVersion.fetch_add (1); };
+    controller.asyncExplore = true; // Variations are made on a worker thread; the editor collects them (pollExplore)
 
     loadFactoryPresets();
     // Release and Dev plug-in share the user presets (as in POLYBRISK): they are the same instrument.

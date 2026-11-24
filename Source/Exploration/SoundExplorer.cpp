@@ -398,188 +398,231 @@ bool SoundExplorer::isSafe (const PatchData& d, float* rmsOut, std::string* why)
     return true;
 }
 
+// One generation run, one candidate at a time (the background worker reports each as it is ready).
+struct ExploreRun::State
+{
+    PatchData parent;
+    ExploreSettings settings;
+    uint64_t seed = 0;
+    std::vector<ExploreCandidate> result;
+    int strength = 1;
+    float sigma = 0.2f, pick = 0.6f;
+    uint64_t parentSum = 0;
+    ExploreScores parentScores;
+    double hold = 0.8;
+    float parentLoudness = 0.0f;
+    bool mayChangeGraph = false;
+};
+
+ExploreRun::ExploreRun (const PatchData& parentIn, const ExploreSettings& settingsIn, uint64_t seedIn) : s (std::make_unique<State>())
+{
+    auto& st = *s;
+    st.parent = parentIn;
+    st.settings = settingsIn;
+    st.seed = seedIn;
+    st.result.reserve (kNumCandidates);
+    st.strength = std::min<int> ((int) st.settings.strength, 2);
+    st.sigma = kSigma[st.strength];
+    st.pick = st.strength == 0 ? 0.5f : (st.strength == 1 ? 0.6f : 0.7f);
+    st.parentSum = patchChecksum (st.parent);
+    st.parentScores = SoundExplorer::score (st.parent);
+    st.hold = SoundExplorer::measuringHold (st.parent);
+    bool finite = true;
+    float peak = 0.0f;
+    renderRms (st.parent, finite, peak, &st.parentLoudness, st.hold);
+    bool anyMacroLock = false;
+    for (bool b : st.settings.locks.macros) anyMacroLock = anyMacroLock || b;
+    st.mayChangeGraph = st.settings.strength == ExploreStrength::Wild && ! st.settings.locks.graph && ! st.settings.locks.ratios && ! anyMacroLock;
+}
+
+ExploreRun::~ExploreRun() = default;
+bool ExploreRun::done() const { return (int) s->result.size() >= kNumCandidates; }
+const std::vector<ExploreCandidate>& ExploreRun::candidates() const { return s->result; }
+
+bool ExploreRun::next (const std::atomic<bool>* cancel)
+{
+    if (done()) return true;
+    auto& st = *s;
+    const PatchData& parent = st.parent;
+    const ExploreSettings& settings = st.settings;
+    const uint64_t seed = st.seed;
+    auto& result = st.result;
+    const int strength = st.strength;
+    const float sigma = st.sigma, pick = st.pick;
+    const uint64_t parentSum = st.parentSum;
+    const ExploreScores& parentScores = st.parentScores;
+    const double hold = st.hold;
+    const float parentLoudness = st.parentLoudness;
+    const bool mayChangeGraph = st.mayChangeGraph;
+    const int i = (int) result.size();
+
+    ExploreCandidate best;
+    bool found = false;
+    for (int attempt = 0; attempt < 50 && ! found; ++attempt)
+    {
+        if (cancel != nullptr && cancel->load (std::memory_order_relaxed)) return false;
+        const uint64_t candSeed = mix64 (seed ^ mix64 ((uint64_t) i * 0x9E3779B97F4A7C15ULL + (uint64_t) attempt * 0xD1B54A32D192ED03ULL + 1u));
+        Pcg32 rng (candSeed, (uint64_t) i + 11u);
+        PatchData d = parent;
+        auto& e = d.sound.engine;
+
+        // 1. Optional routing swap (Wild, unlocked only): another validated template with the same operator count.
+        if (mayChangeGraph && rng.nextFloat() < 0.35f)
+        {
+            int used = 0;
+            for (auto& op : e.operators) used += op.enabled ? 1 : 0;
+            int options[32], numOptions = 0;
+            const int current = matchAlgorithm (e);
+            for (int t = 0; t < numAlgorithmTemplates(); ++t)
+            {
+                int ops = 0;
+                for (int k = 0; k < kNumOps; ++k) ops += (algorithmTemplate (t).usedMask >> k) & 1u;
+                if (ops == used && t != current) options[numOptions++] = t;
+            }
+            if (numOptions > 0)
+            {
+                applyAlgorithm (e, options[rng.nextInt (numOptions)], 1.5f);
+                sanitizeTargets (d);
+                assignCommonMacros (d);
+            }
+        }
+
+        // 2. Ratio snapping (Wild, unlocked): modulators only, from fixed musical sets.
+        if (settings.strength == ExploreStrength::Wild && ! settings.locks.ratios)
+            for (int k = 0; k < kNumOps; ++k)
+            {
+                auto& op = e.operators[(size_t) k];
+                if (! op.enabled || op.carrierGain > 0.0f || op.pitchMode != PitchMode::Ratio) continue;
+                if (lockedByMacro (parent, settings.locks, pc::op (k, kOpRatio))) continue;
+                const bool metallic = settings.direction == ExploreDirection::MoreMetallic;
+                if (rng.nextFloat() < (metallic ? 0.45f : 0.2f))
+                {
+                    if (metallic || rng.nextFloat() < 0.25f) op.ratio = kMetallicRatios[rng.nextInt (7)];
+                    else op.ratio = kHarmonicRatios[rng.nextInt (11)];
+                }
+            }
+
+        // 3. More Motion: make sure there is something moving.
+        if (settings.direction == ExploreDirection::MoreMotion)
+        {
+            bool hasLfo = false;
+            int freeSlot = -1;
+            for (int s = 0; s < kNumModSlots; ++s)
+            {
+                const auto& m = d.sound.matrix[(size_t) s];
+                if (m.enabled && (m.source == ModSource::LFO1 || m.source == ModSource::LFO2) && std::fabs (m.depth) > 0.005f) hasLfo = true;
+                if (! m.enabled && freeSlot < 0) freeSlot = s;
+            }
+            if (! hasLfo && freeSlot >= 0)
+            {
+                int target = e.filter.type != FilterType::Off ? pc::filterCutoff : -1;
+                for (int k = 0; k < e.numEdges && target < 0; ++k) target = pc::edge (e.edges[(size_t) k].from, e.edges[(size_t) k].to);
+                if (target < 0) target = pc::pan;
+                setModSlot (d.sound, freeSlot, ModSource::LFO1, target, 0.04f + 0.08f * rng.nextFloat());
+                if (! lockedByMacro (parent, settings.locks, pc::lfo1Rate)) e.lfo[0].rateHz = 0.2f * std::pow (20.0f, rng.nextFloat());
+            }
+        }
+
+        // 4. Continuous parameters in the normalised domain.
+        for (int c = 0; c < pc::total; ++c)
+        {
+            if (! explorable (d, c)) continue;
+            if (settings.locks.envelopes && isEnvCode (c)) continue;
+            if (settings.locks.fx && pc::isFx (c)) continue;
+            if (lockedByMacro (parent, settings.locks, c)) continue;
+            const auto& desc = paramDesc (c);
+            const float scale = groupScale (c);
+            const float bias = directionBias (settings.direction, d, c);
+            const bool chosen = rng.nextFloat() < pick;
+            const float noise = rng.nextGaussian();
+            if (! chosen && bias == 0.0f) continue;
+            float n = toNorm (desc, getParam (d, c));
+            float delta = (chosen ? noise * sigma * scale * (bias != 0.0f ? 0.5f : 1.0f) : 0.0f) + bias * sigma * scale;
+            if (settings.direction == ExploreDirection::MoreMotion && c >= pc::matrixDepthBase && c < pc::engineCount)
+            {
+                // push depth away from zero, keeping its sign
+                const float sign = n >= 0.5f ? 1.0f : -1.0f;
+                delta = sign * std::fabs (noise * 0.5f + 0.8f) * sigma * 0.35f;
+            }
+            delta = clampf (delta, -2.0f * sigma, 2.0f * sigma);
+            n = clampf (n + delta, 0.0f, 1.0f);
+            // Safety limits per kind.
+            if (pc::isOp (c))
+            {
+                const int f = c % kOpFieldCount;
+                if (f == kOpCarrierGain) n = std::max (n, 0.25f);
+                if (f == kOpLevel) n = std::max (n, d.sound.engine.operators[(size_t) (c / kOpFieldCount)].carrierGain > 0.0f ? 0.4f : 0.05f);
+                if (f == kOpEnvS && d.sound.engine.operators[(size_t) (c / kOpFieldCount)].carrierGain > 0.0f) n = std::max (n, 0.0f);
+                if (f == kOpDetune) n = clampf (n, 0.35f, 0.65f);
+            }
+            if (pc::isEdge (c)) n = std::min (n, 0.75f);                 // <= 12 rad
+            if (c == pc::filterCutoff) n = std::max (n, 0.25f);         // >= ~110 Hz
+            if (c == pc::filterRes) n = std::min (n, 0.9f);
+            if (c == pc::fx (FxType::Delay, 3) || c == pc::fx (FxType::Phaser, 2) || c == pc::fx (FxType::Flanger, 2)) n = std::min (n, 0.85f);
+            if (c == pc::fx (FxType::Drive, 3) || c == pc::fx (FxType::Compressor, 4)) continue; // output trims stay put
+            setParam (d, c, fromNorm (desc, n));
+        }
+
+        // 5. Validate, check locks / safety / uniqueness, normalise loudness.
+        if (! validatePatch (d).ok) continue;
+        if (! SoundExplorer::locksRespected (parent, d, settings.locks)) continue;
+        if (! SoundExplorer::isSafe (d)) continue;
+        float loudness = 0.0f;
+        {
+            bool finite = true;
+            float peak = 0.0f;
+            renderRms (d, finite, peak, &loudness, hold);
+        }
+        // Level it to the original. A candidate that would need more than 9 dB of correction is
+        // far quieter or louder than the original (a carrier pushed out of range, a filter shut):
+        // not a variation of the same sound, so it is dropped rather than half-corrected.
+        const float gainDb = parentLoudness - loudness;
+        const float level = parent.out.levelDb + gainDb;
+        if (std::fabs (gainDb) > 9.0f || level < -24.0f || level > 12.0f) continue;
+        d.out.levelDb = level;
+        if (SoundExplorer::distance (parent, d) < kMinDistance[strength]) continue;
+        bool duplicate = false;
+        for (auto& other : result) duplicate = duplicate || SoundExplorer::distance (other.data, d) < kMinDistance[strength] * 0.6f;
+        if (duplicate) continue;
+
+        best.data = d;
+        best.seed = candSeed;
+        found = true;
+    }
+    if (! found)
+    {
+        // Fallback: a guaranteed-safe small change relative to the parent.
+        PatchData d = parent;
+        const float step = 0.03f * (float) (i + 1) * ((i % 2) ? -1.0f : 1.0f);
+        bool changed = false;
+        for (int c = 0; c < pc::total && ! changed; ++c)
+        {
+            if (! explorable (d, c) || lockedByMacro (parent, settings.locks, c)) continue;
+            if ((settings.locks.envelopes && isEnvCode (c)) || (settings.locks.fx && pc::isFx (c))) continue;
+            const auto& desc = paramDesc (c);
+            const float n = toNorm (desc, getParam (d, c));
+            const float n2 = clampf (n + step, 0.05f, 0.75f);
+            if (pc::isOp (c) && c % kOpFieldCount == kOpCarrierGain) continue;
+            if (std::fabs (n2 - n) < 1.0e-4f) continue;
+            PatchData trial = d;
+            setParam (trial, c, fromNorm (desc, n2));
+            if (SoundExplorer::isSafe (trial)) { d = trial; changed = true; }
+        }
+        best.data = d;
+        best.seed = mix64 (seed ^ (uint64_t) (i + 1000));
+        best.fallback = true;
+    }
+    best.parentChecksum = parentSum;
+    best.scores = SoundExplorer::score (best.data);
+    best.name = describe (parentScores, best.scores, best.tendency);
+    result.push_back (std::move (best));
+    return true;
+}
+
 std::vector<ExploreCandidate> SoundExplorer::generate (const PatchData& parent, const ExploreSettings& settings, uint64_t seed)
 {
-    std::vector<ExploreCandidate> result;
-    result.reserve (kNumCandidates);
-    const int strength = std::min<int> ((int) settings.strength, 2);
-    const float sigma = kSigma[strength];
-    const float pick = strength == 0 ? 0.5f : (strength == 1 ? 0.6f : 0.7f);
-    const uint64_t parentSum = patchChecksum (parent);
-    const ExploreScores parentScores = score (parent);
-    const double hold = measuringHold (parent);
-    float parentLoudness = 0.0f;
-    {
-        bool finite = true;
-        float peak = 0.0f;
-        renderRms (parent, finite, peak, &parentLoudness, hold);
-    }
-    bool anyMacroLock = false;
-    for (bool b : settings.locks.macros) anyMacroLock = anyMacroLock || b;
-    const bool mayChangeGraph = settings.strength == ExploreStrength::Wild && ! settings.locks.graph && ! settings.locks.ratios && ! anyMacroLock;
-
-    for (int i = 0; i < kNumCandidates; ++i)
-    {
-        ExploreCandidate best;
-        bool found = false;
-        for (int attempt = 0; attempt < 50 && ! found; ++attempt)
-        {
-            const uint64_t candSeed = mix64 (seed ^ mix64 ((uint64_t) i * 0x9E3779B97F4A7C15ULL + (uint64_t) attempt * 0xD1B54A32D192ED03ULL + 1u));
-            Pcg32 rng (candSeed, (uint64_t) i + 11u);
-            PatchData d = parent;
-            auto& e = d.sound.engine;
-
-            // 1. Optional routing swap (Wild, unlocked only): another validated template with the same operator count.
-            if (mayChangeGraph && rng.nextFloat() < 0.35f)
-            {
-                int used = 0;
-                for (auto& op : e.operators) used += op.enabled ? 1 : 0;
-                int options[32], numOptions = 0;
-                const int current = matchAlgorithm (e);
-                for (int t = 0; t < numAlgorithmTemplates(); ++t)
-                {
-                    int ops = 0;
-                    for (int k = 0; k < kNumOps; ++k) ops += (algorithmTemplate (t).usedMask >> k) & 1u;
-                    if (ops == used && t != current) options[numOptions++] = t;
-                }
-                if (numOptions > 0)
-                {
-                    applyAlgorithm (e, options[rng.nextInt (numOptions)], 1.5f);
-                    sanitizeTargets (d);
-                    assignCommonMacros (d);
-                }
-            }
-
-            // 2. Ratio snapping (Wild, unlocked): modulators only, from fixed musical sets.
-            if (settings.strength == ExploreStrength::Wild && ! settings.locks.ratios)
-                for (int k = 0; k < kNumOps; ++k)
-                {
-                    auto& op = e.operators[(size_t) k];
-                    if (! op.enabled || op.carrierGain > 0.0f || op.pitchMode != PitchMode::Ratio) continue;
-                    if (lockedByMacro (parent, settings.locks, pc::op (k, kOpRatio))) continue;
-                    const bool metallic = settings.direction == ExploreDirection::MoreMetallic;
-                    if (rng.nextFloat() < (metallic ? 0.45f : 0.2f))
-                    {
-                        if (metallic || rng.nextFloat() < 0.25f) op.ratio = kMetallicRatios[rng.nextInt (7)];
-                        else op.ratio = kHarmonicRatios[rng.nextInt (11)];
-                    }
-                }
-
-            // 3. More Motion: make sure there is something moving.
-            if (settings.direction == ExploreDirection::MoreMotion)
-            {
-                bool hasLfo = false;
-                int freeSlot = -1;
-                for (int s = 0; s < kNumModSlots; ++s)
-                {
-                    const auto& m = d.sound.matrix[(size_t) s];
-                    if (m.enabled && (m.source == ModSource::LFO1 || m.source == ModSource::LFO2) && std::fabs (m.depth) > 0.005f) hasLfo = true;
-                    if (! m.enabled && freeSlot < 0) freeSlot = s;
-                }
-                if (! hasLfo && freeSlot >= 0)
-                {
-                    int target = e.filter.type != FilterType::Off ? pc::filterCutoff : -1;
-                    for (int k = 0; k < e.numEdges && target < 0; ++k) target = pc::edge (e.edges[(size_t) k].from, e.edges[(size_t) k].to);
-                    if (target < 0) target = pc::pan;
-                    setModSlot (d.sound, freeSlot, ModSource::LFO1, target, 0.04f + 0.08f * rng.nextFloat());
-                    if (! lockedByMacro (parent, settings.locks, pc::lfo1Rate)) e.lfo[0].rateHz = 0.2f * std::pow (20.0f, rng.nextFloat());
-                }
-            }
-
-            // 4. Continuous parameters in the normalised domain.
-            for (int c = 0; c < pc::total; ++c)
-            {
-                if (! explorable (d, c)) continue;
-                if (settings.locks.envelopes && isEnvCode (c)) continue;
-                if (settings.locks.fx && pc::isFx (c)) continue;
-                if (lockedByMacro (parent, settings.locks, c)) continue;
-                const auto& desc = paramDesc (c);
-                const float scale = groupScale (c);
-                const float bias = directionBias (settings.direction, d, c);
-                const bool chosen = rng.nextFloat() < pick;
-                const float noise = rng.nextGaussian();
-                if (! chosen && bias == 0.0f) continue;
-                float n = toNorm (desc, getParam (d, c));
-                float delta = (chosen ? noise * sigma * scale * (bias != 0.0f ? 0.5f : 1.0f) : 0.0f) + bias * sigma * scale;
-                if (settings.direction == ExploreDirection::MoreMotion && c >= pc::matrixDepthBase && c < pc::engineCount)
-                {
-                    // push depth away from zero, keeping its sign
-                    const float sign = n >= 0.5f ? 1.0f : -1.0f;
-                    delta = sign * std::fabs (noise * 0.5f + 0.8f) * sigma * 0.35f;
-                }
-                delta = clampf (delta, -2.0f * sigma, 2.0f * sigma);
-                n = clampf (n + delta, 0.0f, 1.0f);
-                // Safety limits per kind.
-                if (pc::isOp (c))
-                {
-                    const int f = c % kOpFieldCount;
-                    if (f == kOpCarrierGain) n = std::max (n, 0.25f);
-                    if (f == kOpLevel) n = std::max (n, d.sound.engine.operators[(size_t) (c / kOpFieldCount)].carrierGain > 0.0f ? 0.4f : 0.05f);
-                    if (f == kOpEnvS && d.sound.engine.operators[(size_t) (c / kOpFieldCount)].carrierGain > 0.0f) n = std::max (n, 0.0f);
-                    if (f == kOpDetune) n = clampf (n, 0.35f, 0.65f);
-                }
-                if (pc::isEdge (c)) n = std::min (n, 0.75f);                 // <= 12 rad
-                if (c == pc::filterCutoff) n = std::max (n, 0.25f);         // >= ~110 Hz
-                if (c == pc::filterRes) n = std::min (n, 0.9f);
-                if (c == pc::fx (FxType::Delay, 3) || c == pc::fx (FxType::Phaser, 2) || c == pc::fx (FxType::Flanger, 2)) n = std::min (n, 0.85f);
-                if (c == pc::fx (FxType::Drive, 3) || c == pc::fx (FxType::Compressor, 4)) continue; // output trims stay put
-                setParam (d, c, fromNorm (desc, n));
-            }
-
-            // 5. Validate, check locks / safety / uniqueness, normalise loudness.
-            if (! validatePatch (d).ok) continue;
-            if (! locksRespected (parent, d, settings.locks)) continue;
-            if (! isSafe (d)) continue;
-            float loudness = 0.0f;
-            {
-                bool finite = true;
-                float peak = 0.0f;
-                renderRms (d, finite, peak, &loudness, hold);
-            }
-            // Level it to the original. A candidate that would need more than 9 dB of correction is
-            // far quieter or louder than the original (a carrier pushed out of range, a filter shut):
-            // not a variation of the same sound, so it is dropped rather than half-corrected.
-            const float gainDb = parentLoudness - loudness;
-            const float level = parent.out.levelDb + gainDb;
-            if (std::fabs (gainDb) > 9.0f || level < -24.0f || level > 12.0f) continue;
-            d.out.levelDb = level;
-            if (distance (parent, d) < kMinDistance[strength]) continue;
-            bool duplicate = false;
-            for (auto& other : result) duplicate = duplicate || distance (other.data, d) < kMinDistance[strength] * 0.6f;
-            if (duplicate) continue;
-
-            best.data = d;
-            best.seed = candSeed;
-            found = true;
-        }
-        if (! found)
-        {
-            // Fallback: a guaranteed-safe small change relative to the parent.
-            PatchData d = parent;
-            const float step = 0.03f * (float) (i + 1) * ((i % 2) ? -1.0f : 1.0f);
-            bool changed = false;
-            for (int c = 0; c < pc::total && ! changed; ++c)
-            {
-                if (! explorable (d, c) || lockedByMacro (parent, settings.locks, c)) continue;
-                if ((settings.locks.envelopes && isEnvCode (c)) || (settings.locks.fx && pc::isFx (c))) continue;
-                const auto& desc = paramDesc (c);
-                const float n = toNorm (desc, getParam (d, c));
-                const float n2 = clampf (n + step, 0.05f, 0.75f);
-                if (pc::isOp (c) && c % kOpFieldCount == kOpCarrierGain) continue;
-                if (std::fabs (n2 - n) < 1.0e-4f) continue;
-                PatchData trial = d;
-                setParam (trial, c, fromNorm (desc, n2));
-                if (isSafe (trial)) { d = trial; changed = true; }
-            }
-            best.data = d;
-            best.seed = mix64 (seed ^ (uint64_t) (i + 1000));
-            best.fallback = true;
-        }
-        best.parentChecksum = parentSum;
-        best.scores = score (best.data);
-        best.name = describe (parentScores, best.scores, best.tendency);
-        result.push_back (std::move (best));
-    }
-    return result;
+    ExploreRun run (parent, settings, seed);
+    while (! run.done()) run.next();
+    return run.candidates();
 }
 } // namespace fmlume

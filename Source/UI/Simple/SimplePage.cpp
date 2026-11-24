@@ -149,12 +149,39 @@ void RhythmPanel::refresh (const Preset& p)
 void ExplorerPanel::Tile::paint (juce::Graphics& g)
 {
     const auto r = getLocalBounds().toFloat().reduced (1.5f);
+    if (pending)
+    {
+        // being made: the letter, and a soft band of light sweeping across the tile
+        g.setColour (col::panelHi);
+        g.fillRoundedRectangle (r, 7.0f);
+        const float w = r.getWidth(), x = r.getX() - w * 0.6f + phase * w * 2.2f;
+        juce::ColourGradient band (col::accent.withAlpha (0.0f), x - w * 0.35f, 0.0f, col::accent.withAlpha (0.0f), x + w * 0.35f, 0.0f, false);
+        band.addColour (0.5, col::accent.withAlpha (0.16f));
+        g.setGradientFill (band);
+        g.fillRoundedRectangle (r, 7.0f);
+        g.setColour (col::accent.withAlpha (0.35f));
+        g.drawRoundedRectangle (r, 7.0f, 1.0f);
+        auto t = getLocalBounds().reduced (9, 6);
+        g.setColour (col::textDim);
+        g.setFont (font (19.0f, true));
+        g.drawText (letter, t.removeFromTop (22).removeFromLeft (22), juce::Justification::centredLeft);
+        // three dots pulsing in turn
+        const auto c = t.getCentre().toFloat();
+        for (int k = 0; k < 3; ++k)
+        {
+            const float a = 0.25f + 0.75f * (0.5f + 0.5f * std::sin ((phase * 2.0f - (float) k * 0.18f) * juce::MathConstants<float>::twoPi));
+            g.setColour (col::accent.withAlpha (a * 0.8f));
+            g.fillEllipse (juce::Rectangle<float> (6.0f, 6.0f).withCentre (c.translated ((float) (k - 1) * 12.0f, -4.0f)));
+        }
+        return;
+    }
     const bool over = isMouseOver() && isEnabled();
     const juce::Colour hero = original ? col::textDim : col::accent;
     g.setColour (selected ? hero.withAlpha (0.2f) : (over ? col::panelHi.brighter (0.1f) : col::panelHi));
     g.fillRoundedRectangle (r, 7.0f);
     g.setColour (selected ? (original ? col::text : col::accent) : col::outline);
     g.drawRoundedRectangle (r, 7.0f, selected ? 2.0f : 1.0f);
+    if (reveal < 1.0f) g.beginTransparencyLayer (reveal); // a variation that just arrived: its text fades in on the tile
     auto t = getLocalBounds().reduced (9, 6);
     auto head = t.removeFromTop (22);
     if (! original)
@@ -175,6 +202,18 @@ void ExplorerPanel::Tile::paint (juce::Graphics& g)
     g.setColour (col::textDim);
     g.setFont (font (11.5f));
     g.drawFittedText (detail, t, juce::Justification::topLeft, 3, 0.8f);
+    if (reveal < 1.0f) g.endTransparencyLayer();
+}
+
+void ExplorerPanel::timerCallback()
+{
+    bool animating = false;
+    for (auto* tile : tiles)
+    {
+        if (tile->pending) { tile->phase = std::fmod (tile->phase + 1.0f / 30.0f / 1.1f, 1.0f); tile->repaint(); animating = true; }
+        else if (tile->reveal < 1.0f) { tile->reveal = juce::jmin (1.0f, tile->reveal + 1.0f / 30.0f / 0.22f); tile->repaint(); animating = true; }
+    }
+    if (! animating) stopTimer();
 }
 
 ExplorerPanel::ExplorerPanel (Ctx& c) : ctx (c)
@@ -199,7 +238,7 @@ ExplorerPanel::ExplorerPanel (Ctx& c) : ctx (c)
     back.setTooltip ("Go back to the previous set of variations (up to 20 steps)");
     done.setTooltip ("Close the variations and return to your current sound. Nothing is kept unless you pressed Keep this sound.");
 
-    generate.onClick = [this] { pushSettings(); run ([] (PatchController& pc) { return pc.candidates().empty() ? pc.explore() : pc.regenerate(); }); };
+    generate.onClick = [this] { pushSettings(); run ([] (PatchController& pc) { return pc.exploring() ? pc.regenerate() : pc.explore(); }); };
     keepUnchanged.onClick = [this] { keepMenu(); };
     use.onClick = [this] {
         const int i = previewing;
@@ -321,25 +360,35 @@ void ExplorerPanel::resized()
 
 void ExplorerPanel::refresh (const Preset&)
 {
-    struct View { std::vector<std::pair<juce::String, juce::String>> items; std::vector<bool> fallback; int preview = -1; bool history = false; };
+    struct View { std::vector<std::pair<juce::String, juce::String>> items; std::vector<bool> fallback; int preview = -1; bool history = false, exploring = false, busy = false; };
     const View v = ctx.proc.withModel ([] (PatchController& pc) {
         View out;
+        out.exploring = pc.exploring();
+        out.busy = pc.exploreBusy();
         for (auto& c : pc.candidates()) { out.items.push_back ({ c.name, c.tendency }); out.fallback.push_back (c.fallback); }
         out.preview = pc.previewIndex();
         out.history = pc.hasExploreHistory();
         return out;
     });
-    const bool active = ! v.items.empty();
+    const bool active = v.exploring;
+    busy = v.busy;
     previewing = v.preview;
+    bool animate = false;
     for (int i = 0; i < tiles.size(); ++i)
     {
         auto* tile = tiles[i];
         const bool present = active && i < (int) v.items.size();
+        const bool pending = active && v.busy && ! present;
+        if (tile->pending && present) { tile->reveal = 0.0f; animate = true; } // just arrived: fade in
+        if (! present) tile->reveal = 1.0f;
+        if (pending && ! tile->pending) tile->phase = (float) i * 0.09f;          // a little offset per tile
+        tile->pending = pending;
+        animate = animate || pending;
         tile->setEnabled (present);
         tile->name = present ? v.items[(size_t) i].first : juce::String ("-");
         tile->detail = present ? v.items[(size_t) i].second + (v.fallback[(size_t) i] ? " (safe fallback)" : "") : juce::String();
         tile->selected = present && v.preview == i;
-        tile->setAlpha (present ? 1.0f : 0.4f);
+        tile->setAlpha (present || pending ? 1.0f : 0.4f);
         tile->repaint();
     }
     originalTile.setEnabled (active);
@@ -351,7 +400,9 @@ void ExplorerPanel::refresh (const Preset&)
     more.setEnabled (v.preview >= 0);
     done.setEnabled (active);
     back.setEnabled (v.history);
+    if (animate && ! isTimerRunning()) startTimerHz (30);
     guide.setText (! active ? "1.  Press Generate to get eight variations of this sound."
+                            : v.busy && v.items.empty() ? "Making variations..."
                             : (v.preview < 0 ? "2.  Click a tile (A-H) to hear it. Original takes you back."
                                              : "3.  Like it? Keep this sound.  Close but not quite? More like this."),
                    juce::dontSendNotification);

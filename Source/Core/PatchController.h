@@ -4,7 +4,10 @@
 #pragma once
 #include "Core/Model.h"
 #include "Exploration/SoundExplorer.h"
+#include <atomic>
 #include <functional>
+#include <mutex>
+#include <thread>
 #include <string>
 #include <vector>
 
@@ -14,6 +17,9 @@ class PatchController
 {
 public:
     PatchController();
+    ~PatchController();
+    PatchController (const PatchController&) = delete;
+    PatchController& operator= (const PatchController&) = delete;
 
     // ---- wiring (set once by the owner) ------------------------------------------------
     // Sends a validated patch to the audio engine. forceNew = start a new patch generation.
@@ -58,6 +64,12 @@ public:
 
     // ---- Sound Explorer (SPEC §8, §14.3) ----------------------------------------------------
     ExploreSettings exploreSettings;
+    // false (tests, tools): explore() returns with all eight candidates. true (the plug-in): they
+    // are made on a worker thread and arrive one by one through pollExplore().
+    bool asyncExplore = false;
+    bool pollExplore();                     // message thread: takes over finished candidates; true if anything changed
+    bool exploring() const { return exploreActive; }
+    bool exploreBusy() const { return busy; } // candidates still being made
     bool explore();                         // candidates from the current patch
     bool regenerate();                      // same parent, new seed
     bool exploreFromThis (int candidate);   // candidate becomes the new parent (not yet adopted)
@@ -84,6 +96,7 @@ private:
     bool push (bool forceNew);
     void notify() { if (changed) changed(); }
     bool runExplore (const PatchData& parent, bool keepHistory);
+    void stopWorker();
 
     Preset current;
     bool dirty = false;
@@ -96,5 +109,13 @@ private:
     std::vector<ExploreStep> exploreHistory;
     int previewing = -1;
     uint64_t seed = 1;
+
+    // background generation (asyncExplore)
+    std::thread worker;
+    std::atomic<bool> cancelWorker { false };
+    std::mutex workerMutex;
+    std::vector<ExploreCandidate> workerOut; // guarded by workerMutex
+    bool workerDone = false;                 // guarded by workerMutex
+    bool busy = false;
 };
 } // namespace fmlume

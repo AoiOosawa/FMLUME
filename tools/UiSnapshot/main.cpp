@@ -213,6 +213,14 @@ struct SnapshotApp final : public juce::JUCEApplication
         pump();
         save (*editor, dir.getChildFile ("simple.png"));
         clickButton (*editor, "Generate");
+        // variations are made in the background: one frame while they arrive, then the finished set
+        juce::MessageManager::getInstance()->runDispatchLoopUntil (110);
+        save (*editor, dir.getChildFile ("simple_variations_making.png"));
+        for (int i = 0; i < 40; ++i)
+        {
+            pump();
+            if (! processor->withModel ([] (fmlume::PatchController& pc) { return pc.exploreBusy(); })) break;
+        }
         pump();
         save (*editor, dir.getChildFile ("simple_variations.png"));
         clickButton (*editor, "Done");
