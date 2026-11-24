@@ -61,5 +61,9 @@ public:
     static bool locksRespected (const PatchData& parent, const PatchData& candidate, const ExploreLocks& locks);
     // Offline safety check: valid, finite, audible, not excessively loud. Returns the RMS level.
     static bool isSafe (const PatchData& d, float* rmsOut = nullptr, std::string* why = nullptr);
+    // Perceived loudness (A-weighted, loudest 400 ms of a held chord) in dB: what candidates are levelled by.
+    static float loudnessDb (const PatchData& d, double holdSeconds = 0.8);
+    // How long the measuring chord is held for this sound: longer for slow swells.
+    static double measuringHold (const PatchData& d);
 };
 } // namespace fmlume

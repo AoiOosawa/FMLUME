@@ -305,3 +305,31 @@ FM_TEST ("integration", "Controller: moving a preset-stored host value (macro, u
     ctl.setHostBaseline (live);
     CHECK (! ctl.isDirty (live));
 }
+
+FM_TEST ("integration", "Variations sound as loud as the original (no jump when switching between them)")
+{
+    // Levelled by perceived (A-weighted) loudness, not plain RMS, and candidates that would need
+    // more than 9 dB of correction are dropped (D-058). Every category, the two larger strengths.
+    int checked = 0, worstCat = -1;
+    float worst = 0.0f;
+    for (int c = 0; c < (int) Category::Count; ++c)
+    {
+        const PatchData parent = makeCategoryPreset ((Category) c).data;
+        const double hold = SoundExplorer::measuringHold (parent);
+        const float base = SoundExplorer::loudnessDb (parent, hold);
+        for (auto strength : { ExploreStrength::Medium, ExploreStrength::Wild })
+        {
+            ExploreSettings s;
+            s.strength = strength;
+            for (auto& cand : SoundExplorer::generate (parent, s, 41u + (uint64_t) c))
+            {
+                const float diff = std::fabs (SoundExplorer::loudnessDb (cand.data, hold) - base);
+                if (diff > worst) { worst = diff; worstCat = c; }
+                ++checked;
+            }
+        }
+    }
+    std::printf ("    %d candidates, largest loudness difference %.1f dB (%s)\n", checked, worst, worstCat >= 0 ? categoryName ((Category) worstCat) : "-");
+    CHECK (checked == (int) Category::Count * 2 * kNumCandidates);
+    CHECK (worst < 3.0f);
+}

@@ -168,13 +168,19 @@ uint64_t mix64 (uint64_t x)
     return x;
 }
 
-float renderRms (const PatchData& d, bool& finite, float& peak)
+// Offline render of a short phrase: a three-note chord held (0.8 s, longer for slow swells), then released.
+// rms / peak / finite feed the safety check. `loudnessDb` is what the candidates are levelled
+// by: A-weighted (the ear hears a brighter sound as louder at the same RMS) and taken over the
+// loudest 400 ms, so a slower attack or a longer tail is not mistaken for a quieter sound
+// (docs/DECISIONS.md D-058).
+float renderRms (const PatchData& d, bool& finite, float& peak, float* loudnessDb = nullptr, double holdSeconds = 0.8)
 {
     SynthEngine eng;
     const double sr = 44100.0;
     eng.prepare (sr, 512);
     finite = true;
     peak = 0.0f;
+    if (loudnessDb != nullptr) *loudnessDb = -200.0f;
     if (! eng.setPatch (d)) { finite = false; return 0.0f; }
     HostParams h = d.host;
     h.quality = 0;
@@ -182,24 +188,51 @@ float renderRms (const PatchData& d, bool& finite, float& peak)
     h.arpEnabled = false;
     h.gateEnabled = false;
     h.fxBypassAll = false;
-    float l[512], r[512];
+    constexpr int kBlock = 512;
+    float l[kBlock], r[kBlock];
     double acc = 0.0;
     int count = 0;
-    const int blocks = (int) (0.6 * sr / 512);
+    const int blocks = (int) ((holdSeconds + 0.3) * sr / kBlock), offBlock = (int) (holdSeconds * sr / kBlock);
+    static const uint8_t kNotes[3] = { 48, 55, 64 };
+
+    // A-weighting: two high-pass poles at 20.6 Hz, one at 107.7 Hz and one at 737.9 Hz, two
+    // low-pass poles at 12.2 kHz (first-order sections, bilinear transform).
+    struct OnePole
+    {
+        double b0 = 1, b1 = 0, a1 = 0, x1 = 0, y1 = 0;
+        static OnePole highPass (double fc, double sr) { const double k = std::tan (3.14159265358979 * fc / sr); OnePole f; f.b0 = 1.0 / (1.0 + k); f.b1 = -f.b0; f.a1 = (1.0 - k) / (1.0 + k); return f; }
+        static OnePole lowPass (double fc, double sr) { const double k = std::tan (3.14159265358979 * fc / sr); OnePole f; f.b0 = k / (1.0 + k); f.b1 = f.b0; f.a1 = (1.0 - k) / (1.0 + k); return f; }
+        double tick (double x) { const double y = b0 * x + b1 * x1 + a1 * y1; x1 = x; y1 = y; return y; }
+    };
+    OnePole aw[6] = { OnePole::highPass (20.6, sr), OnePole::highPass (20.6, sr), OnePole::highPass (107.7, sr),
+                      OnePole::highPass (737.9, sr), OnePole::lowPass (12194.0, sr), OnePole::lowPass (12194.0, sr) };
+    const int window = (int) (0.4 * sr);
+    std::vector<double> energy ((size_t) window, 0.0); // ring of squared weighted samples (non-realtime: fine to allocate)
+    double windowSum = 0.0, loudest = 0.0;
+    int ring = 0;
+
     for (int b = 0; b < blocks; ++b)
     {
         MidiEvent ev[3];
         int n = 0;
-        if (b == 0) { ev[n].type = MidiEvent::NoteOn; ev[n].data1 = 48; ev[n].data2 = 100; ++n; ev[n].type = MidiEvent::NoteOn; ev[n].data1 = 64; ev[n].data2 = 100; ++n; }
-        eng.process (l, r, 512, ev, n, h, {});
-        for (int i = 0; i < 512; ++i)
+        if (b == 0 || b == offBlock)
+            for (uint8_t note : kNotes) { ev[n].type = b == 0 ? MidiEvent::NoteOn : MidiEvent::NoteOff; ev[n].data1 = note; ev[n].data2 = 100; ++n; }
+        eng.process (l, r, kBlock, ev, n, h, {});
+        for (int i = 0; i < kBlock; ++i)
         {
             if (! std::isfinite (l[i]) || ! std::isfinite (r[i])) finite = false;
             peak = std::max (peak, std::max (std::fabs (l[i]), std::fabs (r[i])));
             acc += 0.5 * ((double) l[i] * l[i] + (double) r[i] * r[i]);
             ++count;
+            double x = 0.5 * ((double) l[i] + (double) r[i]);
+            for (auto& f : aw) x = f.tick (x);
+            windowSum += x * x - energy[(size_t) ring];
+            energy[(size_t) ring] = x * x;
+            ring = (ring + 1) % window;
+            loudest = std::max (loudest, windowSum);
         }
     }
+    if (loudnessDb != nullptr && finite) *loudnessDb = (float) (10.0 * std::log10 (std::max (loudest, 0.0) / window + 1.0e-18) + 3.0); // +3: A-weighting is about -3 dB on a sum of the two channels
     return (float) std::sqrt (acc / std::max (count, 1));
 }
 
@@ -333,6 +366,23 @@ bool SoundExplorer::locksRespected (const PatchData& parent, const PatchData& ca
     return true;
 }
 
+double SoundExplorer::measuringHold (const PatchData& d)
+{
+    // A slow swell only reaches its level after its attack: hold the measuring chord that long.
+    double hold = 0.8;
+    for (auto& op : d.sound.engine.operators)
+        if (op.enabled && op.carrierGain > 0.0f) hold = std::max (hold, (double) op.env.a * 1.2 + 0.4);
+    return std::min (hold, 3.0);
+}
+
+float SoundExplorer::loudnessDb (const PatchData& d, double holdSeconds)
+{
+    bool finite = true;
+    float peak = 0.0f, loudness = -200.0f;
+    renderRms (d, finite, peak, &loudness, holdSeconds);
+    return loudness;
+}
+
 bool SoundExplorer::isSafe (const PatchData& d, float* rmsOut, std::string* why)
 {
     auto no = [why] (const char* msg) { if (why) *why = msg; return false; };
@@ -357,8 +407,13 @@ std::vector<ExploreCandidate> SoundExplorer::generate (const PatchData& parent, 
     const float pick = strength == 0 ? 0.5f : (strength == 1 ? 0.6f : 0.7f);
     const uint64_t parentSum = patchChecksum (parent);
     const ExploreScores parentScores = score (parent);
-    float parentRms = 0.05f;
-    isSafe (parent, &parentRms);
+    const double hold = measuringHold (parent);
+    float parentLoudness = 0.0f;
+    {
+        bool finite = true;
+        float peak = 0.0f;
+        renderRms (parent, finite, peak, &parentLoudness, hold);
+    }
     bool anyMacroLock = false;
     for (bool b : settings.locks.macros) anyMacroLock = anyMacroLock || b;
     const bool mayChangeGraph = settings.strength == ExploreStrength::Wild && ! settings.locks.graph && ! settings.locks.ratios && ! anyMacroLock;
@@ -474,10 +529,20 @@ std::vector<ExploreCandidate> SoundExplorer::generate (const PatchData& parent, 
             // 5. Validate, check locks / safety / uniqueness, normalise loudness.
             if (! validatePatch (d).ok) continue;
             if (! locksRespected (parent, d, settings.locks)) continue;
-            float rms = 0.0f;
-            if (! isSafe (d, &rms)) continue;
-            const float gainDb = 20.0f * std::log10 (std::max (parentRms, 1.0e-4f) / std::max (rms, 1.0e-4f));
-            d.out.levelDb = clampf (parent.out.levelDb + clampf (gainDb, -12.0f, 12.0f), -24.0f, 12.0f);
+            if (! isSafe (d)) continue;
+            float loudness = 0.0f;
+            {
+                bool finite = true;
+                float peak = 0.0f;
+                renderRms (d, finite, peak, &loudness, hold);
+            }
+            // Level it to the original. A candidate that would need more than 9 dB of correction is
+            // far quieter or louder than the original (a carrier pushed out of range, a filter shut):
+            // not a variation of the same sound, so it is dropped rather than half-corrected.
+            const float gainDb = parentLoudness - loudness;
+            const float level = parent.out.levelDb + gainDb;
+            if (std::fabs (gainDb) > 9.0f || level < -24.0f || level > 12.0f) continue;
+            d.out.levelDb = level;
             if (distance (parent, d) < kMinDistance[strength]) continue;
             bool duplicate = false;
             for (auto& other : result) duplicate = duplicate || distance (other.data, d) < kMinDistance[strength] * 0.6f;
