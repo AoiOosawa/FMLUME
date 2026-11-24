@@ -1,5 +1,5 @@
 // Simple view. Laid out like POLYBRISK's: big macros on top, then FX / rhythm switches, then
-// the two FMLUME specials (Variations and Morph).
+// the FMLUME special (Variations).
 #pragma once
 #include "UI/Common/Bindings.h"
 
@@ -79,34 +79,12 @@ private:
     Ctx& ctx;
     juce::ComboBox direction, strength;
     juce::TextButton generate { "Generate" }, keepUnchanged { "Keep unchanged..." }, use { "Keep this sound" }, more { "More like this" },
-        back { "Back" }, done { "Done" };
+        back { "Previous set" }, done { "Done" };
     juce::Label guide;
     Tile originalTile;
     juce::OwnedArray<Tile> tiles;
     fmlume::ExploreLocks locks;
     int previewing = -1;
-};
-
-// A <-> B morph: two sound cards with a slider between them.
-class MorphPanel final : public juce::Component
-{
-public:
-    explicit MorphPanel (Ctx&);
-    void paint (juce::Graphics&) override;
-    void resized() override;
-    void refresh (const fmlume::Preset&);
-
-private:
-    Ctx& ctx;
-    HostToggle enable;
-    LumeSlider amount;
-    std::unique_ptr<juce::SliderParameterAttachment> amountAttachment;
-    juce::TextButton chooseB { "+ Add a second sound" }, swap { "Swap" }, removeB { "Remove B" };
-    juce::ComboBox mode;
-    juce::Label info;
-    juce::String nameA, nameB;
-    bool hasB = false;
-    juce::Rectangle<int> cardA, cardB, sliderRow;
 };
 
 class SimplePage final : public juce::Component
@@ -121,7 +99,6 @@ private:
     QuickFxPanel quick;
     RhythmPanel gate, arp;
     ExplorerPanel explorer;
-    MorphPanel morph;
     juce::Label about;
 };
 } // namespace ui

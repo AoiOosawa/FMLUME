@@ -34,9 +34,9 @@ FM_TEST ("integration", "Factory bank: 108 presets, 12 per category, all valid, 
         CHECK (v.ok && v.warnings.empty());
         for (int m = 0; m < kNumMacros; ++m)
         {
-            CHECK (p.data.a.macros[(size_t) m].numMappings > 0);
+            CHECK (p.data.sound.macros[(size_t) m].numMappings > 0);
             CHECK (! p.meta.macroNames[(size_t) m].empty());
-            CHECK (p.data.a.macros[(size_t) m].defaultValue == 0.5f);
+            CHECK (p.data.sound.macros[(size_t) m].defaultValue == 0.5f);
         }
         // Common macro names keep their meaning across the whole bank.
         CHECK (p.meta.macroNames[0] == "Brightness" && p.meta.macroNames[1] == "Attack" && p.meta.macroNames[2] == "Release" && p.meta.macroNames[3] == "Character");

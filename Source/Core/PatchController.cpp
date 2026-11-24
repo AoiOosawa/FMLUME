@@ -17,7 +17,6 @@ bool PatchController::presetHostValuesEqual (const HostParams& a, const HostPara
     for (int i = 0; i < kNumMacros; ++i) if (! same (a.macro[(size_t) i], b.macro[(size_t) i])) return false;
     for (int i = 0; i < kNumQuick; ++i) if (! same (a.quick[(size_t) i], b.quick[(size_t) i])) return false;
     return a.polyphony == b.polyphony && a.unison == b.unison && same (a.detune, b.detune) && same (a.spread, b.spread)
-        && same (a.morphAmount, b.morphAmount) && a.morphEnabled == b.morphEnabled
         && a.arpEnabled == b.arpEnabled && a.gateEnabled == b.gateEnabled;
 }
 
@@ -47,42 +46,42 @@ bool PatchController::edit (const std::function<void (Preset&)>& fn, bool forceN
     return true;
 }
 
-bool PatchController::setParam (bool sideB, int code, float value)
+bool PatchController::setParam (int code, float value)
 {
-    if (! paramExists (current.data, sideB, code)) return false;
-    return edit ([=] (Preset& p) { fmlume::setParam (p.data, sideB, code, value); });
+    if (! paramExists (current.data, code)) return false;
+    return edit ([=] (Preset& p) { fmlume::setParam (p.data, code, value); });
 }
 
-float PatchController::getParam (bool sideB, int code) const { return fmlume::getParam (current.data, sideB, code); }
+float PatchController::getParam (int code) const { return fmlume::getParam (current.data, code); }
 
-bool PatchController::addEdge (bool sideB, int from, int to, float index)
+bool PatchController::addEdge (int from, int to, float index)
 {
-    const auto& e = (sideB ? current.data.b : current.data.a).engine;
+    const auto& e = current.data.sound.engine;
     if (edgeWouldBeInvalid (e, from, to)) { error = "That connection would create a loop or already exists."; return false; }
-    return edit ([=] (Preset& p) { fmlume::addEdge ((sideB ? p.data.b : p.data.a).engine, from, to, index); });
+    return edit ([=] (Preset& p) { fmlume::addEdge (p.data.sound.engine, from, to, index); });
 }
 
-bool PatchController::removeEdge (bool sideB, int from, int to)
+bool PatchController::removeEdge (int from, int to)
 {
-    return edit ([=] (Preset& p) { fmlume::removeEdge ((sideB ? p.data.b : p.data.a).engine, from, to); });
+    return edit ([=] (Preset& p) { fmlume::removeEdge (p.data.sound.engine, from, to); });
 }
 
-bool PatchController::setOperatorEnabled (bool sideB, int op, bool enabled)
+bool PatchController::setOperatorEnabled (int op, bool enabled)
 {
     return edit ([=] (Preset& p) {
-        auto& o = (sideB ? p.data.b : p.data.a).engine.operators[(size_t) op];
+        auto& o = p.data.sound.engine.operators[(size_t) op];
         o.enabled = enabled;
         if (enabled && o.level <= 0.0f) o.level = 1.0f;
     }, enabled ? "Enable Operator" : "Disable Operator");
 }
 
-bool PatchController::applyAlgorithmTemplate (bool sideB, int templateIndex)
+bool PatchController::applyAlgorithmTemplate (int templateIndex)
 {
     return edit ([=] (Preset& p) {
-        applyAlgorithm ((sideB ? p.data.b : p.data.a).engine, templateIndex);
+        applyAlgorithm (p.data.sound.engine, templateIndex);
         sanitizeTargets (p.data);
         // Keep the four common macros meaningful for the new routing.
-        assignCommonMacros (p.data, sideB);
+        assignCommonMacros (p.data);
     });
 }
 
@@ -92,9 +91,7 @@ void PatchController::loadPreset (const Preset& p)
     closeExplorer();
     current = p;
     sanitizeTargets (current.data);
-    if (! current.data.hasB) { current.data.b = current.data.a; current.meta.macroNamesB = current.meta.macroNames; }
     dirty = false;
-    editB = false;
     push (true);
     if (applyHostValues) applyHostValues (current.data.host);
     notify();
@@ -122,10 +119,7 @@ Preset PatchController::presetForSave (const HostParams& live) const
     auto& h = p.data.host;
     h = live;
     for (int i = 0; i < kNumMacros; ++i)
-    {
-        p.data.a.macros[(size_t) i].defaultValue = clampf (live.macro[(size_t) i], 0.0f, 1.0f);
-        p.data.b.macros[(size_t) i].defaultValue = p.data.a.macros[(size_t) i].defaultValue;
-    }
+        p.data.sound.macros[(size_t) i].defaultValue = clampf (live.macro[(size_t) i], 0.0f, 1.0f);
     p.meta.pluginVersion = FMLUME_VERSION_STRING;
     return p;
 }
@@ -136,64 +130,10 @@ bool PatchController::setState (const Preset& p)
     closeExplorer();
     current = p;
     sanitizeTargets (current.data);
-    if (! current.data.hasB) { current.data.b = current.data.a; current.meta.macroNamesB = current.meta.macroNames; }
     dirty = false;
-    editB = false;
     push (true);
     notify();
     return true;
-}
-
-// ------------------------------------------------------------------------------------- morph
-bool PatchController::loadIntoSlot (bool sideB, const Preset& source)
-{
-    return edit ([&] (Preset& p) {
-        EngineSide& dst = sideB ? p.data.b : p.data.a;
-        dst = source.data.a; // sound engine + macro assignments + mod matrix; FX / performance stay shared
-        (sideB ? p.meta.macroNamesB : p.meta.macroNames) = source.meta.macroNames;
-        (sideB ? p.meta.slotNameB : p.meta.slotNameA) = source.meta.displayName;
-        // FX-targeting mappings of slot B would double up with the shared chain: they are inert by design.
-        if (sideB) p.data.hasB = true;
-    }, true);
-}
-
-bool PatchController::removeSlotB()
-{
-    if (! current.data.hasB) return false;
-    editB = false;
-    return edit ([] (Preset& p) {
-        p.data.hasB = false;
-        p.data.host.morphEnabled = false;
-        p.meta.slotNameA.clear();
-        p.meta.slotNameB.clear();
-    }, true);
-}
-
-bool PatchController::swapSlots()
-{
-    if (! current.data.hasB) return false;
-    return edit ([] (Preset& p) {
-        std::swap (p.data.a, p.data.b);
-        std::swap (p.meta.macroNames, p.meta.macroNamesB);
-        // the names travel with the sounds (an unnamed A is the preset itself)
-        if (p.meta.slotNameA.empty()) p.meta.slotNameA = p.meta.displayName;
-        std::swap (p.meta.slotNameA, p.meta.slotNameB);
-    }, true);
-}
-
-bool PatchController::copySlot (bool fromB)
-{
-    if (fromB && ! current.data.hasB) return false;
-    return edit ([=] (Preset& p) {
-        if (fromB) { p.data.a = p.data.b; p.meta.macroNames = p.meta.macroNamesB; }
-        else { p.data.b = p.data.a; p.meta.macroNamesB = p.meta.macroNames; p.data.hasB = true; }
-    }, true);
-}
-
-void PatchController::setEditingB (bool b)
-{
-    editB = b && current.data.hasB;
-    notify();
 }
 
 // ------------------------------------------------------------------------------------- explorer
@@ -270,14 +210,11 @@ bool PatchController::useCandidate (int candidate)
     const PatchData chosen = cands[(size_t) candidate].data;
     previewing = -1;
     return edit ([&] (Preset& p) {
-        // Only the sound changes: slot B, shared performance settings and host values are kept.
+        // Only the sound changes: performance settings and host values are kept.
         const PatchData keep = p.data;
         p.data = chosen;
-        p.data.b = keep.b;
-        p.data.hasB = keep.hasB;
         p.data.host = keep.host;
         p.data.perf = keep.perf;   // arp / chord / gate edits made while exploring are kept
-        p.data.morph = keep.morph;
     }, true);
 }
 

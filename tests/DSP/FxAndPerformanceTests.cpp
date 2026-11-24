@@ -9,8 +9,8 @@ namespace
 PatchData shortBlip()
 {
     PatchData d = makeInitPatchData();
-    d.a.engine.operators[0] = makeOp (1.0f, 1.0f, 0.001f, 0.5f, 1.0f, 0.02f, 1.0f);
-    d.a.engine.operators[0].velocityToLevel = 0.0f;
+    d.sound.engine.operators[0] = makeOp (1.0f, 1.0f, 0.001f, 0.5f, 1.0f, 0.02f, 1.0f);
+    d.sound.engine.operators[0].velocityToLevel = 0.0f;
     return d;
 }
 void enable (PatchData& d, FxType t) { d.fx.proc[(size_t) t].enabled = true; }
@@ -134,7 +134,7 @@ FM_TEST ("dsp", "FX-02 reordering, toggling and bypassing the chain is click fre
 {
     const double sr = 48000.0;
     PatchData d = shortBlip();
-    d.a.engine.operators[0].env.r = 0.3f;
+    d.sound.engine.operators[0].env.r = 0.3f;
     enable (d, FxType::Drive);
     enable (d, FxType::Chorus);
     enable (d, FxType::Reverb);
@@ -376,7 +376,7 @@ FM_TEST ("dsp", "Trance gate follows the host position and leaves FX tails alone
 {
     const double sr = 48000.0;
     PatchData d = shortBlip();
-    d.a.engine.operators[0].env.r = 0.05f;
+    d.sound.engine.operators[0].env.r = 0.05f;
     for (int i = 0; i < kGateSteps; ++i) d.perf.gate.steps[(size_t) i] = i % 2 == 0 ? 1.0f : 0.0f;
     d.perf.gate.rate = 9;      // 1/8 -> 0.25 s at 120 bpm
     d.perf.gate.smoothMs = 2.0f;
@@ -427,7 +427,7 @@ FM_TEST ("dsp", "Stereo trance gate drives the two channels from separate patter
 {
     const double sr = 48000.0;
     PatchData d = shortBlip();
-    d.a.engine.operators[0].env.s = 1.0f;
+    d.sound.engine.operators[0].env.s = 1.0f;
     d.perf.gate.rate = 9; // 1/8 -> 0.25 s per step at 120 bpm
     d.perf.gate.smoothMs = 2.0f;
     d.perf.gate.stereo = true;
@@ -607,7 +607,7 @@ FM_TEST ("dsp", "Review: enabling Drive at an odd block size does not mute the s
 {
     const double sr = 48000.0;
     PatchData d = shortBlip();
-    d.a.engine.operators[0].env.s = 1.0f;
+    d.sound.engine.operators[0].env.s = 1.0f;
     d.fx.proc[(size_t) FxType::Drive].enabled = false;
     for (int block : { 7, 33, 64 })
     {
@@ -638,8 +638,8 @@ FM_TEST ("dsp", "Review: switching to mono while keys are held leaves no voice s
 {
     const double sr = 48000.0;
     PatchData d = shortBlip();
-    d.a.engine.operators[0].env.s = 1.0f;
-    d.a.engine.operators[0].env.r = 0.05f;
+    d.sound.engine.operators[0].env.s = 1.0f;
+    d.sound.engine.operators[0].env.r = 0.05f;
     SynthEngine e;
     e.prepare (sr, 256);
     CHECK (e.setPatch (d));

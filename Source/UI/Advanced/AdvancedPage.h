@@ -1,4 +1,4 @@
-// The Advanced view: tab strip plus the A / B slot switch.
+// The Advanced view: the tab strip with the six editing pages.
 #pragma once
 #include "UI/Advanced/AdvancedTabs.h"
 
@@ -20,6 +20,5 @@ private:
     FxTab fx;
     RhythmTab rhythm;
     PerformanceTab performance;
-    juce::TextButton slotA { "Edit A" }, slotB { "Edit B" };
 };
 } // namespace ui

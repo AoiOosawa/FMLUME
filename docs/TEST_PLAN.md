@@ -31,11 +31,9 @@
 |---|---|---|
 | EXP-01 | `EXP-01 explorer is deterministic...` | 同seedで8候補のパッチ完全一致、9カテゴリ×3強度で全候補が安全・相互に異なる、Lock 32通りを遵守、方向でスコアが動く |
 | EXP-02 | `EXP-02 preview / cancel / use...` | 生成・Previewでモデル不変、Cancel後の出力が元とビット一致、Use→Undoで復帰、Regenerate/From This/履歴20 |
-| MOR-01 | `MOR-01 compatible vs dual selection...` | 構造一致→Compatible、不一致/強制→Dual、m=0がA・m=1がBと一致（<1e-5）、enabled=offはA |
-| MOR-02 | `MOR-02 fast morphing...` | 高速にmを振っても有限・段差なし・ノート残りなし、MorphプリセットがA+B+mで保存復元、Swap/Copy/Remove |
 | PRS-01 | `PRS-01 JSON round trip is lossless` | 再シリアライズ文字列が一致、float がビット一致、metadata保持、不正値のExport拒否 |
-| PRS-02 | `PRS-02 saved state restores an identical render` | 状態→新規エンジン/コントローラー→同MIDI・同トランスポートで maxAbs < 1e-5（9カテゴリ＋Dual Morph/Arp/Gate/4x） |
-| PRS-03 | `PRS-03 broken, unknown-version and extreme presets...` | 28種のメモリ内破損＋`tests/Fixtures/broken` 22ファイルを拒否、schema 0 をマイグレーション、未知Modターゲットは警告のみ |
+| PRS-02 | `PRS-02 saved state restores an identical render` | 状態→新規エンジン/コントローラー→同MIDI・同トランスポートで maxAbs < 1e-5（全カテゴリ＋Arp/Gate/4x） |
+| PRS-03 | `PRS-03 broken, unknown-version and extreme presets...` | 28種のメモリ内破損＋`tests/Fixtures/broken` 21ファイルを拒否、schema 0 と schema 1（2音目つき）をマイグレーション、未知Modターゲットは警告のみ |
 | FX-01 | `FX-01 reverb and delay tails...` | ノートオフ後のテール、ディレイ間隔と減衰、バイパス時 `process` 呼び出し0回 |
 | FX-02 | `FX-02 reordering, toggling and bypassing...` ＋ PRS-01/02 | 並べ替え・個別オフ・全バイパスでクリックなし、Drive有無でオンセット位置一定、FX状態の保存復元 |
 | PERF-01 | `PERF-01 arpeggiator...` / `Chord mode...` / `Trance gate...` | 16分のステップ時刻（±1サンプル）、Gate長、モード、スウィング、ジャンプ時の再同期、ノート残りなし、共有音の参照カウント、ゲートがFXテールを切らない |
@@ -60,8 +58,8 @@
 
 1. プラグインスキャンで VST3（Cubase/REAPER/Live）と AU（Logic/REAPER/Live）が Instrument として認識される。
 2. MIDIトラックで発音。ベロシティ、ピッチベンド、モジュレーションホイール、サステインペダルが効く。
-3. `Macro 1`〜`Macro 8`、`Morph Amount`、`FX Warmth` などをオートメーション記録→再生。
-4. 音色を編集（マクロ・Advanced・FX順序・Morph B読込）→プロジェクト保存→DAW再起動→再読込で同じ音。ユーザープリセットファイルを削除しても復元されること。
+3. `Macro 1`〜`Macro 8`、`FX Warmth` などをオートメーション記録→再生。
+4. 音色を編集（マクロ・Advanced・FX順序）→プロジェクト保存→DAW再起動→再読込で同じ音。ユーザープリセットファイルを削除しても復元されること。
 5. オフライン書き出し（Export Audio Mixdown / Bounce）がリアルタイム再生と一致。Quality を変えたときの遅延補正。
 6. テンポ同期: Arp / Trance Gate / Delay sync / LFO sync がテンポ変更・ループ・ロケートに追従。
 7. バッファ 32〜2048、サンプルレート 44.1〜192 kHz を切り替えて音切れ・ノイズがないこと。
@@ -76,4 +74,3 @@
 - Bass: 短いAttackと歪みで低域を保ったまま歯切れが良い
 - Pad: Unison / Filter でアナログ風の広がり
 - Explorer: 8候補に意味のある違い
-- Morph: A/B を行き来して音量差・クリックがない

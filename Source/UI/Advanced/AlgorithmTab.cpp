@@ -90,7 +90,7 @@ void GraphView::relayout()
 
 void GraphView::refresh (const Preset& p)
 {
-    engine = sideOf (p, ctx.sideB()).engine;
+    engine = p.data.sound.engine;
     if (selectedEdgeFrom >= 0 && findEdge (engine, selectedEdgeFrom, selectedEdgeTo) < 0) selectedEdgeFrom = selectedEdgeTo = -1;
     relayout();
     repaint();
@@ -178,8 +178,7 @@ void GraphView::mouseUp (const juce::MouseEvent& e)
     if (dragging && dragFrom >= 0 && over >= 0 && over != dragFrom)
     {
         const int from = dragFrom, to = over;
-        const bool b = ctx.sideB();
-        if (ctx.run ([=] (PatchController& pc) { return pc.addEdge (b, from, to); }, {}))
+        if (ctx.run ([=] (PatchController& pc) { return pc.addEdge (from, to); }, {}))
         {
             selectedEdgeFrom = from;
             selectedEdgeTo = to;
@@ -208,8 +207,7 @@ AlgorithmTab::AlgorithmTab (Ctx& c)
     addAndMakeVisible (graph);
     graph.onSelection = [this] { selectionChanged(); };
     gallery.onChoose = [this] (int i) {
-        const bool b = ctx.sideB();
-        if (ctx.run ([=] (PatchController& pc) { return pc.applyAlgorithmTemplate (b, i); }))
+        if (ctx.run ([=] (PatchController& pc) { return pc.applyAlgorithmTemplate (i); }))
             ctx.say (juce::String ("Routing: ") + algorithmTemplate (i).name + ". Macros 1-4 were re-assigned for the new routing.");
     };
     styleLabel (algoName, 14.0f, col::accent);
@@ -224,24 +222,22 @@ AlgorithmTab::AlgorithmTab (Ctx& c)
                   "a fuller, layered tone. A change that would leave nothing audible or create a loop is refused.", juce::dontSendNotification);
     for (auto* l : { &algoName, &opTitle, &edgeTitle, &hint }) addAndMakeVisible (l);
     opEnabled.onClick = [this] {
-        const bool b = ctx.sideB(), v = opEnabled.getToggleState();
+        const bool v = opEnabled.getToggleState();
         const int op = ctx.selectedOp;
-        if (! ctx.run ([=] (PatchController& pc) { return pc.setOperatorEnabled (b, op, v); })) refresh (ctx.snapshot());
+        if (! ctx.run ([=] (PatchController& pc) { return pc.setOperatorEnabled (op, v); })) refresh (ctx.snapshot());
     };
     addAndMakeVisible (opEnabled);
     for (auto* k : { &level, &carrier, &feedback, &ratio, &index }) addAndMakeVisible (k);
     index.setAccent (col::accentB);
     removeEdge.onClick = [this] {
         if (graph.selectedEdgeFrom < 0) return;
-        const bool b = ctx.sideB();
         const int from = graph.selectedEdgeFrom, to = graph.selectedEdgeTo;
-        ctx.run ([=] (PatchController& pc) { return pc.removeEdge (b, from, to); });
+        ctx.run ([=] (PatchController& pc) { return pc.removeEdge (from, to); });
     };
     addAndMakeVisible (removeEdge);
     resetMacros.setTooltip ("Re-create the Brightness / Attack / Release / Character macro assignments for the current routing");
     resetMacros.onClick = [this] {
-        const bool b = ctx.sideB();
-        ctx.edit ([b] (Preset& p) { assignCommonMacros (p.data, b); });
+        ctx.edit ([] (Preset& p) { assignCommonMacros (p.data); });
     };
     addAndMakeVisible (resetMacros);
 }
@@ -288,7 +284,7 @@ void AlgorithmTab::selectionChanged()
 void AlgorithmTab::refresh (const Preset& p)
 {
     graph.refresh (p);
-    const auto& e = sideOf (p, ctx.sideB()).engine;
+    const auto& e = p.data.sound.engine;
     const int op = juce::jlimit (0, kNumOps - 1, ctx.selectedOp);
     const auto& o = e.operators[(size_t) op];
     bool renumbered = false;

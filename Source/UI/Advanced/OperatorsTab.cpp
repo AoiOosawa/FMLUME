@@ -57,7 +57,7 @@ EnvelopeView::EnvelopeView (Ctx& c) : ctx (c)
 
 void EnvelopeView::refresh (const Preset& p)
 {
-    state = sideOf (p, ctx.sideB()).engine.operators[(size_t) ctx.selectedOp];
+    state = p.data.sound.engine.operators[(size_t) ctx.selectedOp];
     repaint();
 }
 
@@ -111,23 +111,22 @@ void EnvelopeView::mouseDrag (const juce::MouseEvent& e)
     if (dragging < 0) return;
     const auto r = getLocalBounds().toFloat().reduced (12.0f, 12.0f);
     const float w = r.getWidth();
-    const bool b = ctx.sideB();
     const int op = ctx.selectedOp;
     if (dragging == 0)
-        ctx.set (pc::op (op, kOpEnvA), b, timeFromNorm (kOpEnvA, stageNorm (e.position.x - r.getX(), w)));
+        ctx.set (pc::op (op, kOpEnvA), timeFromNorm (kOpEnvA, stageNorm (e.position.x - r.getX(), w)));
     else if (dragging == 1)
     {
         // both values in one validated edit
         const float decay = timeFromNorm (kOpEnvD, stageNorm (e.position.x - handles[0].x, w));
         const float sustain = juce::jlimit (0.0f, 1.0f, (r.getBottom() - e.position.y) / r.getHeight());
         ctx.edit ([=] (Preset& p) {
-            auto& env = sideOf (p, b).engine.operators[(size_t) op].env;
+            auto& env = p.data.sound.engine.operators[(size_t) op].env;
             env.d = decay;
             env.s = sustain;
         });
     }
     else
-        ctx.set (pc::op (op, kOpEnvR), b, timeFromNorm (kOpEnvR, stageNorm (e.position.x - (handles[1].x + w * kHold), w)));
+        ctx.set (pc::op (op, kOpEnvR), timeFromNorm (kOpEnvR, stageNorm (e.position.x - (handles[1].x + w * kHold), w)));
 }
 
 void EnvelopeView::mouseUp (const juce::MouseEvent&)
@@ -175,8 +174,8 @@ OpCard::OpCard (Ctx& c, int opIndex) : ctx (c), op (opIndex)
 {
     power.setTooltip ("Switch this operator on or off");
     power.onClick = [this] {
-        const bool b = ctx.sideB(), v = power.getToggleState();
-        if (! ctx.run ([=, this] (PatchController& pc) { return pc.setOperatorEnabled (b, op, v); }))
+        const bool v = power.getToggleState();
+        if (! ctx.run ([=, this] (PatchController& pc) { return pc.setOperatorEnabled (op, v); }))
             power.setToggleState (! v, juce::dontSendNotification);
     };
     addAndMakeVisible (power);
@@ -189,7 +188,7 @@ void OpCard::resized() { power.setBounds (getLocalBounds().reduced (7, 6).remove
 
 void OpCard::refresh (const Preset& p)
 {
-    const auto& e = sideOf (p, ctx.sideB()).engine;
+    const auto& e = p.data.sound.engine;
     state = e.operators[(size_t) op];
     feeds = feedsText (e, op);
     power.setToggleState (state.enabled, juce::dontSendNotification);
@@ -249,7 +248,7 @@ void OpCard::mouseDrag (const juce::MouseEvent& e)
     if (! draggingLevel) return;
     const auto bar = levelBar();
     const float n = juce::jlimit (0.0f, 1.0f, (float) (e.x - bar.getX()) / (float) juce::jmax (1, bar.getWidth()));
-    ctx.set (pc::op (op, kOpLevel), ctx.sideB(), fromNorm (paramDesc (pc::op (op, kOpLevel)), n));
+    ctx.set (pc::op (op, kOpLevel), fromNorm (paramDesc (pc::op (op, kOpLevel)), n));
 }
 
 void OpCard::mouseUp (const juce::MouseEvent&)
@@ -356,7 +355,7 @@ void OperatorsTab::select (int op)
 void OperatorsTab::refresh (const Preset& p)
 {
     const int op = juce::jlimit (0, kNumOps - 1, ctx.selectedOp);
-    const auto& e = sideOf (p, ctx.sideB()).engine;
+    const auto& e = p.data.sound.engine;
     const auto& o = e.operators[(size_t) op];
     const int ratioCode = pc::op (op, o.pitchMode == PitchMode::Ratio ? kOpRatio : kOpFixedHz);
     if (shown != op || ratio.getCode() != ratioCode)

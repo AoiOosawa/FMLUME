@@ -25,7 +25,6 @@ static int usage()
         "  --vel <1-127> --dur <s>    ... with this velocity for this long (default 100, 2 s)\n"
         "  --tail <s>                 extra time after the last event (default 2 s)\n"
         "  --macro <1-8>=<0..1>       set a macro value (repeatable)\n"
-        "  --morph <0..1>             enable morph and set the amount\n"
         "  --quality <eco|standard|high>  --sr <hz>  --block <frames>  --bpm <bpm>  --gain <dB>\n"
         "  --arp / --gate             enable arpeggiator / trance gate\n"
         "  --no-arp                   switch the preset's arpeggiator and chord mode off (to hear the bare voice)\n"
@@ -45,7 +44,6 @@ int main (int argc, char** argv)
     HostParams host;
     bool hostFromPreset = true, gainSet = false;
     std::vector<std::pair<int, float>> macros;
-    float morph = -1.0f;
     bool arp = false, gate = false, noArp = false;
 
     for (int i = 1; i < argc; ++i)
@@ -65,7 +63,6 @@ int main (int argc, char** argv)
         else if (arg ("--midi")) midiPath = argv[++i];
         else if (arg ("--dump-preset")) dumpPath = argv[++i];
         else if (arg ("--validate")) validatePath = argv[++i];
-        else if (arg ("--morph")) morph = (float) std::atof (argv[++i]);
         else if (arg ("--quality"))
         {
             const std::string q = argv[++i];
@@ -127,7 +124,6 @@ int main (int argc, char** argv)
         host.fxBypassAll = false;
     }
     for (auto& m : macros) host.macro[(size_t) m.first] = m.second;
-    if (morph >= 0.0f) { host.morphEnabled = true; host.morphAmount = morph; }
     host.arpEnabled = host.arpEnabled || arp;
     host.gateEnabled = host.gateEnabled || gate;
     if (noArp) { host.arpEnabled = false; preset.data.perf.chord.type = ChordType::Off; }

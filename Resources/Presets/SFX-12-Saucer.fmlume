@@ -1,5 +1,5 @@
 {
-  "schemaVersion": 1,
+  "schemaVersion": 2,
   "pluginVersion": "0.1.0",
   "patchId": "factory.SFX.12.Saucer",
   "displayName": "Saucer",
@@ -10,7 +10,7 @@
   "createdAt": "2026-11-23T00:00:00Z",
   "modifiedAt": "2026-11-23T00:00:00Z",
   "favorite": false,
-  "engineA": {
+  "engine": {
     "operators": [
       {
         "enabled": true,
@@ -183,12 +183,6 @@
       "r": 0.5
     },
     "pitchBendRange": 12
-  },
-  "engineB": null,
-  "morph": {
-    "enabled": false,
-    "mode": "auto",
-    "amount": 0
   },
   "macros": [
     {
@@ -434,8 +428,6 @@
       "enabled": false
     }
   ],
-  "macrosB": null,
-  "matrixB": null,
   "performance": {
     "polyphony": 16,
     "unison": {

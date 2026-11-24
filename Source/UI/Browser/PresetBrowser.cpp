@@ -10,9 +10,7 @@ PresetBrowser::PresetBrowser (Ctx& c) : ctx (c)
     title.setFont (font (18.0f, true));
     styleLabel (counts, 13.0f);
     styleLabel (info, 13.5f, col::text, juce::Justification::topLeft);
-    styleLabel (pickHint, 14.0f, col::accentB);
-    pickHint.setFont (font (14.0f, true));
-    for (auto* l : { &title, &counts, &info, &pickHint }) addAndMakeVisible (l);
+    for (auto* l : { &title, &counts, &info }) addAndMakeVisible (l);
 
     search.setTextToShowWhenEmpty ("Search name, tag, description...", col::textDim);
     search.setFont (font (15.0f));
@@ -101,7 +99,6 @@ void PresetBrowser::resized()
     close.setBounds (top.removeFromRight (90));
     title.setBounds (top.removeFromLeft (110));
     counts.setBounds (top.removeFromLeft (190));
-    pickHint.setBounds (top.reduced (8, 0));
     r.removeFromTop (8);
 
     auto side = r.removeFromRight (juce::jlimit (230, 300, r.getWidth() * 28 / 100));
@@ -145,12 +142,8 @@ void PresetBrowser::resized()
     rescan.setBounds (pair.withTrimmedLeft (8));
 }
 
-void PresetBrowser::open (bool pickForSlotB)
+void PresetBrowser::open()
 {
-    pickMode = pickForSlotB;
-    pickHint.setText (pickMode ? "Pick the second sound (B) to morph towards" : juce::String(), juce::dontSendNotification);
-    for (auto* b : { &init, &saveAs, &del, &import, &exportBtn }) b->setVisible (! pickMode);
-    close.setButtonText (pickMode ? "Cancel" : "Close");
     refresh (ctx.snapshot()); // the search field takes the keyboard only when it is clicked
 }
 
@@ -213,7 +206,7 @@ void PresetBrowser::updateInfo()
     del.setEnabled (e != nullptr && ! e->factory);
     if (e == nullptr)
     {
-        info.setText (pickMode ? "Click a sound to load it into slot B." : "Click a sound to load it.\nClick the star to mark a favorite.", juce::dontSendNotification);
+        info.setText ("Click a sound to load it.\nClick the star to mark a favorite.", juce::dontSendNotification);
         return;
     }
     juce::String t;
@@ -250,17 +243,6 @@ void PresetBrowser::choose (int row)
 {
     if (entryAt (row) == nullptr) return;
     const int index = rows[(size_t) row];
-    if (pickMode)
-    {
-        Preset src;
-        std::string err;
-        if (! ctx.proc.presetManager().load (index, src, &err)) { ctx.say ("Could not load preset: " + utf8 (err), true); return; }
-        if (! ctx.run ([&] (PatchController& pc) { return pc.loadIntoSlot (true, src); }, "Could not use this sound as B: ")) return;
-        if (auto* p = ctx.proc.apvts.getParameter ("morph.enabled")) setHostParam (*p, 1.0f);
-        ctx.say ("Sound B is \"" + utf8 (src.meta.displayName) + "\". Drag the Morph slider to blend from A to B.");
-        if (onClose) onClose();
-        return;
-    }
     const juce::String err = ctx.proc.loadPresetIndex (index);
     if (err.isNotEmpty()) ctx.say ("Could not load preset: " + err, true);
 }

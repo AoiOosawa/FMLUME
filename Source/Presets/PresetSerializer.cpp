@@ -17,7 +17,6 @@ const char* const kFilterTypes[] = { "off", "LP12", "LP24", "HP12", "BP12" };
 const char* const kLfoShapes[] = { "sine", "triangle", "saw", "square", "randomSmooth" };
 const char* const kCurves[] = { "linear", "exp", "sCurve" };
 const char* const kPolarities[] = { "bipolar", "unipolar" };
-const char* const kMorphModes[] = { "auto", "compatible", "dual" };
 const char* const kArpModes[] = { "up", "down", "upDown", "random", "asPlayed" };
 const char* const kArpOctaveModes[] = { "range", "up", "down", "upDown" };
 const char* const kChordTypes[] = { "off", "major", "minor", "sus2", "sus4", "dim", "aug", "7", "m7", "maj7" };
@@ -32,7 +31,6 @@ FMLUME_NAMES_MATCH (kFilterTypes, FilterType);
 FMLUME_NAMES_MATCH (kLfoShapes, LfoShape);
 FMLUME_NAMES_MATCH (kCurves, Curve);
 FMLUME_NAMES_MATCH (kPolarities, Polarity);
-FMLUME_NAMES_MATCH (kMorphModes, MorphMode);
 FMLUME_NAMES_MATCH (kArpModes, ArpMode);
 FMLUME_NAMES_MATCH (kArpOctaveModes, ArpOctaveMode);
 FMLUME_NAMES_MATCH (kChordTypes, ChordType);
@@ -377,8 +375,7 @@ void readMatrix (Reader& r, const Json& arr, const std::string& path, std::array
     }
 }
 
-// Schema 0 was the unreleased development layout: single "engine" object, no "engineB" /
-// "macrosB" / "matrixB" keys and no "output" block. Kept as the first migration step.
+// Schema 0 was the first development layout: a single "engine" object and no "output" block.
 bool migrate0to1 (Json& root, std::string& error)
 {
     const Json* engine = root.find ("engine");
@@ -386,12 +383,26 @@ bool migrate0to1 (Json& root, std::string& error)
     Json copy = *engine;
     root.remove ("engine");
     root.set ("engineA", std::move (copy));
-    if (root.find ("engineB") == nullptr) root.set ("engineB", Json());
-    if (root.find ("macrosB") == nullptr) root.set ("macrosB", Json());
-    if (root.find ("matrixB") == nullptr) root.set ("matrixB", Json());
     if (root.find ("output") == nullptr) { Json o = Json::object(); o.set ("levelDb", 0.0f); root.set ("output", std::move (o)); }
     if (root.find ("metadata") == nullptr) root.set ("metadata", Json::object());
     root.set ("schemaVersion", 1);
+    return true;
+}
+
+// Schema 1 had a second sound for Morph ("engineB", "macrosB", "matrixB", "morph", "slotNames").
+// Morph was removed before the first release (docs/DECISIONS.md D-055): the first sound becomes
+// "engine", everything belonging to the second one is dropped.
+bool migrate1to2 (Json& root, std::string& error, bool& droppedSecondSound)
+{
+    const Json* engine = root.find ("engineA");
+    if (engine == nullptr || ! engine->isObject()) { error = "preset.engineA: missing required field"; return false; }
+    const Json* b = root.find ("engineB");
+    droppedSecondSound = b != nullptr && b->isObject();
+    Json copy = *engine;
+    root.remove ("engineA");
+    root.set ("engine", std::move (copy));
+    for (const char* key : { "engineB", "macrosB", "matrixB", "morph", "slotNames" }) root.remove (key);
+    root.set ("schemaVersion", 2);
     return true;
 }
 } // namespace
@@ -414,24 +425,9 @@ Json presetToJsonValue (const Preset& p)
     j.set ("createdAt", p.meta.createdAt);
     j.set ("modifiedAt", p.meta.modifiedAt);
     j.set ("favorite", p.meta.favorite);
-    j.set ("engineA", engineJson (d.a.engine));
-    j.set ("engineB", d.hasB ? engineJson (d.b.engine) : Json());
-    Json morph = Json::object();
-    morph.set ("enabled", d.host.morphEnabled);
-    morph.set ("mode", kMorphModes[(int) d.morph.mode]);
-    morph.set ("amount", d.host.morphAmount);
-    j.set ("morph", std::move (morph));
-    j.set ("macros", macrosJson (d.a.macros, p.meta.macroNames));
-    j.set ("matrix", matrixJson (d.a.matrix));
-    j.set ("macrosB", d.hasB ? macrosJson (d.b.macros, p.meta.macroNamesB) : Json());
-    if (d.hasB && (! p.meta.slotNameA.empty() || ! p.meta.slotNameB.empty()))
-    {
-        Json names = Json::object();
-        names.set ("a", p.meta.slotNameA);
-        names.set ("b", p.meta.slotNameB);
-        j.set ("slotNames", std::move (names));
-    }
-    j.set ("matrixB", d.hasB ? matrixJson (d.b.matrix) : Json());
+    j.set ("engine", engineJson (d.sound.engine));
+    j.set ("macros", macrosJson (d.sound.macros, p.meta.macroNames));
+    j.set ("matrix", matrixJson (d.sound.matrix));
 
     Json perf = Json::object();
     perf.set ("polyphony", d.host.polyphony);
@@ -567,6 +563,14 @@ bool presetFromJsonValue (const Json& rootIn, Preset& out, std::string* error, s
         if (warnings) warnings->push_back ("migrated from schema 0");
         version = 1;
     }
+    if (version == 1)
+    {
+        std::string e;
+        bool dropped = false;
+        if (! migrate1to2 (root, e, dropped)) return failWith (e);
+        if (warnings && dropped) warnings->push_back ("the second sound (Morph) of this preset was dropped: Morph is no longer part of FMLUME");
+        version = 2;
+    }
 
     Reader r;
     Preset p;
@@ -596,56 +600,10 @@ bool presetFromJsonValue (const Json& rootIn, Preset& out, std::string* error, s
     if (const Json* v = root.find ("modifiedAt"); v && v->isString()) p.meta.modifiedAt = v->string;
     if (const Json* v = root.find ("favorite"); v && v->isBool()) p.meta.favorite = v->boolean;
 
-    if (const Json* ea = r.object (root, "engineA", top)) readEngine (r, *ea, "engineA", d.a.engine);
-    const Json* eb = root.find ("engineB");
-    if (eb == nullptr) r.fail ("preset.engineB", "missing required field (use null for single-engine presets)");
-    else if (eb->isObject()) { d.hasB = true; readEngine (r, *eb, "engineB", d.b.engine); }
-    else if (! eb->isNull()) r.fail ("preset.engineB", "expected an object or null");
-
-    if (const Json* m = r.object (root, "morph", top))
-    {
-        r.boolean (*m, "enabled", "morph", d.host.morphEnabled);
-        r.enumeration (*m, "mode", "morph", kMorphModes, d.morph.mode);
-        r.num (*m, "amount", "morph", d.host.morphAmount);
-    }
-    if (const Json* m = r.array (root, "macros", top, kNumMacros)) readMacros (r, *m, "macros", d.a.macros, p.meta.macroNames);
-    if (const Json* m = r.array (root, "matrix", top, kNumModSlots)) readMatrix (r, *m, "matrix", d.a.matrix);
-
-    const Json* mb = root.find ("macrosB");
-    const Json* xb = root.find ("matrixB");
-    if (d.hasB)
-    {
-        // B side present: its own macros and matrix are mandatory (SPEC §12.1).
-        if (mb == nullptr || ! mb->isArray()) r.fail ("preset.macrosB", "required when engineB is present");
-        else readMacros (r, *mb, "macrosB", d.b.macros, p.meta.macroNamesB);
-        if (xb == nullptr || ! xb->isArray()) r.fail ("preset.matrixB", "required when engineB is present");
-        else readMatrix (r, *xb, "matrixB", d.b.matrix);
-    }
-    else
-    {
-        if ((mb != nullptr && ! mb->isNull()) || (xb != nullptr && ! xb->isNull())) r.fail ("preset.macrosB", "must be null when engineB is null");
-        d.b = d.a; // keep slot B editable from a sane state
-        p.meta.macroNamesB = p.meta.macroNames;
-    }
-    // Optional names of the two morph sounds (only meaningful with a B side).
-    p.meta.slotNameA.clear();
-    p.meta.slotNameB.clear();
-    if (const Json* names = root.find ("slotNames"))
-    {
-        if (! names->isObject()) r.fail ("preset.slotNames", "expected an object");
-        else if (d.hasB)
-        {
-            const auto take = [&] (const char* key, std::string& out) {
-                const Json* v = names->find (key);
-                if (v == nullptr) return;
-                if (! v->isString() || v->string.size() > 200) r.fail (std::string ("preset.slotNames.") + key, "expected a short string");
-                else out = v->string;
-            };
-            take ("a", p.meta.slotNameA);
-            take ("b", p.meta.slotNameB);
-        }
-    }
-    for (int i = 0; i < kNumMacros; ++i) d.host.macro[(size_t) i] = d.a.macros[(size_t) i].defaultValue;
+    if (const Json* e = r.object (root, "engine", top)) readEngine (r, *e, "engine", d.sound.engine);
+    if (const Json* m = r.array (root, "macros", top, kNumMacros)) readMacros (r, *m, "macros", d.sound.macros, p.meta.macroNames);
+    if (const Json* m = r.array (root, "matrix", top, kNumModSlots)) readMatrix (r, *m, "matrix", d.sound.matrix);
+    for (int i = 0; i < kNumMacros; ++i) d.host.macro[(size_t) i] = d.sound.macros[(size_t) i].defaultValue;
 
     if (const Json* perf = r.object (root, "performance", top))
     {
@@ -818,8 +776,6 @@ bool stateToJson (const Preset& p, const HostParams& host, std::string& out, std
     Json macros = Json::array();
     for (float m : host.macro) macros.push (m);
     h.set ("macros", std::move (macros));
-    h.set ("morphAmount", host.morphAmount);
-    h.set ("morphEnabled", host.morphEnabled);
     h.set ("fxBypassAll", host.fxBypassAll);
     Json quick = Json::array();
     for (float q : host.quick) quick.push (q);
@@ -856,8 +812,6 @@ bool stateFromJson (const std::string& text, Preset& out, HostParams& host, std:
     r.integer (*h, "quality", "host", hp.quality, 0, 2);
     if (const Json* m = r.array (*h, "macros", "host", kNumMacros))
         for (int i = 0; i < kNumMacros; ++i) hp.macro[(size_t) i] = m->items[(size_t) i].isNumber() ? (float) m->items[(size_t) i].number : 0.5f;
-    r.num (*h, "morphAmount", "host", hp.morphAmount);
-    r.boolean (*h, "morphEnabled", "host", hp.morphEnabled);
     r.boolean (*h, "fxBypassAll", "host", hp.fxBypassAll);
     if (const Json* q = r.array (*h, "quick", "host", kNumQuick))
         for (int i = 0; i < kNumQuick; ++i) hp.quick[(size_t) i] = q->items[(size_t) i].isNumber() ? (float) q->items[(size_t) i].number : 0.5f;
@@ -865,8 +819,7 @@ bool stateFromJson (const std::string& text, Preset& out, HostParams& host, std:
     r.boolean (*h, "gateEnabled", "host", hp.gateEnabled);
     if (! r.ok()) return failWith (r.error);
     auto in = [] (float v, float lo, float hi) { return std::isfinite (v) && v >= lo && v <= hi; };
-    if (! in (hp.gainDb, -60.0f, 12.0f) || ! in (hp.pan, -1.0f, 1.0f) || ! in (hp.detune, 0.0f, 50.0f) || ! in (hp.spread, 0.0f, 100.0f)
-        || ! in (hp.morphAmount, 0.0f, 1.0f))
+    if (! in (hp.gainDb, -60.0f, 12.0f) || ! in (hp.pan, -1.0f, 1.0f) || ! in (hp.detune, 0.0f, 50.0f) || ! in (hp.spread, 0.0f, 100.0f))
         return failWith ("host: value out of range");
     for (float m : hp.macro) if (! in (m, 0.0f, 1.0f)) return failWith ("host.macros: value out of range");
     for (float q : hp.quick) if (! in (q, 0.0f, 1.0f)) return failWith ("host.quick: value out of range");

@@ -11,7 +11,7 @@ public:
     explicit PresetBrowser (Ctx&);
     void paint (juce::Graphics&) override;
     void resized() override;
-    void open (bool pickForSlotB);
+    void open();
     void refresh (const fmlume::Preset&);
     void rebuild();
     std::function<void()> onClose, onSaveAs, onImport, onExport;
@@ -28,7 +28,7 @@ private:
     const fmlume::PresetEntry* entryAt (int row) const;
 
     Ctx& ctx;
-    juce::Label title, counts, info, pickHint;
+    juce::Label title, counts, info;
     juce::TextEditor search;
     juce::ComboBox category;
     juce::TextButton favOnly { "Favorites" }, clearTags { "Clear" }, close { "Close" };
@@ -40,6 +40,5 @@ private:
     std::string currentId;
     juce::String activeTag;
     int knownCount = -1;
-    bool pickMode = false;
 };
 } // namespace ui

@@ -73,8 +73,7 @@ EnginePatch makeInitEngine()
 PatchData makeInitPatchData()
 {
     PatchData d;
-    d.a.engine = makeInitEngine();
-    d.b.engine = makeInitEngine();
+    d.sound.engine = makeInitEngine();
     for (int t = 0; t < kNumFx; ++t)
         for (int p = 0; p < kFxParams; ++p)
             d.fx.proc[(size_t) t].p[(size_t) p] = fxParamDesc (t, p).def;
@@ -90,10 +89,7 @@ Preset makeInitPreset()
     p.meta.author = "FMLUME";
     static const char* const common[4] = { "Brightness", "Attack", "Release", "Character" };
     for (int i = 0; i < kNumMacros; ++i)
-    {
         p.meta.macroNames[(size_t) i] = i < 4 ? common[i] : ("Macro " + std::to_string (i + 1));
-        p.meta.macroNamesB[(size_t) i] = p.meta.macroNames[(size_t) i];
-    }
     p.data = makeInitPatchData();
     return p;
 }

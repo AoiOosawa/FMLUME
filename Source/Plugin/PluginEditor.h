@@ -25,7 +25,7 @@ private:
     void globalFocusChanged (juce::Component* focused) override;
     void refreshAll();
     void showPage (bool advanced);
-    void showBrowser (bool show, bool pickForSlotB = false);
+    void showBrowser (bool show);
     void savePresetDialog();
     void fileDialog (bool save);
     void setStatus (const juce::String& text, bool error);

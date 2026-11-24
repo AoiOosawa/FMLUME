@@ -9,7 +9,7 @@ namespace
 PatchData twoOp (float index, float modRatio = 1.0f)
 {
     PatchData d = makeInitPatchData();
-    auto& e = d.a.engine;
+    auto& e = d.sound.engine;
     e.operators[0] = makeOp (modRatio, 1.0f, 0.001f, 0.5f, 1.0f, 0.1f, 0.0f);
     e.operators[1] = makeOp (1.0f, 1.0f, 0.001f, 0.5f, 1.0f, 0.1f, 1.0f);
     for (auto& op : e.operators) { op.velocityToLevel = 0.0f; op.velocityToIndex = 0.0f; }
@@ -19,8 +19,8 @@ PatchData twoOp (float index, float modRatio = 1.0f)
 PatchData oneOp (float a = 0.001f, float dcy = 0.5f, float s = 1.0f, float r = 0.1f)
 {
     PatchData d = makeInitPatchData();
-    d.a.engine.operators[0] = makeOp (1.0f, 1.0f, a, dcy, s, r, 1.0f);
-    d.a.engine.operators[0].velocityToLevel = 0.0f;
+    d.sound.engine.operators[0] = makeOp (1.0f, 1.0f, a, dcy, s, r, 1.0f);
+    d.sound.engine.operators[0].velocityToLevel = 0.0f;
     return d;
 }
 HostParams hostQ (int q) { HostParams h; h.quality = q; return h; }
@@ -55,8 +55,8 @@ FM_TEST ("dsp", "DSP-02 two operators with index 0 equal the pure carrier")
     b.prepare (sr, 256);
     CHECK (a.setPatch (twoOp (0.0f, 3.0f)));
     PatchData solo = twoOp (0.0f, 3.0f);
-    solo.a.engine.numEdges = 0;
-    solo.a.engine.operators[0].enabled = false;
+    solo.sound.engine.numEdges = 0;
+    solo.sound.engine.operators[0].enabled = false;
     CHECK (b.setPatch (solo));
     std::vector<NoteEvent> seq { { 0.0, noteOn (60) }, { 0.5, noteOff (60) } };
     auto ra = renderSeq (a, sr, 256, 1.0, seq), rb = renderSeq (b, sr, 256, 1.0, seq);
@@ -86,9 +86,9 @@ FM_TEST ("dsp", "DSP-03 raising the modulation index creates sidebands")
     e2.prepare (sr, 256);
     PatchData p1 = makeInitPatchData(), p2 = makeInitPatchData();
     for (auto* p : { &p1, &p2 })
-        for (int k = 0; k < 3; ++k) p->a.engine.operators[(size_t) k] = makeOp (1.0f + k, 1.0f, 0.001f, 0.5f, 1.0f, 0.1f);
-    applyAlgorithm (p1.a.engine, 2); // 1>2>3
-    applyAlgorithm (p2.a.engine, 7); // (1,2)>3
+        for (int k = 0; k < 3; ++k) p->sound.engine.operators[(size_t) k] = makeOp (1.0f + k, 1.0f, 0.001f, 0.5f, 1.0f, 0.1f);
+    applyAlgorithm (p1.sound.engine, 2); // 1>2>3
+    applyAlgorithm (p2.sound.engine, 7); // (1,2)>3
     CHECK (e1.setPatch (p1) && e2.setPatch (p2));
     auto r1 = renderSeq (e1, sr, 256, 0.5, { { 0.0, noteOn (57) } }), r2 = renderSeq (e2, sr, 256, 0.5, { { 0.0, noteOn (57) } });
     CHECK (maxAbsDiff (r1.l, r2.l) > 0.01);
@@ -97,7 +97,7 @@ FM_TEST ("dsp", "DSP-03 raising the modulation index creates sidebands")
 FM_TEST ("dsp", "DSP-04 cyclic graphs are rejected by the compiler and never reach the DSP")
 {
     PatchData d = twoOp (1.0f);
-    auto& e = d.a.engine;
+    auto& e = d.sound.engine;
     e.edges[(size_t) e.numEdges++] = { 1, 0, 1.0f }; // 2 -> 1 closes the loop
     CHECK (hasCycle (e));
     CHECK (! validatePatch (d).ok);
@@ -105,10 +105,10 @@ FM_TEST ("dsp", "DSP-04 cyclic graphs are rejected by the compiler and never rea
     std::string err;
     CHECK (! compilePatch (d, cp, &err));
     CHECK (err.find ("cycle") != std::string::npos);
-    CHECK (edgeWouldBeInvalid (twoOp (1.0f).a.engine, 1, 0));
-    CHECK (edgeWouldBeInvalid (twoOp (1.0f).a.engine, 0, 0));
-    CHECK (edgeWouldBeInvalid (twoOp (1.0f).a.engine, 0, 1)); // duplicate
-    CHECK (! edgeWouldBeInvalid (twoOp (1.0f).a.engine, 1, 2));
+    CHECK (edgeWouldBeInvalid (twoOp (1.0f).sound.engine, 1, 0));
+    CHECK (edgeWouldBeInvalid (twoOp (1.0f).sound.engine, 0, 0));
+    CHECK (edgeWouldBeInvalid (twoOp (1.0f).sound.engine, 0, 1)); // duplicate
+    CHECK (! edgeWouldBeInvalid (twoOp (1.0f).sound.engine, 1, 2));
 
     const double sr = 48000.0;
     SynthEngine eng, ref;
@@ -121,13 +121,13 @@ FM_TEST ("dsp", "DSP-04 cyclic graphs are rejected by the compiler and never rea
 
     // No carrier / NaN / out-of-range values are rejected too.
     PatchData silent = makeInitPatchData();
-    silent.a.engine.operators[0].carrierGain = 0.0f;
+    silent.sound.engine.operators[0].carrierGain = 0.0f;
     CHECK (! validatePatch (silent).ok);
     PatchData nan = makeInitPatchData();
-    nan.a.engine.operators[0].ratio = std::nanf ("");
+    nan.sound.engine.operators[0].ratio = std::nanf ("");
     CHECK (! validatePatch (nan).ok);
     PatchData big = makeInitPatchData();
-    big.a.engine.operators[0].feedback = 9.0f;
+    big.sound.engine.operators[0].feedback = 9.0f;
     CHECK (! validatePatch (big).ok);
 }
 
@@ -141,10 +141,10 @@ FM_TEST ("dsp", "DSP-05 maximum self feedback stays finite and bounded")
         PatchData d = makeInitPatchData();
         for (int k = 0; k < kNumOps; ++k)
         {
-            d.a.engine.operators[(size_t) k] = makeOp (1.0f + 5.3f * k, 1.0f, 0.001f, 0.5f, 1.0f, 0.2f, 1.0f);
-            d.a.engine.operators[(size_t) k].feedback = 1.5f;
+            d.sound.engine.operators[(size_t) k] = makeOp (1.0f + 5.3f * k, 1.0f, 0.001f, 0.5f, 1.0f, 0.2f, 1.0f);
+            d.sound.engine.operators[(size_t) k].feedback = 1.5f;
         }
-        for (int k = 0; k + 1 < kNumOps; ++k) addEdge (d.a.engine, k, k + 1, 16.0f);
+        for (int k = 0; k + 1 < kNumOps; ++k) addEdge (d.sound.engine, k, k + 1, 16.0f);
         CHECK (e.setPatch (d));
         auto r = renderSeq (e, sr, 256, 2.0, { { 0.0, noteOn (30, 127) }, { 0.1, noteOn (100, 127) }, { 0.2, noteOn (127, 127) } }, hostQ (q));
         CHECK (allFinite (r.l) && allFinite (r.r));
@@ -210,7 +210,6 @@ FM_TEST ("dsp", "DSP-08 polyphony 32 with unison 8 stays inside the voice budget
     for (int i = 0; i < 32; ++i) seq.push_back ({ 0.8 + 0.001 * i, noteOff (36 + i) });
     CHECK (SynthEngine::effectiveMaxNotes (32, 8) == 8);
     CHECK (SynthEngine::effectiveMaxNotes (16, 1) == 16);
-    CHECK (SynthEngine::effectiveMaxNotes (32, 8, true, 2) == 4); // Dual at 4x halves the budget
 
     // Render in pieces so the voice counters can be observed mid-flight.
     std::vector<float> l (128), r (128);
@@ -261,13 +260,13 @@ FM_TEST ("dsp", "DSP-09 macros: neutral equals the base patch, moving changes th
     const double sr = 48000.0;
     PatchData base = twoOp (1.0f);
     PatchData mapped = base;
-    addMapping (mapped.a.macros[0], pc::edge (0, 1), 0.3f);
-    addMapping (mapped.a.macros[0], pc::op (1, kOpEnvR), 0.2f, Curve::Exp);
-    addMapping (mapped.a.macros[1], pc::op (0, kOpLevel), -0.5f, Curve::SCurve, Polarity::Unipolar);
+    addMapping (mapped.sound.macros[0], pc::edge (0, 1), 0.3f);
+    addMapping (mapped.sound.macros[0], pc::op (1, kOpEnvR), 0.2f, Curve::Exp);
+    addMapping (mapped.sound.macros[1], pc::op (0, kOpLevel), -0.5f, Curve::SCurve, Polarity::Unipolar);
     // A mapping to an edge that does not exist must be dropped, not crash.
-    mapped.a.macros[2].mappings[0].target = (int16_t) pc::edge (4, 5);
-    mapped.a.macros[2].mappings[0].amount = 1.0f;
-    mapped.a.macros[2].numMappings = 1;
+    mapped.sound.macros[2].mappings[0].target = (int16_t) pc::edge (4, 5);
+    mapped.sound.macros[2].mappings[0].amount = 1.0f;
+    mapped.sound.macros[2].numMappings = 1;
     CHECK (validatePatch (mapped).ok);
     CHECK (! validatePatch (mapped).warnings.empty());
 
@@ -288,10 +287,10 @@ FM_TEST ("dsp", "DSP-09 macros: neutral equals the base patch, moving changes th
     PatchData wild = base;
     for (int i = 0; i < kNumMacros; ++i)
     {
-        addMapping (wild.a.macros[(size_t) i], pc::edge (0, 1), i % 2 ? 1.0f : -1.0f);
-        addMapping (wild.a.macros[(size_t) i], pc::op (1, kOpLevel), 1.0f);
-        addMapping (wild.a.macros[(size_t) i], pc::op (0, kOpRatio), 1.0f);
-        addMapping (wild.a.macros[(size_t) i], pc::fx (FxType::Reverb, 4), 1.0f);
+        addMapping (wild.sound.macros[(size_t) i], pc::edge (0, 1), i % 2 ? 1.0f : -1.0f);
+        addMapping (wild.sound.macros[(size_t) i], pc::op (1, kOpLevel), 1.0f);
+        addMapping (wild.sound.macros[(size_t) i], pc::op (0, kOpRatio), 1.0f);
+        addMapping (wild.sound.macros[(size_t) i], pc::fx (FxType::Reverb, 4), 1.0f);
     }
     SynthEngine e3;
     e3.prepare (sr, 256);
@@ -336,7 +335,6 @@ FM_TEST ("dsp", "DSP-11 rejected patches and hostile host values never produce N
     h.detune = 1.0e9f;
     h.spread = -3.0f;
     h.quality = 77;
-    h.morphAmount = -4.0f;
     for (auto& m : h.macro) m = 1.0e6f;
     auto r = renderSeq (e, sr, 512, 0.5, { { 0.0, noteOn (60) }, { 0.1, bend (55.0f) }, { 0.2, cc (1, 127) } }, h);
     CHECK (allFinite (r.l) && allFinite (r.r));
@@ -410,7 +408,7 @@ FM_TEST ("dsp", "Patch generations: held notes keep the old patch, new notes get
     e.prepare (sr, 256);
     PatchData a = oneOp (0.001f, 0.5f, 1.0f, 0.2f);
     PatchData b = a;
-    b.a.engine.operators[0].ratio = 2.0f;
+    b.sound.engine.operators[0].ratio = 2.0f;
     CHECK (e.setPatch (a));
     HostParams h;
     h.gainDb = -6.0f; // the click thresholds below are absolute sample steps measured at -6 dB
@@ -453,7 +451,7 @@ FM_TEST ("dsp", "Patch generations: held notes keep the old patch, new notes get
     int gen = 0;
     for (pos = 128; pos + 128 <= 48000; pos += 128)
     {
-        if (pos % 1280 == 0 && gen < 14) { PatchData x = a; x.a.engine.operators[0].level = 0.9f - 0.01f * gen; CHECK (e3.setPatch (x, true)); ++gen; }
+        if (pos % 1280 == 0 && gen < 14) { PatchData x = a; x.sound.engine.operators[0].level = 0.9f - 0.01f * gen; CHECK (e3.setPatch (x, true)); ++gen; }
         e3.process (l3.data() + pos, r3.data() + pos, 128, nullptr, 0, h, {});
     }
     CHECK (allFinite (l3));
@@ -484,7 +482,7 @@ FM_TEST ("dsp", "Mono / legato / portamento and pitch bend")
     SynthEngine e2;
     e2.prepare (sr, 64);
     PatchData pb = oneOp();
-    pb.a.engine.pitchBendRange = 12.0f;
+    pb.sound.engine.pitchBendRange = 12.0f;
     CHECK (e2.setPatch (pb));
     auto r2 = renderSeq (e2, sr, 64, 1.0, { { 0.0, noteOn (57) }, { 0.3, bend (1.0f) } });
     CHECK_NEAR (zeroCrossHz (r2.l, sr, (size_t) (0.1 * sr), (size_t) (0.29 * sr)), 220.0, 0.5);
@@ -521,30 +519,30 @@ FM_TEST ("dsp", "Filter, waveforms and modulation matrix shape the sound")
         return r;
     };
     PatchData saw = oneOp();
-    saw.a.engine.operators[0].waveform = Waveform::Saw;
+    saw.sound.engine.operators[0].waveform = Waveform::Saw;
     auto rSaw = render (saw);
     const double f0 = 110.0;
     CHECK (toneMag (rSaw.l, sr, f0 * 5.0, 12000, 44000) > 0.01); // harmonics present
     PatchData lp = saw;
-    lp.a.engine.filter.type = FilterType::LP24;
-    lp.a.engine.filter.cutoffHz = 300.0f;
+    lp.sound.engine.filter.type = FilterType::LP24;
+    lp.sound.engine.filter.cutoffHz = 300.0f;
     auto rLp = render (lp);
     CHECK (toneMag (rLp.l, sr, f0 * 9.0, 12000, 44000) < 0.1 * toneMag (rSaw.l, sr, f0 * 9.0, 12000, 44000));
     CHECK (toneMag (rLp.l, sr, f0, 12000, 44000) > 0.5 * toneMag (rSaw.l, sr, f0, 12000, 44000));
     PatchData hp = saw;
-    hp.a.engine.filter.type = FilterType::HP12;
-    hp.a.engine.filter.cutoffHz = 3000.0f;
+    hp.sound.engine.filter.type = FilterType::HP12;
+    hp.sound.engine.filter.cutoffHz = 3000.0f;
     CHECK (toneMag (render (hp).l, sr, f0, 12000, 44000) < 0.05 * toneMag (rSaw.l, sr, f0, 12000, 44000));
     PatchData reso = lp;
-    reso.a.engine.filter.resonance = 0.95f;
-    reso.a.engine.filter.drive = 1.0f;
+    reso.sound.engine.filter.resonance = 0.95f;
+    reso.sound.engine.filter.drive = 1.0f;
     CHECK (peak (render (reso).l) <= 1.0f);
 
     // Band-limiting: a high saw note must not alias strongly below its fundamental.
     for (Waveform w : { Waveform::Triangle, Waveform::Saw, Waveform::Pulse })
     {
         PatchData hi = oneOp();
-        hi.a.engine.operators[0].waveform = w;
+        hi.sound.engine.operators[0].waveform = w;
         SynthEngine e;
         e.prepare (sr, 256);
         CHECK (e.setPatch (hi));
@@ -557,12 +555,12 @@ FM_TEST ("dsp", "Filter, waveforms and modulation matrix shape the sound")
 
     // LFO -> pitch vibrato widens the spectrum; velocity -> level scales amplitude.
     PatchData vib = oneOp();
-    setModSlot (vib.a, 0, ModSource::LFO1, pc::pitch, 0.05f);
-    vib.a.engine.lfo[0].rateHz = 6.0f;
+    setModSlot (vib.sound, 0, ModSource::LFO1, pc::pitch, 0.05f);
+    vib.sound.engine.lfo[0].rateHz = 6.0f;
     auto rv = render (vib), rn = render (oneOp());
     CHECK (maxAbsDiff (rv.l, rn.l) > 0.05);
     PatchData mw = oneOp();
-    setModSlot (mw.a, 0, ModSource::ModWheel, pc::level, -0.5f);
+    setModSlot (mw.sound, 0, ModSource::ModWheel, pc::level, -0.5f);
     SynthEngine e;
     e.prepare (sr, 256);
     CHECK (e.setPatch (mw));
@@ -578,10 +576,10 @@ FM_TEST ("dsp", "Every algorithm template and category template compiles and mak
     for (int t = 0; t < numAlgorithmTemplates(); ++t)
     {
         PatchData d = makeInitPatchData();
-        for (int k = 0; k < kNumOps; ++k) d.a.engine.operators[(size_t) k] = makeOp (1.0f + (k % 3), 1.0f, 0.001f, 0.5f, 0.8f, 0.1f);
-        applyAlgorithm (d.a.engine, t);
+        for (int k = 0; k < kNumOps; ++k) d.sound.engine.operators[(size_t) k] = makeOp (1.0f + (k % 3), 1.0f, 0.001f, 0.5f, 0.8f, 0.1f);
+        applyAlgorithm (d.sound.engine, t);
         CHECK (validatePatch (d).ok);
-        CHECK (matchAlgorithm (d.a.engine) == t);
+        CHECK (matchAlgorithm (d.sound.engine) == t);
         SynthEngine e;
         e.prepare (sr, 256);
         CHECK (e.setPatch (d));
@@ -595,7 +593,7 @@ FM_TEST ("dsp", "Every algorithm template and category template compiles and mak
         CHECK (v.ok);
         if (! v.ok) std::printf ("    %s: %s\n", categoryName ((Category) c), v.error.c_str());
         CHECK (v.warnings.empty());
-        for (int m = 0; m < kNumMacros; ++m) CHECK (p.data.a.macros[(size_t) m].numMappings > 0);
+        for (int m = 0; m < kNumMacros; ++m) CHECK (p.data.sound.macros[(size_t) m].numMappings > 0);
         SynthEngine e;
         e.prepare (sr, 256);
         CHECK (e.setPatch (p.data));

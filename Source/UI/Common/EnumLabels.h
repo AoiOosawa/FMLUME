@@ -20,7 +20,6 @@ FMLUME_LABELS (curve, Curve, "Linear", "Exp", "S-Curve");
 FMLUME_LABELS (polarity, Polarity, "Bipolar", "Unipolar");
 FMLUME_LABELS (modSource, ModSource, "(none)", "LFO 1", "LFO 2", "Mod Env", "Velocity", "Key Track", "Mod Wheel", "Aftertouch",
                "Macro 1", "Macro 2", "Macro 3", "Macro 4", "Macro 5", "Macro 6", "Macro 7", "Macro 8");
-FMLUME_LABELS (morphMode, MorphMode, "Blend: Auto", "Blend: Smooth", "Blend: Layered");
 FMLUME_LABELS (arpMode, ArpMode, "Up", "Down", "Up-Down", "Random", "As played");
 FMLUME_LABELS (arpOctaveMode, ArpOctaveMode, "Across range", "Step up", "Step down", "Step up-down");
 FMLUME_LABELS (chordType, ChordType, "Off", "Major", "Minor", "Sus2", "Sus4", "Dim", "Aug", "7", "m7", "maj7");

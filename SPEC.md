@@ -28,12 +28,12 @@
 
 FMLUME は、FM/PM合成の音色表現力を維持しながら、オペレーターやアルゴリズムを知らないユーザーが直感的に音を作れるシンセ。**プリセットの軽微な改変しかできない製品ではなく、Simpleモードだけで初期音色から新規音色を作れる製品**とする。
 
-主要フロー：**Choose（カテゴリ/初期音色）→ Shape（マクロ）→ Explore（派生候補）→ Morph（2音色融合）→ Finish（エフェクト）**。
+主要フロー：**Choose（カテゴリ/初期音色）→ Shape（マクロ）→ Explore（派生候補）→ Finish（エフェクト）**。
 
 ### 1.2 対象ユーザー・音色
 
 - 初心者: 音色カテゴリ、4つの共通マクロだけで成立する操作。
-- 中級者: カテゴリ別4マクロ、Explorer、Morph、FX編集、プリセット保存。
+- 中級者: カテゴリ別4マクロ、Explorer、FX編集、プリセット保存。
 - 上級者: 6オペレーターのルーティング、エンベロープ、Mod Matrix、各FX詳細。
 - カバーする音色: Arp / E.Piano / Bell / Bass / Lead / Pad / Poly / Pluck / Brass / Keys / SFX（v1.1 で Arp＝アルペジエーターが動く状態で読み込まれる音色、Poly＝ポリシンセ系を追加）。アナログ風の質感もFM本体、波形、フィルター、ユニゾン、FXで実現する。サンプル音源は使用しない。
 
@@ -43,10 +43,10 @@ FMLUME は、FM/PM合成の音色表現力を維持しながら、オペレー�
 |---|---|---|
 | **MVP 0.1** | FM発音、ADSR、単純な接続テンプレート、MIDI、Simple 4マクロ、最小UI、AU/VST3 | ホストで音が鳴り、保存/再読込後も同一音になる |
 | **Alpha 0.5** | 自由接続FM、波形/フィルター、8マクロ、Mod Matrix、基本FX、プリセット | Advancedからゼロ作成可能、各種テスト通過 |
-| **Beta 0.9** | Explorer、Dual/Compatible Morph、Arp/Chord/Trance Gate、自由FX順 | Cubaseを含むDAWでプロジェクト再読込、オフラインバウンスが成立 |
+| **Beta 0.9** | Explorer、Arp/Chord/Trance Gate、自由FX順 | Cubaseを含むDAWでプロジェクト再読込、オフラインバウンスが成立 |
 | **v1.0** | 品質・最適化、全カテゴリの工場プリセット、UI調整、検証、ドキュメント | §17の受入条件を満たす |
 
-**初期リリースでは不要:** Windows/Linux、iOS/AUv3、AAX、CLAP、サンプラー、音声生成AI、クラウド、ログイン、オンライン課金、DX7 SysEx完全互換、4点XY Morph、マルチティンバー。
+**初期リリースでは不要:** Windows/Linux、iOS/AUv3、AAX、CLAP、サンプラー、音声生成AI、クラウド、ログイン、オンライン課金、DX7 SysEx完全互換、Sound Morph（§9、v1.2 で削除）、マルチティンバー。
 
 ## 2. 対応環境とビルド
 
@@ -87,10 +87,9 @@ MIDI + Host Transport + Host Automation
    Voice Allocator (notes / sustain / steal)
           │
    ┌──────┴─────────────────────────────────┐
-   │   Preset A: 6-op FM/PM engine         │
-   │   Preset B: 6-op FM/PM engine (Morph) │
+   │   6-op FM/PM engine                   │
    └──────┬─────────────────────────────────┘
-          │  Dual Morph or Compatible Morph
+          │
      Unison / Detune / Stereo Mix
           │
    Per-voice / Global Filter
@@ -191,8 +190,8 @@ voice[n] = (Σ_i carrierGain_i * output_i[n]) * normalization
 
 - `polyphony`: 1〜32ノート、デフォルト16ノート。
 - `unisonCount`: 1〜8、デフォルト1。1ノートにつきその数の `SubVoice` を使用する。
-- **コスト上限**: 同時稼働FM `SubVoice` は最大64（Morph Dual時はA/Bを合わせて128の演算単位を上限とする）。音数×Unisonが予算超過した場合、最古のRelease中→最古の発音中の順でVoice Stealする。最終出力は5ms以内にクロスフェードしてクリック抑制。
-- Dual MorphはA/Bを同一論理Voiceのペアとして管理。128上限は内部2音源分を数えたもの。32×8の組合せを無制限保証しない。UIに実効最大同時ノート数を表示。
+- **コスト上限**: 同時稼働FM `SubVoice` は最大64。音数×Unisonが予算超過した場合、最古のRelease中→最古の発音中の順でVoice Stealする。最終出力は5ms以内にクロスフェードしてクリック抑制。
+- 32×8の組合せを無制限保証しない。UIに実効最大同時ノート数を表示。
 - MIDI Note 0〜127、Velocity 1〜127、NoteOn velocity0はNoteOff、all notes off / all sound off対応。
 - Pitch Bend初期±2 semitones、設定±1〜24 semitones。CC1 Mod Wheel、CC64 Sustain、Channel Aftertouch対応。Poly AT/MPEは将来。
 - モノモード: last-note priority、Legato on/off、Portamento 0〜2s。PolyはPortamento初期off。
@@ -274,7 +273,7 @@ voice[n] = (Σ_i carrierGain_i * output_i[n]) * normalization
 - 変化方向: `Surprise / Brighter / Darker / Warmer / More Metallic / Softer / Punchier / More Motion`。
 - 強度: `Subtle / Medium / Wild`。**初期はMedium、Surprise**。
 - `Lock` 対象: operator graph、pitch ratios、envelopes、FX、個別マクロ（最大8）を独立に固定できる。
-- `New set`（Regenerate）: 親を維持して別8候補。`More like this`（Explore From This）: 選択候補を新しい親へ。`Back`: 候補の履歴を最大20ステップ戻る。
+- `New set`（Regenerate）: 親を維持して別8候補。`More like this`（Explore From This）: 選択候補を新しい親へ。`Previous set`（旧表記 `Back`）: 候補の履歴を最大20ステップ戻る。
 - `Preview` は採用前の一時試聴。プリセット保存をしない限りユーザーパッチを上書きしない。
 
 ### 8.2 生成アルゴリズム v1（機械学習不要）
@@ -295,28 +294,13 @@ voice[n] = (Σ_i carrierGain_i * output_i[n]) * normalization
 - `Preview` 操作中の演奏は候補音で出す（録音中でも選択候補が音になることは明示）。`Cancel`で編集前の音に戻す。切替は新規ノート適用と既存Voiceの扱いを§3.1で統一。
 - Explorer固有のサンプルを外部へ送信しない。完全ローカル処理。
 
-## 9. Sound Morphing
+## 9. Sound Morphing（v1.2 で削除）
 
-### 9.1 操作
+当初は A / B の 2 音色を `m∈[0,1]` で行き来する機能（構造が一致すればパラメーターを補間する Compatible Morph、それ以外は 2 音色を同時に鳴らしてクロスフェードする Dual Morph）を定義し、実装していた。最初のリリース前に削除した（`docs/DECISIONS.md` D-055）。
 
-- A/B各スロットに同じ形式のパッチを読込。B はプリセットブラウザーから直接選ぶ（`+ Add a second sound`）。Morph量 `m∈[0,1]` をスライダー（ホスト公開ID `morph.amount`）で操作。A/B入れ替え、現在の結果を新規パッチとして保存が可能。A/B の音色名はプリセットに保存する（`slotNames`）。UI のモード名は Auto / Smooth（= Compatible）/ Layered（= Dual）。
-- 初期 `m=0`。`m` は10〜30msスムージング。モーフ対象は初期版では**シンセ本体のみ**（`Synth Morph`）。FXは現在編集している**共通FXチェーン**を固定。
-- `Full Morph`（A/B別FXのクロスフェード）は**将来拡張**。v1ではUIで選べないものとし、実装済みと称さない。
-
-### 9.2 Compatible Morph
-
-- 接続グラフ、waveform、PitchMode、キャリア構成、Unison数が**一致**する場合のみ有効。これ以外は自動でDualへフォールバック。
-- index/level/ADSR/filter/LFO等の数値を補間。時間と周波数・比率はlog空間、増幅率はdB/規格化空間で補間。
-- グラフ・波形など離散値は補間せず、一致条件でのみCompatibleを許可。
-- 変化で音量が跳ねることを避ける平滑化を行う。ただしFMの非線形性により**聴感上なめらかなスペクトル変化を保証するわけではない**。
-
-### 9.3 Dual Morph
-
-- 互換性に関係なく、2音色のFMエンジンを独立して発音。A/Bへ**同じNoteOn/Off、Velocity、PitchBend、Sustain、Transport**イベントを送る。
-- ミックスゲイン `gA=cos(m*π/2)`, `gB=sin(m*π/2)` の等パワークロスフェード。相関が高い場合は中央音量が上がる可能性があるため、オプションでLinearを将来検討。
-- 位相同期を強制しない。Dual中はノートが鳴っている限りm=0/1でも両エンジン状態を進め、フェード操作時の不連続を防ぐ（CPU消費に注意）。
-- Dual Morph中のCPU上限は§5.1の予算で管理。ホストテンポとオフラインバウンスで同じ結果になるよう乱数seedとLFO初期状態を保存。
-- `Capture Morph` はDualの中間値を**単一6-opパッチへ正確に変換できない**ため、v1では「A/B＋mを保持するモーフプリセット」として保存。単一パッチへベイクしたと表示しない。
+- 理由: ファクトリー 152 音色の組み合わせのうち、パラメーター補間（音色そのものが変わる Morph）になるのは約 6% で、残りは 2 音色のミックスだった。構造が違う音色どうしも補間できるようにするにはエンジン中核の作り直しが必要で、Dual Morph は CPU 負荷を 2 倍にし、ボイス管理とプリセット形式を複雑にしていた。音色を連続的に変える役割はマクロ 8 本、派生を探す役割は Sound Explorer が担う。
+- 影響: ホストパラメーター `morph.amount` / `morph.enabled` を廃止（計 22）。プリセット形式は schemaVersion 2（単一の `engine`）。schemaVersion 1 のファイルと旧プロジェクト状態は、2 音目を捨てて読み込む（§12）。
+- 章番号は他の章からの参照を保つために残す。
 
 ## 10. エフェクト
 
@@ -376,10 +360,9 @@ voice[n] = (Σ_i carrierGain_i * output_i[n]) * normalization
 - 内部状態のCanonical Modelを単一のデータ構造にする。ファイルプリセットはUTF-8 JSON拡張子 `.fmlume`。**JSONを使うので解析/破損検出が容易**。
 - 工場プリセット: アプリケーションbundle内の読み取り専用リソース。ユーザープリセット: `~/Library/Application Support/FMLUME/Presets/`。
 - ファクトリーの `id` はUUIDまたは安定した名前空間IDで固定。ユーザーの保存先は独立して管理。
-- `schemaVersion: 1`, `pluginVersion`, `patchId`, `displayName`, `author`, `category`, `tags`, `description`, `createdAt`, `modifiedAt`, `favorite`（個人のお気に入りはユーザー設定でもよい）、`engineA`, `engineB?`, `morph`, `macros[8]`, `macrosB?`, `matrix[8]`, `matrixB?`, `performance`, `fx`, `output`, `metadata` を定義。
-- `engineA`、`engineB` は§4〜7のパラメーター、接続行列、波形、EG、フィルター等を**省略なし**で保存。`engineB` が無ければ単音色。**B側の独立したマクロ割り当てとMod Matrixを `macrosB` / `matrixB` に保存する**。Bがある場合、これらも必須（欠損ファイルは不正）。
-- A/Bそれぞれの元プリセットをMorphへ読み込む際は、**音源・マクロ割り当て・Mod Matrix**を各スロットにコピーする。演奏機能/FXはMorphパッチ全体で1系統（A側の設定を初期値とする）であり、B元プリセットのFXを自動で二重起動しない。
-- Morph中のホスト公開8マクロ値は**A/B両スロットへ同時に適用**し、各スロットでそれぞれのマッピングを使用。Simple画面の表示名は、選択した編集スロットA/Bのマクロ名を表示し、スロットを切り替えた際にホストパラメーターIDは変更しない。
+- `schemaVersion: 2`, `pluginVersion`, `patchId`, `displayName`, `author`, `category`, `tags`, `description`, `createdAt`, `modifiedAt`, `favorite`（個人のお気に入りはユーザー設定でもよい）、`engine`, `macros[8]`, `matrix[8]`, `performance`, `fx`, `output`, `metadata` を定義。
+- `engine` は§4〜7のパラメーター、接続行列、波形、EG、フィルター等を**省略なし**で保存。
+- schemaVersion 1（Morph 用の 2 音目 `engineB` / `macrosB` / `matrixB` / `morph` / `slotNames` を持つ形式）は読込時にマイグレーションする: `engineA` を `engine` として読み、2 音目に関するキーは捨てる。2 音目が入っていた場合は警告を返す。
 - Export時はパラメーターをclampして書き出すのではなく、異常値を**拒否**。Import時はschema検証後、変更不可な旧形式をマイグレーションする。
 - ホストのproject stateはJUCEのバイナリステート（ValueTreeか互換形式）として保存し、**ファイルと同一Canonical Model全体**＋ホスト公開値を含める。単に`presetId`だけを保存してはならない。外部プリセットが削除されてもDAWプロジェクトの音が復元できること。
 - `schemaVersion`ごとにmigration関数を持ち、未知のfuture schemaは安全に拒否。余分な`metadata`は可能な範囲で保持。
@@ -397,10 +380,8 @@ Preset {
   author: string,
   category: enum<Arp,E.Piano,Bell,Bass,Lead,Pad,Poly,Pluck,Brass,Keys,SFX>,
   tags: string[], description: string,
-  engineA: EnginePatch, engineB: EnginePatch | null,
-  morph: { enabled: bool, mode: "compatible"|"dual"|"auto", amount: number[0..1] },
-  macros: Macro[8], matrix: ModSlot[8],       // A側
-  macrosB: Macro[8] | null, matrixB: ModSlot[8] | null, // Bがあれば必須
+  engine: EnginePatch,
+  macros: Macro[8], matrix: ModSlot[8],
   performance: PerformanceState, fx: FxState, output: OutputState,
   metadata: object
 }
@@ -443,8 +424,6 @@ master.detune       [0, 50] cents
 master.spread       [0, 100] percent
 master.quality      [Eco, Standard, High] (discrete, non-realtime rebuild)
 macro.1 .. macro.8  [0, 1]
-morph.amount        [0, 1]
-morph.enabled       [0, 1] (discrete)
 fx.bypassAll        [0, 1] (discrete)
 fx.quick.warmth     [0, 1]
 fx.quick.width      [0, 1]
@@ -468,7 +447,7 @@ tranceGate.enabled  [0, 1]
 
 **画面下部:** 88鍵の画面内鍵盤と BEND / MOD ホイール。プラグインはホストのキー操作を奪わない（文字入力欄にフォーカスがあるときを除く）。
 
-**Simple（v1.1）:** MACROS（共通4）＋CHARACTER（カテゴリ別4）→ FX Quick Controls / Trance Gate / Arpeggiator → Variations（Sound Explorer）／A/B Morph。詳細機能はAdvancedに隠すが、Simpleで初期音色を選び直してもゼロから音を作れる。
+**Simple（v1.1）:** MACROS（共通4）＋CHARACTER（カテゴリ別4）→ FX Quick Controls / Trance Gate / Arpeggiator → Variations（Sound Explorer）。詳細機能はAdvancedに隠すが、Simpleで初期音色を選び直してもゼロから音を作れる。
 
 **Advanced（v1.1）:** `Operators / Algorithm / Filter & Mod / FX / Rhythm / Performance` タブ。Operators は6枚のカードと、選択した1オペレーターの波形・エンベロープのグラフ編集。FX の順番はドラッグ＆ドロップで並べ替える。ルーティング図、操作ノブ、値直接入力、右クリック初期化、双方向マクロ反映。
 
@@ -516,7 +495,6 @@ FMLUME/
 │   │   ├── FX/                     # one class per effect, reorder chain
 │   │   └── Sequencer/              # Arp, Chord, TranceGate
 │   ├── Exploration/               # SoundExplorer, CandidateScorer, PCG
-│   ├── Morph/                     # CompatibleMorph, DualMorph
 │   ├── Presets/                   # Persistence, Factory, Search, Migrations
 │   └── UI/
 │       ├── Common/
@@ -580,11 +558,10 @@ FMLUME/
 - Seed固定生成、方向/強度、ロック、8候補、試聴、採用、履歴。
 - **DoD:** 同seedで同候補、ロック不変、候補は安全かつ各々異なり、Cancelで元の音色に復帰。
 
-### Phase 6 — Morph & Performance & 全FX
+### Phase 6 — Performance & 全FX
 
-- Compatible/Dual自動判定、A/Bスロット、Synth Morph、Dual音色状態保存。
 - Arp/Chord/Trance Gate、Phaser/Flanger/Compressor/Bitcrusher、FX並べ替え。
-- **DoD:** 異なる構成のA/Bでも音切れなくMorph、BPM同期、音色保存/復元、AU/VST3ホスト確認。
+- **DoD:** BPM同期、音色保存/復元、AU/VST3ホスト確認。
 
 ### Phase 7 — 安定性/最適化/プリセット拡充
 
@@ -621,8 +598,6 @@ FMLUME/
 
 - EXP-01: seed固定で8候補のパラメーターが完全一致。変更対象がLockを破らない。
 - EXP-02: Preview→Cancelで元のパッチに戻る。Preview→Useで現在のパッチが採用される。
-- MOR-01: A/B同構造ならCompatible、不一致ならDualを使用。m=0/1でそれぞれA/Bと一致（FX共通）。
-- MOR-02: Morphを高速操作しても出力に非有限値がない。意図しないノートoff漏れなし。
 - PRS-01: JSON round-tripはデータ完全一致（正規化した順序で比較）。
 - PRS-02: プロジェクト保存→プラグイン再起動→復元→同じ入力MIDIをレンダーし、許容誤差 `maxAbs < 1e-5`（決定論的ルートの場合）。乱数系はseedを固定。
 - PRS-03: 旧版・未知版・壊れたJSON・極端な値でクラッシュしない。
@@ -634,8 +609,8 @@ FMLUME/
 ### 17.3 定量的な性能目標
 
 - 参考機: Apple Silicon M1 Max級、48kHz/256 frames、Release build。
-- **目標**: Standard 2x、16ノート×1 unison、EQ/Chorus/Delay/Reverb有効、Morph offで**単一コア実時間処理予算の20%未満**（コア型や環境に依存するため、計測値・測定手順を報告）。この値は設計目標であり未計測の性能保証ではない。
-- 最悪ケースDual+8 unison時はVoice予算と負荷制御を優先。**音切れよりも安全に発音数を制限**する。
+- **目標**: Standard 2x、16ノート×1 unison、EQ/Chorus/Delay/Reverb有効で**単一コア実時間処理予算の20%未満**（コア型や環境に依存するため、計測値・測定手順を報告）。この値は設計目標であり未計測の性能保証ではない。
+- 最悪ケース（8ノート×8 unison、全FX、High 4x）ではVoice予算と負荷制御を優先。**音切れよりも安全に発音数を制限**する。
 - 連続5分の自動MIDIストレステスト、極端なAutomation、Preset交換、Transport JumpでもRTスレッドの割当て/ロック/クラッシュ/非有限値なし。
 - `processBlock` が `numSamples==0`、mono/stereoレイアウト要求、空MIDIを受けてもクラッシュしない。
 - バイパス時もプロジェクト保存/復元およびホスト側のプラグイン有効/無効が安定。
@@ -647,7 +622,6 @@ FMLUME/
 - Bass: 短いAttackと歪みで低域を保ったまま歯切れよく鳴る。
 - Pad: Unison/Filterでアナログ風の広がりが得られる。
 - Explorer: 8候補に実際に意味のある違いを感じられる。
-- Morph: A/Bを行き来しても操作と出音の関係が明確で、急激な音量差/クリックが抑えられる。
 
 ## 18. リスクと設計上の注意
 
@@ -656,8 +630,7 @@ FMLUME/
 3. **RT安全性**: JSON/グラフ/UI/音声処理を混在させない。メモリ寿命とスナップショット交代をテスト。
 4. **ホスト互換性**: パラメーターID/プラグイン固有IDは後方互換が必須。AU/VST3の動作差を統合テスト。
 5. **Explorer音楽的品質**: 一般ランダム生成では破綻しやすい。初期はカテゴリ別テンプレートと制約付き変動を徹底。
-6. **Morphプリセットの誤解**: Dual中間音を単一FMパッチへ近似せず、2エンジン構成のまま保存。
-7. **ライセンス**: JUCE 9はAGPLv3/商用のデュアルライセンス。商用製品としてソース非公開配布を行う場合などの条件を配布前に確認。
+6. **ライセンス**: JUCE 9はAGPLv3/商用のデュアルライセンス。商用製品としてソース非公開配布を行う場合などの条件を配布前に確認。
 8. **商標**: FMLUMEは**開発名称として確定**。実際の製品公開前に同一・類似商標、プラグイン市場での名称衝突を別途調査する。
 
 ## 19. 仕様上の決定事項一覧（後から勝手に変更しない）
@@ -667,7 +640,6 @@ FMLUME/
 - **6オペレーター／自由接続**。異オペレーター間はDAGで自己フィードバックのみ許可。
 - **Simple/Advanced**、共通4マクロ＋カテゴリ別4マクロ（いずれも常時表示）、ユーザー編集可。
 - **Sound Explorer**: 8候補・方向指定・Lock・履歴。
-- **Sound Morph**: A/B、CompatibleとDual自動選択、初期はSynth Morph。
 - **音色**: 11カテゴリ（Arp、Poly を含む）のオールラウンド。フィルター/波形/ユニゾンでアナログ風も対応。
 - **演奏**: Arp、Chord、Unison、Trance Gate。
 - **FX**: EQ、Drive、Chorus、Delay、Reverbを基本に9種類、並べ替え可能。
@@ -689,6 +661,13 @@ FMLUME/
 ---
 
 ## 21. 改訂履歴
+
+### v1.2（2026-11-24）
+
+| 項目 | 変更 | 記録 |
+|---|---|---|
+| Sound Morph | 機能を削除（§9）。ホストパラメーター `morph.amount` / `morph.enabled` を廃止、プリセット形式は schemaVersion 2 | D-055 |
+| ファクトリー音色 | 152 音色。試聴に基づく作り直し、出力の DC カット、マクロの音量ガード | D-051〜D-054 |
 
 ### v1.1（2026-11-23）
 

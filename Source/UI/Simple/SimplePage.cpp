@@ -28,9 +28,8 @@ void MacroPanel::resized()
 
 void MacroPanel::refresh (const Preset& p)
 {
-    const bool b = ctx.sideB();
-    const auto& names = b ? p.meta.macroNamesB : p.meta.macroNames;
-    const auto& side = b ? p.data.b : p.data.a;
+    const auto& names = p.meta.macroNames;
+    const auto& side = p.data.sound;
     for (int i = 0; i < 4; ++i)
     {
         const int m = first + i;
@@ -311,7 +310,7 @@ void ExplorerPanel::resized()
     more.setBounds (actions.removeFromLeft (112));
     done.setBounds (actions.removeFromRight (64));
     actions.removeFromRight (6);
-    back.setBounds (actions.removeFromRight (64));
+    back.setBounds (actions.removeFromRight (112));
 
     originalTile.setBounds (r.removeFromLeft (juce::jmax (92, r.getWidth() / 6)).reduced (0, 0));
     r.removeFromLeft (4);
@@ -358,119 +357,11 @@ void ExplorerPanel::refresh (const Preset&)
                    juce::dontSendNotification);
 }
 
-// ======================================================================================= Morph
-MorphPanel::MorphPanel (Ctx& c) : ctx (c), enable (c.proc, "morph.enabled", "Morph")
-{
-    enable.setColour (juce::ToggleButton::tickColourId, col::accentB);
-    enable.onClick = [this] { refresh (ctx.snapshot()); };
-    addAndMakeVisible (enable);
-    amount.setSliderStyle (juce::Slider::LinearHorizontal);
-    amount.setTextBoxStyle (juce::Slider::NoTextBox, false, 0, 0);
-    amount.setColour (juce::Slider::trackColourId, col::accentB);
-    if (auto* p = ctx.proc.apvts.getParameter ("morph.amount"))
-    {
-        amountAttachment = std::make_unique<juce::SliderParameterAttachment> (*p, amount);
-        amount.onReset = [p] { setHostParam (*p, p->getDefaultValue()); };
-    }
-    amount.onValueChange = [this] { repaint (sliderRow); };
-    amount.setTooltip ("Morph amount: left = sound A, right = sound B. Automate \"Morph Amount\" from your DAW.");
-    addAndMakeVisible (amount);
-
-    chooseB.setTooltip ("Pick a second sound from the preset browser. FMLUME then blends from A (the current sound) to B.");
-    chooseB.onClick = [this] { if (ctx.openBrowser) ctx.openBrowser (true); };
-    swap.setTooltip ("Swap sounds A and B");
-    swap.onClick = [this] { ctx.proc.withModel ([] (PatchController& pc) { return pc.swapSlots(); }); };
-    removeB.setTooltip ("Remove sound B (back to a single sound)");
-    removeB.onClick = [this] { ctx.proc.withModel ([] (PatchController& pc) { return pc.removeSlotB(); }); };
-    for (auto* b : { &chooseB, &swap, &removeB }) addAndMakeVisible (b);
-
-    mode.addItemList (labels::list (labels::morphMode), 1);
-    mode.setTooltip ("Auto picks the best method. Smooth glides every setting from A to B (needs sounds with the same structure). "
-                     "Layered plays both sounds and crossfades them (works with any two sounds, uses more CPU).");
-    mode.onChange = [this] {
-        const auto m = (MorphMode) juce::jmax (0, mode.getSelectedItemIndex());
-        ctx.edit ([m] (Preset& p) { p.data.morph.mode = m; });
-    };
-    addAndMakeVisible (mode);
-    styleLabel (info, 12.0f, col::textDim, juce::Justification::centredLeft);
-    addAndMakeVisible (info);
-}
-
-void MorphPanel::paint (juce::Graphics& g)
-{
-    paintPanel (g, getLocalBounds(), "Morph");
-    auto card = [&g] (juce::Rectangle<int> r, const juce::String& letter, const juce::String& name, juce::Colour c, bool filled) {
-        g.setColour (filled ? c.withAlpha (0.13f) : col::bg);
-        g.fillRoundedRectangle (r.toFloat(), 7.0f);
-        g.setColour (filled ? c.withAlpha (0.9f) : col::outline);
-        g.drawRoundedRectangle (r.toFloat().reduced (0.5f), 7.0f, 1.2f);
-        auto t = r.reduced (9, 4);
-        g.setColour (filled ? c : col::textDim);
-        g.setFont (font (20.0f, true));
-        g.drawText (letter, t.removeFromLeft (22), juce::Justification::centredLeft);
-        g.setColour (filled ? col::text : col::textDim);
-        g.setFont (font (13.5f, true));
-        g.drawFittedText (name, t, juce::Justification::centredLeft, 2, 0.75f);
-    };
-    card (cardA, "A", nameA, col::accent, true);
-    if (hasB) card (cardB, "B", nameB, col::accentB, true);
-    // slider end labels + value
-    g.setFont (font (13.0f, true));
-    g.setColour (col::accent.withAlpha (hasB ? 1.0f : 0.4f));
-    g.drawText ("A", sliderRow.withWidth (16), juce::Justification::centred);
-    g.setColour (col::accentB.withAlpha (hasB ? 1.0f : 0.4f));
-    g.drawText ("B", sliderRow.withLeft (sliderRow.getRight() - 62).withWidth (16), juce::Justification::centred);
-    g.setColour (hasB ? col::text : col::textDim);
-    g.setFont (font (13.0f));
-    g.drawText (juce::String (juce::roundToInt (amount.getValue() * 100.0)) + " %", sliderRow.withLeft (sliderRow.getRight() - 44), juce::Justification::centredRight);
-}
-
-void MorphPanel::resized()
-{
-    auto r = panelContent (getLocalBounds(), 10, 8);
-    enable.setBounds (r.removeFromLeft (58).removeFromTop (juce::jmin (r.getHeight(), 92)));
-    r.removeFromLeft (8);
-    const int cardH = juce::jlimit (34, 52, r.getHeight() * 30 / 100);
-    auto cards = r.removeFromTop (cardH);
-    const int cw = (cards.getWidth() - 62) / 2;
-    cardA = cards.removeFromLeft (cw);
-    swap.setBounds (cards.removeFromLeft (62).reduced (5, (cardH - 24) / 2));
-    cardB = cards;
-    chooseB.setBounds (cardB);
-    r.removeFromTop (6);
-    sliderRow = r.removeFromTop (26);
-    amount.setBounds (sliderRow.withTrimmedLeft (20).withTrimmedRight (66));
-    r.removeFromTop (6);
-    auto row = r.removeFromTop (26);
-    removeB.setBounds (row.removeFromRight (84));
-    row.removeFromRight (6);
-    mode.setBounds (row.removeFromRight (juce::jmin (150, row.getWidth())));
-    r.removeFromTop (2);
-    info.setBounds (r.getHeight() >= 16 ? r : row);
-}
-
-void MorphPanel::refresh (const Preset& p)
-{
-    hasB = p.data.hasB;
-    nameA = ! p.meta.slotNameA.empty() ? utf8 (p.meta.slotNameA) : utf8 (p.meta.displayName);
-    nameB = ! p.meta.slotNameB.empty() ? utf8 (p.meta.slotNameB) : juce::String ("Second sound");
-    chooseB.setVisible (! hasB);
-    for (auto* comp : std::initializer_list<juce::Component*> { &swap, &removeB, &mode, &enable, &amount }) comp->setEnabled (hasB);
-    mode.setSelectedItemIndex ((int) p.data.morph.mode, juce::dontSendNotification);
-    juce::String t;
-    if (! hasB) t = "Add a second sound, then drag the slider to blend from A to B.";
-    else if (! enable.getToggleState()) t = "Morph is off: you hear sound A. Switch Morph on to blend.";
-    else t = resolveMorphKind (p.data, true) == MorphKind::Compatible ? "Smooth blend: every setting glides from A to B."
-                                                                      : "Layered blend: both sounds play and crossfade (more CPU).";
-    info.setText (t, juce::dontSendNotification);
-    repaint();
-}
-
 // ======================================================================================= page
 SimplePage::SimplePage (Ctx& c)
-    : macros (c, 0, "Macros", true), character (c, 4, "Character", false), quick (c), gate (c, false), arp (c, true), explorer (c), morph (c)
+    : macros (c, 0, "Macros", true), character (c, 4, "Character", false), quick (c), gate (c, false), arp (c, true), explorer (c)
 {
-    for (auto* comp : std::initializer_list<juce::Component*> { &macros, &character, &quick, &gate, &arp, &explorer, &morph, &about }) addAndMakeVisible (comp);
+    for (auto* comp : std::initializer_list<juce::Component*> { &macros, &character, &quick, &gate, &arp, &explorer, &about }) addAndMakeVisible (comp);
     styleLabel (about, 12.5f, col::textDim);
     about.setMinimumHorizontalScale (0.8f);
 }
@@ -496,9 +387,7 @@ void SimplePage::resized()
     mid.removeFromLeft (8);
     arp.setBounds (mid);
 
-    explorer.setBounds (r.removeFromLeft (r.getWidth() * 60 / 100));
-    r.removeFromLeft (8);
-    morph.setBounds (r);
+    explorer.setBounds (r);
 }
 
 void SimplePage::refresh (const Preset& p)
@@ -508,7 +397,6 @@ void SimplePage::refresh (const Preset& p)
     gate.refresh (p);
     arp.refresh (p);
     explorer.refresh (p);
-    morph.refresh (p);
     juce::String t = categoryName (p.meta.category);
     if (! p.meta.tags.empty())
     {

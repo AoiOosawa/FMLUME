@@ -76,7 +76,7 @@ std::string validateEngine (const EnginePatch& e, const char* side)
     const std::string s = side;
     if (e.numEdges < 0 || e.numEdges > kMaxEdges) return s + ": edge count out of range";
     PatchData tmp;
-    tmp.a.engine = e;
+    tmp.sound.engine = e;
     for (int i = 0; i < kNumOps; ++i)
     {
         const auto& op = e.operators[(size_t) i];
@@ -86,7 +86,7 @@ std::string validateEngine (const EnginePatch& e, const char* side)
         for (int f = 0; f < kOpFieldCount; ++f)
         {
             const auto& d = paramDesc (pc::op (i, f));
-            const float v = getParam (tmp, false, pc::op (i, f));
+            const float v = getParam (tmp, pc::op (i, f));
             if (! inRange (v, d.min, d.max)) return o + "." + d.name + ": out of range";
         }
     }
@@ -137,7 +137,7 @@ std::string validateMacro (const Macro& m, const std::string& where)
     return {};
 }
 
-std::string validateSide (const EngineSide& s, const char* name)
+std::string validateSound (const SoundPatch& s, const char* name)
 {
     if (auto e = validateEngine (s.engine, name); ! e.empty()) return e;
     for (int i = 0; i < kNumMacros; ++i)
@@ -175,10 +175,7 @@ ValidationResult validatePatch (const PatchData& d)
 {
     ValidationResult r;
     auto fail = [&r] (std::string msg) { r.ok = false; r.error = std::move (msg); return r; };
-    if (auto e = validateSide (d.a, "engineA"); ! e.empty()) return fail (e);
-    if (d.hasB)
-        if (auto e = validateSide (d.b, "engineB"); ! e.empty()) return fail (e);
-    if ((int) d.morph.mode >= (int) MorphMode::Count) return fail ("morph.mode: bad value");
+    if (auto e = validateSound (d.sound, "engine"); ! e.empty()) return fail (e);
 
     const auto& p = d.perf;
     if (! inRange (p.portamento, 0.0f, 2.0f)) return fail ("performance.portamento: out of range");
@@ -221,8 +218,8 @@ ValidationResult validatePatch (const PatchData& d)
 
     const auto& h = d.host;
     if (h.polyphony < 1 || h.polyphony > kMaxPolyphony || h.unison < 1 || h.unison > kMaxUnison
-        || ! inRange (h.detune, 0.0f, 50.0f) || ! inRange (h.spread, 0.0f, 100.0f) || ! inRange (h.morphAmount, 0.0f, 1.0f))
-        return fail ("performance: polyphony/unison/morph out of range");
+        || ! inRange (h.detune, 0.0f, 50.0f) || ! inRange (h.spread, 0.0f, 100.0f))
+        return fail ("performance: polyphony/unison out of range");
     for (float q : h.quick) if (! inRange (q, 0.0f, 1.0f)) return fail ("fx.quick value out of range");
 
     // Soft problems: targets that do not exist in this patch.
@@ -234,63 +231,35 @@ ValidationResult validatePatch (const PatchData& d)
 int sanitizeTargets (PatchData& d, std::vector<std::string>* warnings)
 {
     int count = 0;
-    auto doSide = [&] (EngineSide& s, bool sideB) {
-        for (int i = 0; i < kNumModSlots; ++i)
-        {
-            auto& m = s.matrix[(size_t) i];
-            if (! m.enabled) continue;
-            const bool bad = m.source == ModSource::None || m.target < 0 || ! isModTarget (m.target) || ! paramExists (d, sideB, m.target);
-            if (bad)
-            {
-                m.enabled = false;
-                ++count;
-                if (warnings) warnings->push_back (std::string (sideB ? "matrixB[" : "matrix[") + std::to_string (i) + "]: target/source undefined, slot disabled");
-            }
-        }
-        for (int i = 0; i < kNumMacros; ++i)
-        {
-            auto& mac = s.macros[(size_t) i];
-            for (int k = 0; k < mac.numMappings;)
-            {
-                if (! paramExists (d, sideB, mac.mappings[(size_t) k].target))
-                {
-                    for (int j = k; j + 1 < mac.numMappings; ++j) mac.mappings[(size_t) j] = mac.mappings[(size_t) j + 1];
-                    --mac.numMappings;
-                    ++count;
-                    if (warnings) warnings->push_back (std::string (sideB ? "macrosB[" : "macros[") + std::to_string (i) + "]: mapping to missing parameter removed");
-                }
-                else ++k;
-            }
-        }
-    };
-    doSide (d.a, false);
-    if (d.hasB) doSide (d.b, true);
-    return count;
-}
-
-bool morphCompatible (const PatchData& d)
-{
-    if (! d.hasB) return false;
-    const auto& a = d.a.engine;
-    const auto& b = d.b.engine;
-    if (engineHash (a) != engineHash (b)) return false; // graph, waveforms, enabled set
-    for (int i = 0; i < kNumOps; ++i)
+    SoundPatch& s = d.sound;
+    for (int i = 0; i < kNumModSlots; ++i)
     {
-        const auto& oa = a.operators[(size_t) i];
-        const auto& ob = b.operators[(size_t) i];
-        if (! oa.enabled) continue;
-        if (oa.pitchMode != ob.pitchMode || oa.keySync != ob.keySync) return false;
-        if ((oa.carrierGain > 0.0f) != (ob.carrierGain > 0.0f)) return false; // carrier layout
+        auto& m = s.matrix[(size_t) i];
+        if (! m.enabled) continue;
+        const bool bad = m.source == ModSource::None || m.target < 0 || ! isModTarget (m.target) || ! paramExists (d, m.target);
+        if (bad)
+        {
+            m.enabled = false;
+            ++count;
+            if (warnings) warnings->push_back (std::string ("matrix[") + std::to_string (i) + "]: target/source undefined, slot disabled");
+        }
     }
-    if (a.filter.type != b.filter.type) return false;
-    return true; // unison count is a shared host parameter in v1
-}
-
-MorphKind resolveMorphKind (const PatchData& d, bool morphEnabled)
-{
-    if (! morphEnabled || ! d.hasB) return MorphKind::Off;
-    if (d.morph.mode == MorphMode::Dual) return MorphKind::Dual;
-    return morphCompatible (d) ? MorphKind::Compatible : MorphKind::Dual;
+    for (int i = 0; i < kNumMacros; ++i)
+    {
+        auto& mac = s.macros[(size_t) i];
+        for (int k = 0; k < mac.numMappings;)
+        {
+            if (! paramExists (d, mac.mappings[(size_t) k].target))
+            {
+                for (int j = k; j + 1 < mac.numMappings; ++j) mac.mappings[(size_t) j] = mac.mappings[(size_t) j + 1];
+                --mac.numMappings;
+                ++count;
+                if (warnings) warnings->push_back (std::string ("macros[") + std::to_string (i) + "]: mapping to missing parameter removed");
+            }
+            else ++k;
+        }
+    }
+    return count;
 }
 
 bool compilePatch (const PatchData& d, CompiledPatch& out, std::string* error)
@@ -303,10 +272,8 @@ bool compilePatch (const PatchData& d, CompiledPatch& out, std::string* error)
     }
     out.data = d;
     sanitizeTargets (out.data);
-    compileEngine (out.data.a.engine, out.ea);
-    if (d.hasB) compileEngine (out.data.b.engine, out.eb); else out.eb = CompiledEngine {};
-    out.compatible = morphCompatible (out.data);
-    out.structureHash = fnv (fnv (out.ea.structureHash, d.hasB ? out.eb.structureHash : 0u), (uint64_t) d.hasB * 2u + (uint64_t) d.morph.mode * 4u);
+    compileEngine (out.data.sound.engine, out.engine);
+    out.structureHash = out.engine.structureHash;
     out.forceNewGeneration = false;
     return true;
 }

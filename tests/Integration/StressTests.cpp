@@ -40,9 +40,8 @@ FM_TEST ("stress", "Five-minute stress: random MIDI, automation extremes, preset
         {
             Preset p;
             if (pm.load (rng.nextInt ((int) pm.entries().size()), p)) { ctl.loadPreset (p); ++presetLoads; }
-            if (rng.nextFloat() < 0.3f) { Preset b; if (pm.load (rng.nextInt ((int) pm.entries().size()), b)) ctl.loadIntoSlot (true, b); }
         }
-        if (block % 53 == 0) ctl.setParam (false, pc::filterCutoff, 20.0f + rng.nextFloat() * 19980.0f);
+        if (block % 53 == 0) ctl.setParam (pc::filterCutoff, 20.0f + rng.nextFloat() * 19980.0f);
         if (block % 97 == 0) { ctl.exploreSettings.strength = ExploreStrength::Wild; }
         if (block % 1499 == 0) { ctl.explore(); ctl.preview (rng.nextInt (kNumCandidates)); }
         if (block % 1499 == 700) { if (rng.nextFloat() < 0.5f) ctl.useCandidate (rng.nextInt (kNumCandidates)); else ctl.cancelPreview(); }
@@ -50,8 +49,6 @@ FM_TEST ("stress", "Five-minute stress: random MIDI, automation extremes, preset
         // --- host automation at the extremes
         for (auto& m : h.macro) if (rng.nextFloat() < 0.2f) m = rng.nextFloat() < 0.5f ? (rng.nextFloat() < 0.5f ? 0.0f : 1.0f) : rng.nextFloat();
         for (auto& q : h.quick) if (rng.nextFloat() < 0.1f) q = rng.nextFloat();
-        if (rng.nextFloat() < 0.1f) h.morphAmount = rng.nextFloat() < 0.5f ? (float) rng.nextInt (2) : rng.nextFloat();
-        if (block % 400 == 0) h.morphEnabled = rng.nextFloat() < 0.5f;
         if (block % 500 == 0) h.unison = 1 + rng.nextInt (8);
         if (block % 600 == 0) h.polyphony = 1 + rng.nextInt (32);
         if (block % 900 == 0) h.quality = rng.nextInt (3);

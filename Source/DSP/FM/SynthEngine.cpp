@@ -28,8 +28,7 @@ struct SideRt
 struct PatchSlot
 {
     CompiledPatch cp;
-    SideRt side[2];
-    MorphKind kind = MorphKind::Off;
+    SideRt rt;
     float fxBaseNorm[kNumFx * kFxParams + 1] {}; // shared codes: fx params + portamento
 };
 
@@ -48,15 +47,15 @@ struct NoteVoice
     int note = -1;
     float vel = 0.0f;
     uint64_t age = 0;
-    int slot = 0, unison = 1, sides = 1;
+    int slot = 0, unison = 1;
     float fade = 1.0f, fadeInc = 0.0f;
     bool hasPending = false, pendReleased = false;
     int pendNote = 0;
     float pendVel = 0.0f;
     float pitchNow = 0.0f, pitchTarget = 0.0f;
     double releaseSamples = 0.0;
-    EnvState env[2][kNumOps];
-    OpRt op[2][kMaxUnison][kNumOps];
+    EnvState env[kNumOps];
+    OpRt op[kMaxUnison][kNumOps];
 };
 
 struct MonoNote { int note; float vel; };
@@ -104,20 +103,19 @@ struct SynthEngine::Impl
     bool pedal = false;
     float lastPitch = 0.0f;
     bool haveLastPitch = false;
-    double freeRun[2][kNumOps] {};
+    double freeRun[kNumOps] {};
 
     // ---- control state
     HostParams hostNow;
     float macroSm[kNumMacros] {}, quickSm[kNumQuick] {};
-    float morphSm = 0.0f, detuneSm = 0.0f, spreadSm = 0.0f;
+    float detuneSm = 0.0f, spreadSm = 0.0f;
     float bendTarget = 0.0f, bendSm = 0.0f, wheelTarget = 0.0f, wheelSm = 0.0f, atTarget = 0.0f, atSm = 0.0f;
     float lastVel = 0.0f, lastKey = 0.0f;
-    Lfo lfo[2][2];
-    float lfoVal[2][2] {};
-    EnvState modEnv[2];
-    float modEnvVal[2] {};
-    float morphGain[2] { 1.0f, 0.0f }, morphGainInc[2] {}; // per internal sample
-    float sideGain[2][2] {}, sideGainT[2][2] { { 1.0f, 1.0f }, { 1.0f, 1.0f } };
+    Lfo lfo[2];
+    float lfoVal[2] {};
+    EnvState modEnv;
+    float modEnvVal = 0.0f;
+    float outGain[2] {}, outGainT[2] { 1.0f, 1.0f }; // preset level and pan, left / right
     float masterGain = 0.0f, masterGainT = 0.5f;
     float fxEff[kNumFx][kFxParams] {};
     float portaEff = 0.0f;
@@ -129,9 +127,9 @@ struct SynthEngine::Impl
     bool wasPlaying = false;
 
     // ---- processing
-    Halfband<kDecimK2> dec2[2][2];
-    Halfband<kDecimK1> dec1[2][2];
-    // DC blocker on the summed voices of each side (before the filter and the effects), like the
+    Halfband<kDecimK2> dec2[2];
+    Halfband<kDecimK1> dec1[2];
+    // DC blocker on the summed voices (before the filter and the effects), like the
     // AC-coupled output of a hardware FM synth: 1:1 phase modulation and operator feedback
     // produce a real DC component (docs/DECISIONS.md D-051).
     struct DcBlock
@@ -147,13 +145,13 @@ struct SynthEngine::Impl
         }
     };
     static constexpr double kDcBlockHz = 5.0;
-    DcBlock dcBlock[2][2];
-    StereoFilter filter[2];
+    DcBlock dcBlock[2];
+    StereoFilter filter;
     TranceGate gate;
     FxChain fx;
     Performer performer;
-    std::vector<float> bus[2][2]; // [side][ch], internal rate
-    float hostBuf[2][2][kControlInterval] {};
+    std::vector<float> bus[2]; // [ch], internal rate
+    float hostBuf[2][kControlInterval] {};
     float ampBuf[kNumOps][kMaxChunk] {}, outBuf[kNumOps][kMaxChunk] {};
     float modBuf[kMaxChunk] {}, mixBuf[kMaxChunk] {}, gainBuf[kMaxChunk] {};
     MidiEvent seqEvents[kMaxSeqEvents];
@@ -162,22 +160,18 @@ struct SynthEngine::Impl
     int numCarry = 0;
     int pendingQuality = -1;
     int silentBlocks = 0;
-    bool usedSideB = false;
     bool tickStart = true;
 
     // =====================================================================================
     void cacheBase (PatchSlot& sl)
     {
-        for (int s = 0; s < 2; ++s)
+        auto& rt = sl.rt;
+        for (int c = 0; c < pc::engineCount; ++c)
         {
-            auto& rt = sl.side[s];
-            for (int c = 0; c < pc::engineCount; ++c)
-            {
-                const auto& d = paramDesc (c);
-                rt.exists[c] = (s == 0 || sl.cp.data.hasB) && paramExists (sl.cp.data, s == 1, c);
-                rt.basePhys[c] = rt.exists[c] ? getParam (sl.cp.data, s == 1, c) : d.def;
-                rt.baseNorm[c] = toNorm (d, rt.basePhys[c]);
-            }
+            const auto& d = paramDesc (c);
+            rt.exists[c] = paramExists (sl.cp.data, c);
+            rt.basePhys[c] = rt.exists[c] ? getParam (sl.cp.data, c) : d.def;
+            rt.baseNorm[c] = toNorm (d, rt.basePhys[c]);
         }
         for (int t = 0; t < kNumFx; ++t)
             for (int p = 0; p < kFxParams; ++p)
@@ -198,19 +192,16 @@ struct SynthEngine::Impl
         std::memset (freeRun, 0, sizeof (freeRun));
         bendTarget = bendSm = wheelTarget = wheelSm = atTarget = atSm = 0.0f;
         lastVel = lastKey = 0.0f;
-        for (int s = 0; s < 2; ++s)
+        for (int i = 0; i < 2; ++i)
         {
-            for (int i = 0; i < 2; ++i)
-            {
-                const auto& ls = (s ? slots[cur].cp.data.b : slots[cur].cp.data.a).engine.lfo[(size_t) i];
-                lfo[s][i].reset (0x1234u + (uint64_t) (s * 2 + i) * 7919u, ls.phase);
-                lfoVal[s][i] = 0.0f;
-            }
-            modEnv[s] = EnvState {};
-            modEnvVal[s] = 0.0f;
-            filter[s].reset();
-            for (int ch = 0; ch < 2; ++ch) { dec2[s][ch].reset(); dec1[s][ch].reset(); dcBlock[s][ch].reset(); }
+            const auto& ls = slots[cur].cp.data.sound.engine.lfo[(size_t) i];
+            lfo[i].reset (0x1234u + (uint64_t) i * 7919u, ls.phase);
+            lfoVal[i] = 0.0f;
         }
+        modEnv = EnvState {};
+        modEnvVal = 0.0f;
+        filter.reset();
+        for (int ch = 0; ch < 2; ++ch) { dec2[ch].reset(); dec1[ch].reset(); dcBlock[ch].reset(); }
         gate.reset();
         fx.reset();
         performer.reset();
@@ -220,7 +211,6 @@ struct SynthEngine::Impl
         numCarry = 0;
         snapNext = true;
         silentBlocks = 0;
-        usedSideB = false;
     }
 
     void setOversampling (int quality)
@@ -228,8 +218,7 @@ struct SynthEngine::Impl
         os = quality <= 0 ? 1 : (quality == 1 ? 2 : 4);
         isr = sr * os;
         owner.activeQuality.store (quality <= 0 ? 0 : (quality == 1 ? 1 : 2));
-        for (int s = 0; s < 2; ++s)
-            for (int ch = 0; ch < 2; ++ch) { dec2[s][ch].reset(); dec1[s][ch].reset(); dcBlock[s][ch].reset(); }
+        for (int ch = 0; ch < 2; ++ch) { dec2[ch].reset(); dec1[ch].reset(); dcBlock[ch].reset(); }
         snapNext = true;
     }
 
@@ -275,7 +264,7 @@ struct SynthEngine::Impl
                 }
             }
             if (busy) return; // retry on the next block
-            for (auto& rt : c.side) std::memset (rt.inc, 0, sizeof (rt.inc));
+            std::memset (c.rt.inc, 0, sizeof (c.rt.inc));
             PatchSlot& n = slots[(size_t) next];
             n.cp = incoming;
             cacheBase (n);
@@ -287,13 +276,13 @@ struct SynthEngine::Impl
     }
 
     // ---- modulation / parameter evaluation -------------------------------------------------
-    float sourceValue (int s, ModSource src) const
+    float sourceValue (ModSource src) const
     {
         switch (src)
         {
-            case ModSource::LFO1: return lfoVal[s][0];
-            case ModSource::LFO2: return lfoVal[s][1];
-            case ModSource::ModEnv: return modEnvVal[s];
+            case ModSource::LFO1: return lfoVal[0];
+            case ModSource::LFO2: return lfoVal[1];
+            case ModSource::ModEnv: return modEnvVal;
             case ModSource::Velocity: return lastVel;
             case ModSource::Keytrack: return lastKey;
             case ModSource::ModWheel: return wheelSm;
@@ -319,46 +308,45 @@ struct SynthEngine::Impl
         }
     }
 
-    // Fills delta[] (normalised offsets) for one side. FX deltas are produced by side A only.
-    void evalSide (PatchSlot& sl, int s, float* delta)
+    // Fills delta[] (normalised offsets of every parameter) from the macros, quick controls and mod matrix.
+    void evalModulation (PatchSlot& sl, float* delta)
     {
-        const EngineSide& es = s ? sl.cp.data.b : sl.cp.data.a;
-        const SideRt& rt = sl.side[s];
+        const SoundPatch& es = sl.cp.data.sound;
+        const SideRt& rt = sl.rt;
         std::memset (delta, 0, sizeof (float) * (size_t) pc::total);
         for (int i = 0; i < kNumMacros; ++i)
         {
             addMacro (es.macros[(size_t) i], macroSm[i], rt.baseNorm, rt.exists, 0, pc::engineCount, delta);
-            if (s == 0) addMacro (es.macros[(size_t) i], macroSm[i], sl.fxBaseNorm, nullptr, pc::fxBase, pc::total, delta);
+            addMacro (es.macros[(size_t) i], macroSm[i], sl.fxBaseNorm, nullptr, pc::fxBase, pc::total, delta);
         }
-        if (s == 0)
-            for (int i = 0; i < kNumQuick; ++i)
-                addMacro (sl.cp.data.fx.quick[(size_t) i], quickSm[i], sl.fxBaseNorm, nullptr, pc::fxBase, pc::total, delta);
+        for (int i = 0; i < kNumQuick; ++i)
+            addMacro (sl.cp.data.fx.quick[(size_t) i], quickSm[i], sl.fxBaseNorm, nullptr, pc::fxBase, pc::total, delta);
         for (int j = 0; j < kNumModSlots; ++j)
         {
             const auto& m = es.matrix[(size_t) j];
             if (! m.enabled || m.target < 0) continue;
             const int c = m.target;
-            if (pc::isEngine (c) ? ! rt.exists[c] : (s != 0)) continue;
+            if (pc::isEngine (c) && ! rt.exists[c]) continue;
             const int dc = pc::matrixDepthBase + j;
             const float depth = clampf (rt.baseNorm[dc] + delta[dc], 0.0f, 1.0f) * 2.0f - 1.0f;
-            delta[c] += depth * applyCurve (m.curve, sourceValue (s, m.source));
+            delta[c] += depth * applyCurve (m.curve, sourceValue (m.source));
         }
     }
 
-    void advanceModSources (PatchSlot& sl, int s, float dt)
+    void advanceModSources (PatchSlot& sl, float dt)
     {
-        const EngineSide& es = s ? sl.cp.data.b : sl.cp.data.a;
-        const SideRt& rt = sl.side[s];
+        const SoundPatch& es = sl.cp.data.sound;
+        const SideRt& rt = sl.rt;
         for (int i = 0; i < 2; ++i)
         {
             const auto& ls = es.engine.lfo[(size_t) i];
             float rate = rt.eff[i == 0 ? pc::lfo1Rate : pc::lfo2Rate];
             if (ls.sync) rate = (float) (bpmNow / 60.0 / syncDivBeats (ls.syncDiv));
-            lfoVal[s][i] = lfo[s][i].tick (ls.shape, rate, dt);
+            lfoVal[i] = lfo[i].tick (ls.shape, rate, dt);
         }
         EnvCoefs c;
         c.set (rt.eff[pc::modEnvA], rt.eff[pc::modEnvD], rt.eff[pc::modEnvS], rt.eff[pc::modEnvR], sr / kControlInterval);
-        modEnvVal[s] = modEnv[s].tick (c);
+        modEnvVal = modEnv.tick (c);
     }
 
     void controlTick()
@@ -371,11 +359,6 @@ struct SynthEngine::Impl
         const float cF = snap ? 1.0f : (float) (1.0 - std::exp (-dt / 0.004));
         for (int i = 0; i < kNumMacros; ++i) macroSm[i] += cH * (clampf (hostNow.macro[(size_t) i], 0.0f, 1.0f) - macroSm[i]);
         for (int i = 0; i < kNumQuick; ++i) quickSm[i] += cH * (clampf (hostNow.quick[(size_t) i], 0.0f, 1.0f) - quickSm[i]);
-        {
-            const float mt = clampf (hostNow.morphAmount, 0.0f, 1.0f);
-            morphSm += cH * (mt - morphSm);
-            if (std::fabs (mt - morphSm) < 1.0e-4f) morphSm = mt; // land exactly on the end points
-        }
         detuneSm += cH * (clampf (hostNow.detune, 0.0f, 50.0f) - detuneSm);
         spreadSm += cH * (clampf (hostNow.spread, 0.0f, 100.0f) - spreadSm);
         bendSm += cF * (bendTarget - bendSm);
@@ -383,51 +366,26 @@ struct SynthEngine::Impl
         atSm += cH * (atTarget - atSm);
 
         PatchSlot& sl = slots[(size_t) cur];
-        sl.kind = resolveMorphKind (sl.cp.data, hostNow.morphEnabled);
-        if (! sl.cp.compatible && sl.kind == MorphKind::Compatible) sl.kind = MorphKind::Dual;
-        owner.meterMorph.store ((int) sl.kind, std::memory_order_relaxed);
-        const int numSides = sl.kind == MorphKind::Off ? 1 : 2;
+        SideRt& rt = sl.rt;
+        const EnginePatch& ep = sl.cp.data.sound.engine;
 
         // Global mod envelope gate.
         bool gateOn = false;
         for (int i = 0; i < kMaxPolyphony; ++i)
             gateOn = gateOn || (voices[(size_t) i].active && ! voices[(size_t) i].releasing && voices[(size_t) i].fadeInc == 0.0f);
-        for (int s = 0; s < 2; ++s)
-            if (! gateOn) modEnv[s].gateOff();
+        if (! gateOn) modEnv.gateOff();
 
-        float delta[2][pc::total];
-        for (int s = 0; s < numSides; ++s)
+        float delta[pc::total];
+        if (snap) std::memcpy (rt.eff, rt.basePhys, sizeof (rt.eff));
+        advanceModSources (sl, dt);
+        evalModulation (sl, delta);
+
+        for (int c = 0; c < pc::engineCount; ++c)
         {
-            if (snap) std::memcpy (sl.side[s].eff, sl.side[s].basePhys, sizeof (sl.side[s].eff));
-            advanceModSources (sl, s, dt);
-            evalSide (sl, s, delta[s]);
+            if (! rt.exists[c]) continue;
+            rt.eff[c] = delta[c] == 0.0f ? rt.basePhys[c] : fromNorm (paramDesc (c), rt.baseNorm[c] + delta[c]);
         }
-
-        const float m = morphSm;
-        const bool blend = sl.kind == MorphKind::Compatible;
-        for (int s = 0; s < numSides; ++s)
         {
-            SideRt& rt = sl.side[s];
-            for (int c = 0; c < pc::engineCount; ++c)
-            {
-                if (! rt.exists[c]) continue;
-                const auto& d = paramDesc (c);
-                if (blend && s == 0 && sl.side[1].exists[c])
-                {
-                    const float nA = clampf (rt.baseNorm[c] + delta[0][c], 0.0f, 1.0f);
-                    const float nB = clampf (sl.side[1].baseNorm[c] + delta[1][c], 0.0f, 1.0f);
-                    // Exact end points: m = 0 is A, m = 1 is B (MOR-01).
-                    if (m <= 0.0f && delta[0][c] == 0.0f) rt.eff[c] = rt.basePhys[c];
-                    else if (m >= 1.0f && delta[1][c] == 0.0f) rt.eff[c] = sl.side[1].basePhys[c];
-                    else rt.eff[c] = fromNorm (d, nA + m * (nB - nA));
-                }
-                else
-                    rt.eff[c] = delta[s][c] == 0.0f ? rt.basePhys[c] : fromNorm (d, rt.baseNorm[c] + delta[s][c]);
-            }
-            const bool voiceSide = ! (blend && s == 1);
-            if (! voiceSide) continue;
-
-            const EnginePatch& ep = (s ? sl.cp.data.b : sl.cp.data.a).engine;
             float target[kNumRamps] {};
             float carrierSum = 0.0f;
             for (int k = 0; k < kNumOps; ++k)
@@ -454,42 +412,29 @@ struct SynthEngine::Impl
             }
         }
 
-        // Morph crossfade gains (Dual only), ramped per internal sample.
-        float gT[2] = { 1.0f, 0.0f };
-        if (sl.kind == MorphKind::Dual) { gT[0] = std::cos (m * 1.5707963f); gT[1] = std::sin (m * 1.5707963f); }
-        for (int s = 0; s < 2; ++s)
+        // Filter and output gains (preset level and pan).
         {
-            if (snap) { morphGain[s] = gT[s]; morphGainInc[s] = 0.0f; }
-            else morphGainInc[s] = (gT[s] - morphGain[s]) / (float) (kControlInterval * os);
-        }
-
-        // Filters and per-side output gains.
-        for (int s = 0; s < 2; ++s)
-        {
-            const bool live = s == 0 || sl.kind == MorphKind::Dual;
-            const SideRt& rt = sl.side[live ? s : 0];
-            const EnginePatch& ep = (s && live ? sl.cp.data.b : sl.cp.data.a).engine;
-            filter[s].setTarget (ep.filter.type, rt.eff[pc::filterCutoff], rt.eff[pc::filterRes], rt.eff[pc::filterDrive]);
+            filter.setTarget (ep.filter.type, rt.eff[pc::filterCutoff], rt.eff[pc::filterRes], rt.eff[pc::filterDrive]);
             const float lvl = clampf (rt.eff[pc::level], 0.0f, 2.0f);
             const float pan = clampf (rt.eff[pc::pan], -1.0f, 1.0f);
-            sideGainT[s][0] = lvl * (pan > 0.0f ? 1.0f - pan : 1.0f);
-            sideGainT[s][1] = lvl * (pan < 0.0f ? 1.0f + pan : 1.0f);
-            if (snap) { sideGain[s][0] = sideGainT[s][0]; sideGain[s][1] = sideGainT[s][1]; }
+            outGainT[0] = lvl * (pan > 0.0f ? 1.0f - pan : 1.0f);
+            outGainT[1] = lvl * (pan < 0.0f ? 1.0f + pan : 1.0f);
+            if (snap) { outGain[0] = outGainT[0]; outGain[1] = outGainT[1]; }
         }
 
-        // FX parameters (side A macros, quick controls and matrix A).
+        // FX parameters (macros, quick controls and mod matrix).
         for (int t = 0; t < kNumFx; ++t)
             for (int p = 0; p < kFxParams; ++p)
             {
                 const auto& d = fxParamDesc (t, p);
                 if (d.name == nullptr) continue;
-                const float dl = delta[0][pc::fx (t, p)];
+                const float dl = delta[pc::fx (t, p)];
                 fxEff[t][p] = (dl == 0.0f || (d.flags & kFlagDiscrete)) ? sl.cp.data.fx.proc[(size_t) t].p[(size_t) p]
                                                                          : fromNorm (d, sl.fxBaseNorm[t * kFxParams + p] + dl);
             }
         fx.setParams (sl.cp.data.fx, fxEff, hostNow.fxBypassAll, bpmNow);
         {
-            const float dl = delta[0][pc::portamento];
+            const float dl = delta[pc::portamento];
             portaEff = dl == 0.0f ? sl.cp.data.perf.portamento
                                   : fromNorm (paramDesc (pc::portamento), sl.fxBaseNorm[pc::portamento - pc::fxBase] + dl);
         }
@@ -504,14 +449,10 @@ struct SynthEngine::Impl
 
     void triggerMod()
     {
-        const auto& d = slots[(size_t) cur].cp.data;
-        for (int s = 0; s < 2; ++s)
-        {
-            modEnv[s].gateOn();
-            const auto& e = (s ? d.b : d.a).engine;
-            for (int i = 0; i < 2; ++i)
-                if (e.lfo[(size_t) i].retrig) lfo[s][i].retrigger (e.lfo[(size_t) i].phase);
-        }
+        modEnv.gateOn();
+        const auto& e = slots[(size_t) cur].cp.data.sound.engine;
+        for (int i = 0; i < 2; ++i)
+            if (e.lfo[(size_t) i].retrig) lfo[i].retrigger (e.lfo[(size_t) i].phase);
     }
 
     void startVoice (NoteVoice& v, int note, float vel)
@@ -526,7 +467,6 @@ struct SynthEngine::Impl
         v.age = ++ageCounter;
         v.slot = cur;
         v.unison = std::min (std::max (hostNow.unison, 1), kMaxUnison);
-        v.sides = sl.kind == MorphKind::Dual ? 2 : 1;
         v.fade = 1.0f;
         v.fadeInc = 0.0f;
         v.hasPending = v.pendReleased = false;
@@ -535,22 +475,19 @@ struct SynthEngine::Impl
         v.pitchNow = (portaEff > 0.0f && haveLastPitch) ? lastPitch : v.pitchTarget;
         lastPitch = v.pitchTarget;
         haveLastPitch = true;
-        for (int s = 0; s < 2; ++s)
+        const EnginePatch& ep = sl.cp.data.sound.engine;
+        for (int k = 0; k < kNumOps; ++k)
         {
-            const EnginePatch& ep = (s ? sl.cp.data.b : sl.cp.data.a).engine;
-            for (int k = 0; k < kNumOps; ++k)
+            v.env[k].value = 0.0f;
+            v.env[k].gateOn();
+            const auto& op = ep.operators[(size_t) k];
+            for (int u = 0; u < kMaxUnison; ++u)
             {
-                v.env[s][k].value = 0.0f;
-                v.env[s][k].gateOn();
-                const auto& op = ep.operators[(size_t) k];
-                for (int u = 0; u < kMaxUnison; ++u)
-                {
-                    double ph = op.keySync ? (double) op.phaseOffset * kTwoPi : freeRun[s][k];
-                    if (u > 0) ph += (double) hash01 ((uint32_t) u, (uint32_t) (k + s * 8)) * kTwoPi;
-                    ph = std::fmod (ph, kTwoPi);
-                    v.op[s][u][k] = OpRt {};
-                    v.op[s][u][k].phase = ph;
-                }
+                double ph = op.keySync ? (double) op.phaseOffset * kTwoPi : freeRun[k];
+                if (u > 0) ph += (double) hash01 ((uint32_t) u, (uint32_t) k) * kTwoPi;
+                ph = std::fmod (ph, kTwoPi);
+                v.op[u][k] = OpRt {};
+                v.op[u][k].phase = ph;
             }
         }
         lastVel = vel;
@@ -563,8 +500,7 @@ struct SynthEngine::Impl
         v.held = v.sustained = false;
         if (v.releasing) return;
         v.releasing = true;
-        for (auto& side : v.env)
-            for (auto& e : side) e.gateOff();
+        for (auto& e : v.env) e.gateOff();
     }
 
     void fadeVoice (NoteVoice& v, double seconds)
@@ -586,8 +522,7 @@ struct SynthEngine::Impl
         v.vel = vel;
         v.releasing = false;
         v.releaseSamples = 0.0;
-        for (auto& side : v.env)
-            for (auto& e : side) e.gateOn();
+        for (auto& e : v.env) e.gateOn();
         lastVel = vel;
         triggerMod();
     }
@@ -643,13 +578,10 @@ struct SynthEngine::Impl
         for (int i = 0; i < kMaxPolyphony; ++i)
         {
             const auto& v = voices[(size_t) i];
-            if (v.active && v.fadeInc == 0.0f) { ++notes; subs += v.unison * v.sides; }
+            if (v.active && v.fadeInc == 0.0f) { ++notes; subs += v.unison; }
         }
-        const int sidesNew = slots[(size_t) cur].kind == MorphKind::Dual ? 2 : 1;
-        // 64 single, 128 computational units for Dual (SPEC §5.1); Dual at 4x is limited to 2 x 32.
-        const int budget = SynthEngine::subVoiceBudget (sidesNew == 2, os == 4 ? 2 : 1) * sidesNew;
         NoteVoice* target = nullptr;
-        while (notes >= maxNotes || subs + unison * sidesNew > budget)
+        while (notes >= maxNotes || subs + unison > kMaxSubVoices) // SPEC §5.1 budget
         {
             NoteVoice* victim = nullptr;
             for (int pass = 0; pass < 2 && victim == nullptr; ++pass)
@@ -663,7 +595,7 @@ struct SynthEngine::Impl
             if (victim == nullptr) break;
             fadeVoice (*victim, 0.005);
             --notes;
-            subs -= victim->unison * victim->sides;
+            subs -= victim->unison;
             if (target == nullptr) target = victim;
         }
         if (target == nullptr)
@@ -770,19 +702,19 @@ struct SynthEngine::Impl
     }
 
     // ---- rendering ----------------------------------------------------------------------------
-    // Renders one engine side of a voice into bus[side]. Returns true while any carrier is audible.
-    bool renderVoiceSide (NoteVoice& v, int s, PatchSlot& sl, int ilen)
+    // Renders the operators of a voice into bus[]. Returns true while any carrier is audible.
+    bool renderVoiceOps (NoteVoice& v, PatchSlot& sl, int ilen)
     {
-        const CompiledEngine& ce = s ? sl.cp.eb : sl.cp.ea;
-        const EnginePatch& ep = (s ? sl.cp.data.b : sl.cp.data.a).engine;
-        SideRt& rt = sl.side[s];
+        const CompiledEngine& ce = sl.cp.engine;
+        const EnginePatch& ep = sl.cp.data.sound.engine;
+        SideRt& rt = sl.rt;
         const float velInv = 1.0f - v.vel;
 
         bool alive = false;
         for (int a = 0; a < ce.numActive; ++a)
         {
             const int k = ce.order[a];
-            EnvState& e = v.env[s][k];
+            EnvState& e = v.env[k];
             const EnvCoefs& c = rt.env[k];
             const float velScale = 1.0f - rt.eff[pc::op (k, kOpVelToLevel)] * velInv;
             float lvl = rt.cur[kRampLevel + k] * velScale;
@@ -794,15 +726,15 @@ struct SynthEngine::Impl
                 alive = true;
         }
 
-        // Per-sample output gain: steal fade * normalisation * morph crossfade.
+        // Per-sample output gain: steal fade * normalisation.
         {
-            float f = v.fade, nrm = rt.cur[kRampNorm], mg = v.sides == 2 ? morphGain[s] : 1.0f;
-            const float fInc = v.fadeInc, nInc = rt.inc[kRampNorm], mInc = v.sides == 2 ? morphGainInc[s] : 0.0f;
+            float f = v.fade, nrm = rt.cur[kRampNorm];
+            const float fInc = v.fadeInc, nInc = rt.inc[kRampNorm];
             const float base = kVoiceGain / std::sqrt ((float) v.unison);
             for (int i = 0; i < ilen; ++i)
             {
-                gainBuf[i] = (f > 0.0f ? f : 0.0f) * nrm * mg * base;
-                f += fInc; nrm += nInc; mg += mInc;
+                gainBuf[i] = (f > 0.0f ? f : 0.0f) * nrm * base;
+                f += fInc; nrm += nInc;
             }
         }
 
@@ -813,8 +745,8 @@ struct SynthEngine::Impl
         // Frequency glides are scheduled once per control tick so the result is block-size independent.
         const double tickSmooth = 1.0 - std::exp (-(double) kControlInterval / (0.004 * sr));
         const double maxInc = kTwoPi * 0.45;
-        float* bl = bus[s][0].data();
-        float* br = bus[s][1].data();
+        float* bl = bus[0].data();
+        float* br = bus[1].data();
 
         for (int u = 0; u < v.unison; ++u)
         {
@@ -828,7 +760,7 @@ struct SynthEngine::Impl
             {
                 const int k = ce.order[a];
                 const auto& opS = ep.operators[(size_t) k];
-                OpRt& o = v.op[s][u][k];
+                OpRt& o = v.op[u][k];
 
                 if (retarget)
                 {
@@ -934,12 +866,7 @@ struct SynthEngine::Impl
         else if (tickStart && ! v.fresh)
             v.pitchNow += (float) (1.0 - std::exp (-(double) kControlInterval / (porta * 0.25 * sr))) * (v.pitchTarget - v.pitchNow);
 
-        bool alive = false;
-        for (int s = 0; s < v.sides; ++s)
-        {
-            alive = renderVoiceSide (v, s, sl, ilen) || alive;
-            if (s == 1) usedSideB = true;
-        }
+        const bool alive = renderVoiceOps (v, sl, ilen);
         v.fresh = false;
         v.fade += v.fadeInc * (float) ilen;
         if (v.releasing) v.releaseSamples += ilen;
@@ -967,79 +894,61 @@ struct SynthEngine::Impl
         int activeNotes = 0;
         for (int i = 0; i < kMaxPolyphony; ++i) activeNotes += voices[(size_t) i].active ? 1 : 0;
 
-        float* a[2] = { hostBuf[0][0], hostBuf[0][1] };
-        float* b[2] = { hostBuf[1][0], hostBuf[1][1] };
+        float* host[2] = { hostBuf[0], hostBuf[1] };
         const bool voiceWork = activeNotes > 0 || silentBlocks < 4;
-        usedSideB = false;
         if (voiceWork)
         {
-            for (int s = 0; s < 2; ++s)
-                for (int ch = 0; ch < 2; ++ch) std::memset (bus[s][ch].data(), 0, sizeof (float) * (size_t) ilen);
+            for (int ch = 0; ch < 2; ++ch) std::memset (bus[ch].data(), 0, sizeof (float) * (size_t) ilen);
             for (int i = 0; i < kMaxPolyphony; ++i)
                 if (voices[(size_t) i].active) renderVoice (voices[(size_t) i], ilen);
             silentBlocks = activeNotes > 0 ? 0 : silentBlocks + 1;
             tickStart = false;
 
-            for (int s = 0; s < 2; ++s)
+            for (int ch = 0; ch < 2; ++ch)
             {
-                if (s == 1 && ! usedSideB) continue;
-                for (int ch = 0; ch < 2; ++ch)
-                {
-                    const float* in = bus[s][ch].data();
-                    float* out = hostBuf[s][ch];
-                    if (os == 1) std::memcpy (out, in, sizeof (float) * (size_t) len);
-                    else if (os == 2) for (int i = 0; i < len; ++i) out[i] = dec2[s][ch].decimate (in[2 * i], in[2 * i + 1]);
-                    else
-                        for (int i = 0; i < len; ++i)
-                        {
-                            const float x0 = dec1[s][ch].decimate (in[4 * i], in[4 * i + 1]);
-                            const float x1 = dec1[s][ch].decimate (in[4 * i + 2], in[4 * i + 3]);
-                            out[i] = dec2[s][ch].decimate (x0, x1);
-                        }
-                }
-                const float dcR = (float) (1.0 - kTwoPi * kDcBlockHz / sr);
-                for (int ch = 0; ch < 2; ++ch) dcBlock[s][ch].process (hostBuf[s][ch], len, dcR);
-                filter[s].process (hostBuf[s][0], hostBuf[s][1], len);
+                const float* in = bus[ch].data();
+                float* out = host[ch];
+                if (os == 1) std::memcpy (out, in, sizeof (float) * (size_t) len);
+                else if (os == 2) for (int i = 0; i < len; ++i) out[i] = dec2[ch].decimate (in[2 * i], in[2 * i + 1]);
+                else
+                    for (int i = 0; i < len; ++i)
+                    {
+                        const float x0 = dec1[ch].decimate (in[4 * i], in[4 * i + 1]);
+                        const float x1 = dec1[ch].decimate (in[4 * i + 2], in[4 * i + 3]);
+                        out[i] = dec2[ch].decimate (x0, x1);
+                    }
             }
+            const float dcR = (float) (1.0 - kTwoPi * kDcBlockHz / sr);
+            for (int ch = 0; ch < 2; ++ch) dcBlock[ch].process (host[ch], len, dcR);
+            filter.process (host[0], host[1], len);
         }
         else
         {
-            std::memset (a[0], 0, sizeof (float) * (size_t) len);
-            std::memset (a[1], 0, sizeof (float) * (size_t) len);
+            std::memset (host[0], 0, sizeof (float) * (size_t) len);
+            std::memset (host[1], 0, sizeof (float) * (size_t) len);
         }
 
         // Advance shared ramps and free-running phases.
         {
             PatchSlot& sl = slots[(size_t) cur];
-            for (auto& rt : sl.side)
-                for (int r = 0; r < kNumRamps; ++r) rt.cur[r] += rt.inc[r] * (float) ilen;
-            for (int s = 0; s < 2; ++s)
+            for (int r = 0; r < kNumRamps; ++r) sl.rt.cur[r] += sl.rt.inc[r] * (float) ilen;
+            const EnginePatch& ep = sl.cp.data.sound.engine;
+            for (int k = 0; k < kNumOps; ++k)
             {
-                morphGain[s] += morphGainInc[s] * (float) ilen;
-                const EnginePatch& ep = (s ? sl.cp.data.b : sl.cp.data.a).engine;
-                for (int k = 0; k < kNumOps; ++k)
-                {
-                    const auto& op = ep.operators[(size_t) k];
-                    const double hz = op.pitchMode == PitchMode::Ratio ? 440.0 * op.ratio : (double) op.fixedHz;
-                    freeRun[s][k] = std::fmod (freeRun[s][k] + kTwoPi * hz * (double) len / sr, kTwoPi);
-                }
+                const auto& op = ep.operators[(size_t) k];
+                const double hz = op.pitchMode == PitchMode::Ratio ? 440.0 * op.ratio : (double) op.fixedHz;
+                freeRun[k] = std::fmod (freeRun[k] + kTwoPi * hz * (double) len / sr, kTwoPi);
             }
         }
 
-        // Side mix with level / pan modulation.
+        // Preset level / pan (both can be modulated).
         const float cg = onePoleCoef (0.005, sr);
-        const bool mixB = voiceWork && usedSideB;
         for (int i = 0; i < len; ++i)
         {
-            for (int s = 0; s < 2; ++s)
-            {
-                sideGain[s][0] += cg * (sideGainT[s][0] - sideGain[s][0]);
-                sideGain[s][1] += cg * (sideGainT[s][1] - sideGain[s][1]);
-            }
-            float l = a[0][i] * sideGain[0][0], r = a[1][i] * sideGain[0][1];
-            if (mixB) { l += b[0][i] * sideGain[1][0]; r += b[1][i] * sideGain[1][1]; }
-            outL[i] = l;
-            outR[i] = r;
+            outGain[0] += cg * (outGainT[0] - outGain[0]);
+            outGain[1] += cg * (outGainT[1] - outGain[1]);
+            outL[i] = host[0][i] * outGain[0];
+            outR[i] = host[1][i] * outGain[1];
         }
 
         gate.process (outL, outR, len, perf().gate, hostNow.gateEnabled, ppq, beatsPerSample);
@@ -1087,11 +996,11 @@ int SynthEngine::latencyForQuality (int quality)
     return osLatency + FxChain::kLatencySamples;
 }
 
-int SynthEngine::effectiveMaxNotes (int polyphony, int unison, bool dualMorph, int quality)
+int SynthEngine::effectiveMaxNotes (int polyphony, int unison)
 {
     polyphony = std::min (std::max (polyphony, 1), kMaxPolyphony);
     unison = std::min (std::max (unison, 1), kMaxUnison);
-    return std::max (1, std::min (polyphony, subVoiceBudget (dualMorph, quality) / unison));
+    return std::max (1, std::min (polyphony, kMaxSubVoices / unison));
 }
 
 void SynthEngine::prepare (double sampleRate, int maxBlockSize)
@@ -1100,9 +1009,8 @@ void SynthEngine::prepare (double sampleRate, int maxBlockSize)
     d.tables = &Tables::get();
     d.sr = sampleRate > 1000.0 ? sampleRate : 48000.0;
     d.maxBlock = std::max (maxBlockSize, 1);
-    for (auto& side : d.bus)
-        for (auto& ch : side) ch.assign ((size_t) kMaxChunk, 0.0f);
-    for (auto& f : d.filter) f.prepare (d.sr);
+    for (auto& ch : d.bus) ch.assign ((size_t) kMaxChunk, 0.0f);
+    d.filter.prepare (d.sr);
     d.gate.prepare (d.sr);
     d.fx.prepare (d.sr);
     d.performer.prepare (d.sr);
@@ -1193,7 +1101,7 @@ void SynthEngine::process (float* left, float* right, int n, const MidiEvent* ev
     while (pos < n)
     {
         // Control tick first, so events at this position (e.g. a note-on in the very first block)
-        // already see the current patch's morph kind and effective parameters.
+        // already see the current patch's effective parameters.
         const int phase = (int) (d.sampleCounter % (uint64_t) kControlInterval);
         if (phase == 0 || d.snapNext) d.controlTick();
         while (ev < total && d.seqEvents[ev].offset <= pos) d.handleEvent (d.seqEvents[ev++]);
@@ -1214,7 +1122,7 @@ void SynthEngine::process (float* left, float* right, int n, const MidiEvent* ev
 
     int notes = 0, subs = 0;
     for (int i = 0; i < kMaxPolyphony; ++i)
-        if (d.voices[(size_t) i].active) { ++notes; subs += d.voices[(size_t) i].unison * d.voices[(size_t) i].sides; }
+        if (d.voices[(size_t) i].active) { ++notes; subs += d.voices[(size_t) i].unison; }
     meterNotes.store (notes, std::memory_order_relaxed);
     meterSubs.store (subs, std::memory_order_relaxed);
     meterPeak[0].store (peakL, std::memory_order_relaxed);

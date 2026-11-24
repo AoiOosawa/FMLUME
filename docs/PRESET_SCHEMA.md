@@ -1,4 +1,4 @@
-# FMLUME プリセット形式（`.fmlume` / schemaVersion 1）
+# FMLUME プリセット形式（`.fmlume` / schemaVersion 2）
 
 - UTF-8 JSON。構造スキーマ: [`schemas/fmlume-preset.schema.json`](../schemas/fmlume-preset.schema.json)（JSON Schema Draft 2020-12）。
 - 読込実装: `Source/Presets/PresetSerializer.cpp`。**値はclampせず、範囲外・型違い・NaN/Inf・欠損は拒否**する。書出しも不正なパッチは拒否。
@@ -8,7 +8,7 @@
 
 | キー | 型 | 内容 |
 |---|---|---|
-| `schemaVersion` | int | `1`。`0` は読込時にマイグレーション、`>1` は拒否 |
+| `schemaVersion` | int | `2`。`0` と `1` は読込時にマイグレーション（下記「旧形式」）、`>2` は拒否 |
 | `pluginVersion` | string | 書き出したプラグインのバージョン |
 | `patchId` | string | 安定ID。ファクトリーは `factory.<category>.<nn>.<name>`、ユーザーはUUID |
 | `displayName` `author` `description` | string | |
@@ -16,18 +16,15 @@
 | `tags` | string[] | 最大64 |
 | ★`createdAt` ★`modifiedAt` | string | ISO 8601 (UTC) |
 | ★`favorite` | bool | 互換のため保持。実際のお気に入りはユーザー設定（DECISIONS D-018） |
-| `engineA` | EnginePatch | スロットAの音源 |
-| `engineB` | EnginePatch \| null | スロットB。無ければ `null` |
-| `morph` | object | `enabled`(bool) `mode`(`auto`\|`compatible`\|`dual`) `amount`(0..1) |
-| `macros` | Macro[8] | A側マクロ |
-| `matrix` | ModSlot[8] | A側Mod Matrix |
-| `macrosB` `matrixB` | 配列 \| null | **`engineB` があれば必須**、無ければ `null` |
+| `engine` | EnginePatch | 音源 |
+| `macros` | Macro[8] | マクロ |
+| `matrix` | ModSlot[8] | Mod Matrix |
 | `performance` | object | 下記 |
 | `fx` | object | 下記 |
 | `output` | object | `levelDb`(-24..12): プリセット固有の音量トリム |
 | `metadata` | object | 任意の追加情報。未知のキーはそのまま保持して再保存 |
 
-未知のトップレベルキーは無視する（v1内の前方互換）。
+未知のトップレベルキーは無視する（同じ schemaVersion 内の前方互換）。
 
 ## EnginePatch
 
@@ -119,7 +116,7 @@ tranceGate: { enabled, steps: number[16] (0..1), rate, swing: 0..0.6, smoothMs: 
               stereo?: bool, stepsRight?: number[16] (0..1), width?: 0..1 }   // 省略可（D-030）
 ```
 
-`polyphony`、`unison.*`、`arp.enabled`、`tranceGate.enabled`、`morph.enabled/amount`、各マクロの `defaultValue`、`fx.quick[].value` はホストパラメーターの保存値で、プリセット読込時にホストへ適用される。
+`polyphony`、`unison.*`、`arp.enabled`、`tranceGate.enabled`、各マクロの `defaultValue`、`fx.quick[].value` はホストパラメーターの保存値で、プリセット読込時にホストへ適用される。
 
 ## fx
 
@@ -153,12 +150,12 @@ quick:      [{ id: fx.quick.warmth|width|space|echo, value: 0..1, mappings: [...
 
 ## プロジェクト状態（DAW保存）
 
-`getStateInformation` は JUCE の ValueTree バイナリ `FMLUME_STATE { version: 1, json: "..." }`。`json` は `{ "fmlumeState": 1, "preset": <上記プリセット全体>, "host": { gainDb, pan, polyphony, unison, detune, spread, quality, macros[8], morphAmount, morphEnabled, fxBypassAll, quick[4], arpEnabled, gateEnabled } }`。プリセットIDだけでなくCanonical Model全体を含むので、元の `.fmlume` が削除されても復元できる。
+`getStateInformation` は JUCE の ValueTree バイナリ `FMLUME_STATE { version: 1, json: "..." }`。`json` は `{ "fmlumeState": 1, "preset": <上記プリセット全体>, "host": { gainDb, pan, polyphony, unison, detune, spread, quality, macros[8], fxBypassAll, quick[4], arpEnabled, gateEnabled } }`。プリセットIDだけでなくCanonical Model全体を含むので、元の `.fmlume` が削除されても復元できる。
 
 ## テスト用フィクスチャ
 
-- `tests/Fixtures/valid/` — 正しいファイル（読めること）
-- `tests/Fixtures/broken/` — 意図的に壊した22ファイル（すべて拒否されること）: 切り詰め、非JSON、将来バージョン、バージョン欠損、循環グラフ、自己エッジ、重複エッジ、キャリアなし、範囲外ratio、負のindex、オペレーター5個、未知の波形、不正マクロターゲット、マッピング9個、FX順序の重複、過大feedback、型違い、macrosBなしのengineB、ゲート15ステップ、engineA=null、NaNリテラル、空ファイル
+- `tests/Fixtures/valid/` — 正しいファイル（読めること）。`legacy_schema1_second_sound.fmlume` は 2 音目を持つ旧形式（schemaVersion 1）で、1 音目だけが読み込まれることを確かめる
+- `tests/Fixtures/broken/` — 意図的に壊した21ファイル（すべて拒否されること）: 切り詰め、非JSON、将来バージョン、バージョン欠損、循環グラフ、自己エッジ、重複エッジ、キャリアなし、範囲外ratio、負のindex、オペレーター5個、未知の波形、不正マクロターゲット、マッピング9個、FX順序の重複、過大feedback、型違い、ゲート15ステップ、engineA=null、NaNリテラル、空ファイル
 
 ### Trance Gate のステレオ拡張（D-030）
 
@@ -171,7 +168,9 @@ quick:      [{ id: fx.quick.warmth|width|space|echo, value: 0..1, mappings: [...
 
 - `performance.arp.octaveMode`: `range`（既定。ノート順が全音域を通る）/ `up` / `down` / `upDown`（ノート順を 1 オクターブ内で演奏し、形ごとオクターブを移動する）。省略時は `range`。
 
-### Morph の音色名（D-044）
+## 旧形式（schemaVersion 0 / 1）の読込（D-055）
 
-- `slotNames: { a?: string, b?: string }`（省略可、各 200 文字まで）。B 側（`engineB`）があるときだけ意味を持ち、Morph の A / B のカードに表示する名前。`a` が空なら `displayName` を使う。
-
+- **schemaVersion 1** は Morph 用の 2 音目を持っていた（`engineA` / `engineB` / `macrosB` / `matrixB` / `morph` / `slotNames`）。Morph は最初のリリース前に削除した。読込時に `engineA` を `engine` として読み、2 音目に関するキーはすべて捨てる。2 音目が実際に入っていた場合は警告を 1 つ返す。
+- **schemaVersion 0** は開発初期の形式（`engine` が 1 つ、`output` なし）。`output.levelDb = 0` を補って読む。
+- 書き出しは常に schemaVersion 2。旧形式で書き戻すことはない。
+- DAW プロジェクトの状態に残っている `host.morphAmount` / `host.morphEnabled` は無視する。

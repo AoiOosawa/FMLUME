@@ -145,7 +145,7 @@ int main (int argc, char** argv)
         d.fx.proc[(size_t) FxType::EQ].enabled = true;
 
         sanitizeTargets (d);
-        assignCommonMacros (d, false);
+        assignCommonMacros (d);
         // Character (macro 4) is feedback on the first modulator plus carrier detune. On these sounds the
         // screening (scripts/audition.py) measured no audible change, so the first carrier's own feedback
         // is added: it always turns the tone edgier (docs/DECISIONS.md D-054).
@@ -154,25 +154,22 @@ int main (int argc, char** argv)
         for (const char* name : kCharacterNeedsEdge)
             if (p.meta.displayName == name)
                 for (int k = 0; k < kNumOps; ++k)
-                    if (d.a.engine.operators[(size_t) k].enabled && d.a.engine.operators[(size_t) k].carrierGain > 0.0f)
+                    if (d.sound.engine.operators[(size_t) k].enabled && d.sound.engine.operators[(size_t) k].carrierGain > 0.0f)
                     {
-                        addMapping (d.a.macros[3], pc::op (k, kOpFeedback), 0.45f);
+                        addMapping (d.sound.macros[3], pc::op (k, kOpFeedback), 0.45f);
                         break;
                     }
         for (int i = 0; i < kNumMacros; ++i)
         {
-            if (d.a.macros[(size_t) i].numMappings == 0)
+            if (d.sound.macros[(size_t) i].numMappings == 0)
             {
                 std::printf ("PROBLEM %s: macro %d (%s) has no mapping\n", p.meta.displayName.c_str(), i + 1, p.meta.macroNames[(size_t) i].c_str());
                 ++problems;
             }
-            d.a.macros[(size_t) i].defaultValue = 0.5f;
+            d.sound.macros[(size_t) i].defaultValue = 0.5f;
         }
         d.host.macro.fill (0.5f);
         d.host.quick.fill (0.5f);
-        d.hasB = false;
-        d.b = d.a;
-        p.meta.macroNamesB = p.meta.macroNames;
 
         const auto v = validatePatch (d);
         if (! v.ok) { std::printf ("PROBLEM %s: invalid: %s\n", p.meta.displayName.c_str(), v.error.c_str()); ++problems; continue; }
@@ -205,7 +202,7 @@ int main (int argc, char** argv)
             const auto base = measure (d.host);
             for (int i = 0; i < kNumMacros; ++i)
             {
-                Macro& mc = d.a.macros[(size_t) i];
+                Macro& mc = d.sound.macros[(size_t) i];
                 int guardedHalf = -1; // 0 = lower, 1 = upper
                 for (int half = 0; half < 2; ++half)
                     for (int pass = 0; pass < 5; ++pass)
@@ -232,7 +229,6 @@ int main (int argc, char** argv)
                         if (pass == 0) std::printf ("guard %-22s macro %d (%s) at %d: %+.1f dB over\n", p.meta.displayName.c_str(), i + 1, p.meta.macroNames[(size_t) i].c_str(), half, over);
                     }
             }
-            d.b = d.a;
         }
 
         // Every macro must be audible in at least one direction.

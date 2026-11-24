@@ -347,3 +347,21 @@
 - 結果（`scripts/audition.py`）: リミッター 19 → 1、効きが聞こえない 13 → 0、音量が跳ねる 9 → 4。指摘のある音色は 52 → 29。
 - 残り: One Key Dream Keys の Release 最大（長く押さえ続けたとき）、Bass 4 件（Brightness / Growl で倍音が増え A 特性の音量が上がる。ピークは範囲内）、Detuned Reese の Brightness 最小（フィルターが閉じて低音だけになる）。いずれも設計どおりの挙動に近く、未対応。
 - 影響: マクロのマッピングが増えるだけで、プリセットの形式・パラメーター ID は変更なし。マクロを中央（保存値）に置いたときの音は変わらない。
+
+## D-055 Sound Morph を削除する（2026-11-24）
+- 利用者の判断。経緯: ファクトリー 152 音色の全 11,476 組を数えたところ、パラメーター補間（Smooth / Compatible。音色そのものが変わる）になるのは 675 組（5.9%）で、38 音色には相手が 1 つもなかった。残り 94% は 2 音色を同時に鳴らすクロスフェード（Layered / Dual）＝ミックスだった。「似すぎ」を直すために音色の構造を変えた D-052 でさらに減っていた（880 組 → 675 組）。
+- 検討した代案: 違う構造どうしも補間できるようにする（無い結線を深さ 0、無いオペレーターをレベル 0 とみなす）。エンジン中核の作り直しと、その後の音作り・検証が必要になるため見送り。
+- 削除したもの:
+  - エンジン: 2 音目の音源、Compatible の補間、Dual の等パワークロスフェード、Dual 用のボイス予算（D-017、D-019、D-021、D-022 は役目を終えた）。音源・フィルター・LFO・ModEnv・デシメーター・DC カットはすべて 1 系統。
+  - モデル / コントローラー: `PatchData::b` / `hasB` / `morph`、`HostParams::morphAmount` / `morphEnabled`、`PresetMeta::macroNamesB` / `slotNameA` / `slotNameB`、スロット操作（Load B / Swap / Copy / Remove / Edit B）。`PatchData::a` は `sound` に、型 `EngineSide` は `SoundPatch` に改名。パラメーターアクセスの `sideB` 引数を廃止。
+  - UI: Simple の Morph パネル（Variations が横幅いっぱいになる）、Advanced の Edit A / Edit B、ブラウザーの「2 音目を選ぶ」モード。
+  - ツール: `fmlume-render --morph`、ベンチの Dual Morph ケース。
+- **後方互換性（リリース前のため互換措置は読み込みのみ）**:
+  - ホストパラメーター `morph.amount` と `morph.enabled` を廃止（24 → 22）。これらにオートメーションを書いた DAW プロジェクトでは、そのオートメーションが行き先を失う。
+  - プリセット形式を **schemaVersion 2** に上げた: `engineA` → `engine`、`engineB` / `macrosB` / `matrixB` / `morph` / `slotNames` を廃止。schemaVersion 1 のファイルは読み込める（1 音目だけを採用し、2 音目が入っていれば警告を返す）。書き出しは常に 2。
+  - DAW プロジェクトの状態に残る `host.morphAmount` / `host.morphEnabled` は無視する。Morph を使っていたプロジェクトは A の音だけで鳴る。
+- 確認:
+  - 削除前後で、ファクトリー 152 音色（マクロを動かした状態）＋ Eco / High・44.1 kHz の 32 本、計 184 本のレンダリング結果が**ビット単位で一致**（旧形式のプリセットを新しいエンジンで読んだ場合と、新形式で再生成したプリセットの両方）。
+  - `ctest` 4/4（54 ケース。Morph のテスト 3 件を削除、旧形式の読み込みテストを追加）、auval、pluginval（VST3 / AU、厳しさ 10）合格。`fmlume-uisnap` で全ページを描画、キー操作の検査は 2,107 部品で問題 0。
+  - 性能: 最悪ケース（8×8 Unison、全 FX、4x）は平均 40.0% / 最悪ブロック 52.8%（削除前の Dual Morph 最悪ケースは 56.1% / 86.1%）。
+- 未確認: 実 DAW での読み込み直し（旧プロジェクトを開いたときの挙動を含む）、新しい JSON Schema とプリセットの照合。

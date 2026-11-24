@@ -12,17 +12,17 @@ int idToCode (int id) { return id == kNoneId ? -1 : id - 1; }
 int codeToId (int code) { return code >= 0 ? code + 1 : kNoneId; }
 
 // Fills a combo with every parameter the predicate accepts, grouped by section. Item id = code + 1.
-void fillTargets (juce::ComboBox& box, const Preset& p, bool sideB, bool modTargetsOnly)
+void fillTargets (juce::ComboBox& box, const Preset& p, bool modTargetsOnly)
 {
     box.clear (juce::dontSendNotification);
     box.addItem ("(none)", kNoneId);
-    const auto& e = sideOf (p, sideB).engine;
+    const auto& e = p.data.sound.engine;
     auto accept = [&] (int c) {
         if (modTargetsOnly ? ! isModTarget (c) : ! isMacroTarget (c)) return false;
-        if (! paramExists (p.data, sideB, c)) return false;
+        if (! paramExists (p.data, c)) return false;
         if (pc::isOp (c) && ! e.operators[(size_t) (c / kOpFieldCount)].enabled) return false;
         if (pc::isFx (c) && ! p.data.fx.proc[(size_t) ((c - pc::fxBase) / kFxParams)].enabled) return false;
-        if (c >= pc::matrixDepthBase && c < pc::engineCount && ! sideOf (p, sideB).matrix[(size_t) (c - pc::matrixDepthBase)].enabled) return false;
+        if (c >= pc::matrixDepthBase && c < pc::engineCount && ! p.data.sound.matrix[(size_t) (c - pc::matrixDepthBase)].enabled) return false;
         return true;
     };
     auto section = [&] (const juce::String& name, int from, int to) {
@@ -48,21 +48,21 @@ struct ModulationTab::LfoBox final : public juce::Component
     LfoBox (Ctx& c, int i)
         : index (i),
           shape (c, "LFO shape", labels::list (labels::lfoShape),
-                 [&c, i] (const Preset& p) { return (int) sideOf (p, c.sideB()).engine.lfo[(size_t) i].shape; },
-                 [&c, i] (Preset& p, int v) { sideOf (p, c.sideB()).engine.lfo[(size_t) i].shape = (LfoShape) v; }),
+                 [&c, i] (const Preset& p) { return (int) p.data.sound.engine.lfo[(size_t) i].shape; },
+                 [&c, i] (Preset& p, int v) { p.data.sound.engine.lfo[(size_t) i].shape = (LfoShape) v; }),
           division (c, "Tempo division", divisionNames (0, kNumSyncDivs - 1),
-                    [&c, i] (const Preset& p) { return (int) sideOf (p, c.sideB()).engine.lfo[(size_t) i].syncDiv; },
-                    [&c, i] (Preset& p, int v) { sideOf (p, c.sideB()).engine.lfo[(size_t) i].syncDiv = (uint8_t) v; }),
+                    [&c, i] (const Preset& p) { return (int) p.data.sound.engine.lfo[(size_t) i].syncDiv; },
+                    [&c, i] (Preset& p, int v) { p.data.sound.engine.lfo[(size_t) i].syncDiv = (uint8_t) v; }),
           sync (c, "Tempo sync", "Lock the LFO rate to the host tempo",
-                [&c, i] (const Preset& p) { return sideOf (p, c.sideB()).engine.lfo[(size_t) i].sync; },
-                [&c, i] (Preset& p, bool v) { sideOf (p, c.sideB()).engine.lfo[(size_t) i].sync = v; }),
+                [&c, i] (const Preset& p) { return p.data.sound.engine.lfo[(size_t) i].sync; },
+                [&c, i] (Preset& p, bool v) { p.data.sound.engine.lfo[(size_t) i].sync = v; }),
           retrig (c, "Retrigger", "Restart the LFO at its start phase on every note",
-                  [&c, i] (const Preset& p) { return sideOf (p, c.sideB()).engine.lfo[(size_t) i].retrig; },
-                  [&c, i] (Preset& p, bool v) { sideOf (p, c.sideB()).engine.lfo[(size_t) i].retrig = v; }),
+                  [&c, i] (const Preset& p) { return p.data.sound.engine.lfo[(size_t) i].retrig; },
+                  [&c, i] (Preset& p, bool v) { p.data.sound.engine.lfo[(size_t) i].retrig = v; }),
           rate (c, i == 0 ? pc::lfo1Rate : pc::lfo2Rate, "Rate"),
           phase (c, "Start phase", 0.0f, 1.0f, 0.01f, 0.0f, "",
-                 [&c, i] (const Preset& p) { return sideOf (p, c.sideB()).engine.lfo[(size_t) i].phase; },
-                 [&c, i] (Preset& p, float v) { sideOf (p, c.sideB()).engine.lfo[(size_t) i].phase = v; })
+                 [&c, i] (const Preset& p) { return p.data.sound.engine.lfo[(size_t) i].phase; },
+                 [&c, i] (Preset& p, float v) { p.data.sound.engine.lfo[(size_t) i].phase = v; })
     {
         for (auto* comp : std::initializer_list<juce::Component*> { &shape, &division, &sync, &retrig, &rate, &phase }) addAndMakeVisible (comp);
     }
@@ -109,17 +109,17 @@ struct ModulationTab::MatrixRow final : public juce::Component
     MatrixRow (Ctx& c, int i)
         : ctx (c), slot (i),
           enabled (c, juce::String (i + 1), "Enable this modulation slot",
-                   [&c, i] (const Preset& p) { return sideOf (p, c.sideB()).matrix[(size_t) i].enabled; },
-                   [&c, i] (Preset& p, bool v) { sideOf (p, c.sideB()).matrix[(size_t) i].enabled = v; }),
+                   [&c, i] (const Preset& p) { return p.data.sound.matrix[(size_t) i].enabled; },
+                   [&c, i] (Preset& p, bool v) { p.data.sound.matrix[(size_t) i].enabled = v; }),
           source (c, "Modulation source", labels::list (labels::modSource),
-                  [&c, i] (const Preset& p) { return (int) sideOf (p, c.sideB()).matrix[(size_t) i].source; },
-                  [&c, i] (Preset& p, int v) { sideOf (p, c.sideB()).matrix[(size_t) i].source = (ModSource) v; }),
+                  [&c, i] (const Preset& p) { return (int) p.data.sound.matrix[(size_t) i].source; },
+                  [&c, i] (Preset& p, int v) { p.data.sound.matrix[(size_t) i].source = (ModSource) v; }),
           curve (c, "Response curve", labels::list (labels::curve),
-                 [&c, i] (const Preset& p) { return (int) sideOf (p, c.sideB()).matrix[(size_t) i].curve; },
-                 [&c, i] (Preset& p, int v) { sideOf (p, c.sideB()).matrix[(size_t) i].curve = (Curve) v; }),
+                 [&c, i] (const Preset& p) { return (int) p.data.sound.matrix[(size_t) i].curve; },
+                 [&c, i] (Preset& p, int v) { p.data.sound.matrix[(size_t) i].curve = (Curve) v; }),
           depth (c, "", -1.0f, 1.0f, 0.001f, 0.0f, "",
-                 [&c, i] (const Preset& p) { return sideOf (p, c.sideB()).matrix[(size_t) i].depth; },
-                 [&c, i] (Preset& p, float v) { sideOf (p, c.sideB()).matrix[(size_t) i].depth = v; })
+                 [&c, i] (const Preset& p) { return p.data.sound.matrix[(size_t) i].depth; },
+                 [&c, i] (Preset& p, float v) { p.data.sound.matrix[(size_t) i].depth = v; })
     {
         depth.captionWidth = 0;
         depth.slider.setTooltip ("Depth: 1.0 moves the target across its whole range. Small values go a long way for pitch (0.01 = about a quarter tone).");
@@ -128,9 +128,8 @@ struct ModulationTab::MatrixRow final : public juce::Component
             const int id = target.getSelectedId();
             if (id == 0) return;
             const int code = idToCode (id);
-            const bool b = ctx.sideB();
-            ctx.edit ([this, code, b] (Preset& p) {
-                auto& m = sideOf (p, b).matrix[(size_t) slot];
+            ctx.edit ([this, code] (Preset& p) {
+                auto& m = p.data.sound.matrix[(size_t) slot];
                 m.target = (int16_t) code;
                 if (code < 0) m.enabled = false;
             });
@@ -149,7 +148,7 @@ struct ModulationTab::MatrixRow final : public juce::Component
     void refresh (const Preset& p)
     {
         enabled.refreshFrom (p); source.refreshFrom (p); curve.refreshFrom (p); depth.refreshFrom (p);
-        const int t = sideOf (p, ctx.sideB()).matrix[(size_t) slot].target;
+        const int t = p.data.sound.matrix[(size_t) slot].target;
         target.setSelectedId (codeToId (t), juce::dontSendNotification);
     }
     Ctx& ctx;
@@ -181,10 +180,9 @@ struct ModulationTab::MappingRow final : public juce::Component
             const int id = target.getSelectedId();
             if (id == 0) return;
             const int code = idToCode (id);
-            const bool b = ctx.sideB();
             const int macro = owner.selectedMacro;
-            ctx.edit ([this, code, b, macro] (Preset& p) {
-                auto& m = sideOf (p, b).macros[(size_t) macro];
+            ctx.edit ([this, code, macro] (Preset& p) {
+                auto& m = p.data.sound.macros[(size_t) macro];
                 if (code < 0)
                 {
                     if (row < m.numMappings)
@@ -236,7 +234,7 @@ struct ModulationTab::MappingRow final : public juce::Component
     }
     const MacroMapping* mapping (const Preset& p) const
     {
-        const auto& m = sideOf (p, ctx.sideB()).macros[(size_t) owner.selectedMacro];
+        const auto& m = p.data.sound.macros[(size_t) owner.selectedMacro];
         return row < m.numMappings ? &m.mappings[(size_t) row] : nullptr;
     }
     MacroMapping* mapping (Preset& p) const { return const_cast<MacroMapping*> (mapping (const_cast<const Preset&> (p))); }
@@ -252,7 +250,7 @@ struct ModulationTab::MappingRow final : public juce::Component
     void refresh (const Preset& p)
     {
         const auto* m = mapping (p);
-        const int count = sideOf (p, ctx.sideB()).macros[(size_t) owner.selectedMacro].numMappings;
+        const int count = p.data.sound.macros[(size_t) owner.selectedMacro].numMappings;
         setVisible (row <= count); // existing rows plus one empty row to add a mapping
         target.setSelectedId (codeToId (m ? m->target : -1), juce::dontSendNotification);
         for (auto* comp : std::initializer_list<juce::Component*> { &curve, &polarity, &amount, &range }) comp->setEnabled (m != nullptr);
@@ -282,8 +280,8 @@ ModulationTab::ModulationTab (Ctx& c) : ctx (c)
     for (int i = 0; i < 4; ++i) addAndMakeVisible (envKnobs.add (new ModelKnob (ctx, pc::modEnvA + i, envNames[i])));
     for (int i = 0; i < kNumModSlots; ++i) addAndMakeVisible (matrix.add (new MatrixRow (ctx, i)));
     filterType = std::make_unique<BoundCombo> (ctx, "Filter type", labels::list (labels::filterType),
-                                               [this] (const Preset& p) { return (int) sideOf (p, ctx.sideB()).engine.filter.type; },
-                                               [this] (Preset& p, int v) { sideOf (p, ctx.sideB()).engine.filter.type = (FilterType) v; });
+                                               [this] (const Preset& p) { return (int) p.data.sound.engine.filter.type; },
+                                               [this] (Preset& p, int v) { p.data.sound.engine.filter.type = (FilterType) v; });
     addAndMakeVisible (*filterType);
     static const char* const filterNames[3] = { "Cutoff", "Resonance", "Drive" };
     for (int i = 0; i < 3; ++i) addAndMakeVisible (filterKnobs.add (new ModelKnob (ctx, pc::filterCutoff + i, filterNames[i])));
@@ -299,10 +297,9 @@ ModulationTab::ModulationTab (Ctx& c) : ctx (c)
     macroName.setInputRestrictions (24);
     auto commitName = [this] {
         const std::string name = macroName.getText().trim().toStdString();
-        const bool b = ctx.sideB();
         const int m = selectedMacro;
-        if (name == (b ? ctx.snapshot().meta.macroNamesB : ctx.snapshot().meta.macroNames)[(size_t) m]) return;
-        ctx.edit ([=] (Preset& p) { (b ? p.meta.macroNamesB : p.meta.macroNames)[(size_t) m] = name; });
+        if (name == ctx.snapshot().meta.macroNames[(size_t) m]) return;
+        ctx.edit ([=] (Preset& p) { p.meta.macroNames[(size_t) m] = name; });
     };
     macroName.onReturnKey = commitName;
     macroName.onFocusLost = commitName;
@@ -380,17 +377,16 @@ void ModulationTab::resized()
 
 void ModulationTab::rebuildTargets (const Preset& p)
 {
-    const bool b = ctx.sideB();
-    const auto& s = sideOf (p, b);
-    juce::String sig (b ? "B" : "A");
+    const auto& s = p.data.sound;
+    juce::String sig;
     for (auto& op : s.engine.operators) sig << (op.enabled ? '1' : '0');
     for (int i = 0; i < s.engine.numEdges; ++i) sig << (int) s.engine.edges[(size_t) i].from << (int) s.engine.edges[(size_t) i].to;
     for (auto& pr : p.data.fx.proc) sig << (pr.enabled ? 'e' : 'd');
     for (auto& m : s.matrix) sig << (m.enabled ? 'M' : 'm');
     if (sig == targetSignature) return;
     targetSignature = sig;
-    for (auto* row : matrix) fillTargets (row->target, p, b, true);
-    for (auto* row : mappings) fillTargets (row->target, p, b, false);
+    for (auto* row : matrix) fillTargets (row->target, p, true);
+    for (auto* row : mappings) fillTargets (row->target, p, false);
 }
 
 void ModulationTab::refresh (const Preset& p)
@@ -399,16 +395,16 @@ void ModulationTab::refresh (const Preset& p)
     for (auto& l : lfos) l->refresh (p);
     for (auto* k : envKnobs) k->refresh();
     filterType->refreshFrom (p);
-    const bool filterOn = sideOf (p, ctx.sideB()).engine.filter.type != FilterType::Off;
+    const bool filterOn = p.data.sound.engine.filter.type != FilterType::Off;
     for (auto* k : filterKnobs) { k->refresh(); k->setAlpha (filterOn ? 1.0f : 0.45f); }
     for (auto* row : matrix) row->refresh (p);
     for (auto* row : mappings) row->refresh (p);
     // A different preset (or slot) replaces the text even while the field has focus, so a pending
     // edit can never be committed onto the wrong sound.
-    const juce::String owner = juce::String (p.meta.patchId) + (ctx.sideB() ? ":B:" : ":A:") + juce::String (selectedMacro);
+    const juce::String owner = juce::String (p.meta.patchId) + ":" + juce::String (selectedMacro);
     const bool otherOwner = owner != macroNameOwner;
     macroNameOwner = owner;
     if (otherOwner || ! macroName.hasKeyboardFocus (true))
-        macroName.setText ((ctx.sideB() ? p.meta.macroNamesB : p.meta.macroNames)[(size_t) selectedMacro], juce::dontSendNotification);
+        macroName.setText (p.meta.macroNames[(size_t) selectedMacro], juce::dontSendNotification);
 }
 } // namespace ui

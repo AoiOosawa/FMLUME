@@ -28,7 +28,7 @@ Core をホストやGUIなしでテストできるよう、JUCE に依存させ�
 | `HostParams` | ホスト公開値（APVTSが真実）のスナップショット。毎ブロック `process()` に渡す |
 | `CompiledPatch` | 検証済み `PatchData` ＋ トポロジカル順・入力エッジ表・構造ハッシュ |
 
-**パラメーターコード表**（`Source/Core/Params.h`）: パッチパラメーターに整数コード（0〜212）を割り当て、範囲・スケール（lin/log）・フラグを1か所で定義。マクロ、Mod Matrix、Explorer、Compatible Morph、JSONのターゲットID、UIのノブがすべてこの表を共有する。
+**パラメーターコード表**（`Source/Core/Params.h`）: パッチパラメーターに整数コード（0〜212）を割り当て、範囲・スケール（lin/log）・フラグを1か所で定義。マクロ、Mod Matrix、Explorer、JSONのターゲットID、UIのノブがすべてこの表を共有する。
 
 ```text
 0..83     opN × 14フィールド          120..128  filter / lfo rate / modEnv
@@ -68,18 +68,17 @@ MIDI + UIノート ─▶ Performer（Chord → Arp → サンプルオフセッ
                        │
    コントロールティック（絶対サンプル位置に整列 → 出力はブロックサイズ非依存）
      ├ ホスト値スムージング（マクロ等 15ms）
-     ├ LFO×2 / ModEnv 更新（エンジン側ごと）
+     ├ LFO×2 / ModEnv 更新
      ├ 有効パラメーター = 基準値(正規化) + Σマクロデルタ + Σ Matrixデルタ → 物理単位 → clamp
-     │   Compatible Morph: A/B の正規化値を m で補間
      └ ランプ目標（level / carrier / feedback / edge index / 正規化）, フィルター, FX パラメーター
                        │
-   ボイス（最大32ノート × Unison 8, 予算64 SubVoice/エンジン）
+   ボイス（最大32ノート × Unison 8, 予算64 SubVoice）
      └ オペレーターをDAG順に、チャンク単位でバッファ計算（内部レート 1x/2x/4x）
           mod = Σ index·out[from] + feedback·(前2サンプル平均)
           out = env·level·wave(phase + mod)   ※ sine=4096点テーブル, 他=帯域制限Wavetable 11段
-                       │   バスA / バスB（Dual Morph 時）
-              ハーフバンドFIRデシメーション ─▶ グローバルフィルター(TPT SVF + Drive) ×側
-                       │   側ごとの level / pan
+                       │
+              ハーフバンドFIRデシメーション ─▶ DCカット(5 Hz) ─▶ グローバルフィルター(TPT SVF + Drive)
+                       │   プリセットの level / pan
                  Trance Gate（ホストppq同期, FXの前）
                        │
                  FXチェーン（9種常駐・順序配列のみ変更, 固定レイテンシ7）
@@ -109,9 +108,9 @@ MIDI + UIノート ─▶ Performer（Chord → Arp → サンプルオフセッ
 
 | クラス | 役割 |
 |---|---|
-| `PatchController` | 編集の唯一の入口。編集→検証→Undo積み→エンジン送信。Explorer（生成/試聴/採用/履歴20）、Morphスロット操作、Undo/Redo（64段、ノブドラッグは1段に集約） |
+| `PatchController` | 編集の唯一の入口。編集→検証→Undo積み→エンジン送信。Explorer（生成/試聴/採用/履歴20）、Undo/Redo（64段、ノブドラッグは1段に集約） |
 | `SoundExplorer` | PCG32による決定論的な8候補生成。Lock、方向バイアス、安全性チェック（オフラインレンダーで無音・過大・非有限を排除）、重複抑制、ラウドネス補正、フォールバック |
-| `PresetSerializer` | `.fmlume` JSON の読み書き、厳格な検証、schema 0→1 マイグレーション、プロジェクト状態 |
+| `PresetSerializer` | `.fmlume` JSON の読み書き、厳格な検証、schema 0 / 1 → 2 マイグレーション、プロジェクト状態 |
 | `PresetManager` | ファクトリー（埋め込み）＋ユーザーフォルダの走査、検索、タグ、お気に入り、保存/Import/Export |
 | `FmlumeAudioProcessor` | APVTS、MIDI/トランスポート変換、状態保存、レイテンシ報告、CPUメーター |
 | `FmlumeAudioProcessorEditor` | Header / SimplePage / AdvancedPage（5タブ）/ 画面鍵盤。30Hzタイマーでモデルのバージョン番号を監視して再描画 |
@@ -120,10 +119,10 @@ MIDI + UIノート ─▶ Performer（Chord → Arp → サンプルオフセッ
 
 ```text
 Header        ロゴ, プリセット名/カテゴリ/編集マーク, Prev/Next, Fav, Save, File, Undo/Redo, Simple/Advanced, CPU/Voices, 出力メーター
-SimplePage    BrowserPanel(Choose) | MacroPanel(Shape) / ExplorerPanel(Explore) / MorphPanel(Morph) + QuickFxPanel(Finish)
-AdvancedPage  Operators | Algorithm(GraphView) | Modulation(LFO, ModEnv, Matrix, Macro Editor) | FX | Performance   ＋ Edit A/B
+SimplePage    BrowserPanel(Choose) | MacroPanel(Shape) / ExplorerPanel(Explore) + QuickFxPanel(Finish)
+AdvancedPage  Operators | Algorithm(GraphView) | Modulation(LFO, ModEnv, Matrix, Macro Editor) | FX | Performance
 ```
 
 - `ModelKnob` はパラメーターコードに、`HostKnob` / `HostToggle` はAPVTSにバインド。`BoundSlider / BoundCombo / BoundToggle` は任意フィールドに getter/setter でバインド。
 - Simple と Advanced は同じ `PatchController` を編集するので常に同じ状態を表示する。
-- 未実装機能のボタンは置かない。Full Morph は「coming later」と文言で明示。
+- 未実装機能のボタンは置かない。

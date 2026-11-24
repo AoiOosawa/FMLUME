@@ -14,7 +14,7 @@ namespace fs = std::filesystem;
 namespace
 {
 
-// A preset that exercises every part of the model, including slot B.
+// A preset that exercises every part of the model.
 Preset richPreset()
 {
     Preset p = makeCategoryPreset (Category::Bell);
@@ -25,12 +25,6 @@ Preset richPreset()
     p.meta.description = "line1\nline2\ttab";
     p.meta.metadataJson = "{\"custom\":{\"a\":[1,2,3]},\"note\":\"keep me\"}";
     PatchData& d = p.data;
-    d.b = makeCategoryPreset (Category::Pad).data.a;
-    d.hasB = true;
-    p.meta.macroNamesB = makeCategoryPreset (Category::Pad).meta.macroNames;
-    d.morph.mode = MorphMode::Dual;
-    d.host.morphEnabled = true;
-    d.host.morphAmount = 0.37f;
     d.host.unison = 3;
     d.host.detune = 17.5f;
     d.host.arpEnabled = true;
@@ -43,13 +37,13 @@ Preset richPreset()
     for (int i = 0; i < kGateSteps; ++i) d.perf.gate.steps[(size_t) i] = (float) (i % 5) * 0.25f;
     d.fx.order = { 8, 0, 2, 1, 3, 4, 5, 6, 7 };
     d.fx.proc[(size_t) FxType::Phaser].enabled = true;
-    d.a.engine.operators[1].waveform = Waveform::Saw;
-    d.a.engine.operators[0].pitchMode = PitchMode::Fixed;
-    d.a.engine.operators[0].fixedHz = 123.456f;
-    d.a.engine.lfo[1].sync = true;
-    d.a.engine.lfo[1].syncDiv = 14;
-    d.a.engine.lfo[1].shape = LfoShape::RandomSmooth;
-    d.a.macros[2].defaultValue = 0.123456789f;
+    d.sound.engine.operators[1].waveform = Waveform::Saw;
+    d.sound.engine.operators[0].pitchMode = PitchMode::Fixed;
+    d.sound.engine.operators[0].fixedHz = 123.456f;
+    d.sound.engine.lfo[1].sync = true;
+    d.sound.engine.lfo[1].syncDiv = 14;
+    d.sound.engine.lfo[1].shape = LfoShape::RandomSmooth;
+    d.sound.macros[2].defaultValue = 0.123456789f;
     d.out.levelDb = -3.25f;
     return p;
 }
@@ -75,8 +69,8 @@ FM_TEST ("integration", "PRS-01 JSON round trip is lossless")
         CHECK (back.meta.displayName == p.meta.displayName && back.meta.tags == p.meta.tags && back.meta.description == p.meta.description);
         CHECK (back.meta.macroNames == p.meta.macroNames);
         // float fields survive bit-exactly
-        CHECK (back.data.a.macros[2].defaultValue == p.data.a.macros[2].defaultValue);
-        CHECK (back.data.a.engine.operators[0].fixedHz == p.data.a.engine.operators[0].fixedHz);
+        CHECK (back.data.sound.macros[2].defaultValue == p.data.sound.macros[2].defaultValue);
+        CHECK (back.data.sound.engine.operators[0].fixedHz == p.data.sound.engine.operators[0].fixedHz);
         CHECK (patchChecksum (p.data) == patchChecksum (back.data));
     }
     // Extra metadata is preserved.
@@ -88,7 +82,7 @@ FM_TEST ("integration", "PRS-01 JSON round trip is lossless")
     CHECK (back.meta.metadataJson.find ("\"custom\"") != std::string::npos);
     // Export refuses invalid data instead of clamping it.
     Preset bad = makeInitPreset();
-    bad.data.a.engine.operators[0].level = 3.0f;
+    bad.data.sound.engine.operators[0].level = 3.0f;
     std::string out, err;
     CHECK (! presetToJson (bad, out, &err));
     CHECK (! err.empty());
@@ -114,10 +108,10 @@ FM_TEST ("integration", "PRS-03 broken, unknown-version and extreme presets are 
         { "not json", "this is not json" },
         { "truncated", good.substr (0, good.size() / 2) },
         { "array root", "[1,2,3]" },
-        { "future schema", mutate ("\"schemaVersion\": 1", "\"schemaVersion\": 2") },
-        { "negative schema", mutate ("\"schemaVersion\": 1", "\"schemaVersion\": -1") },
-        { "schema as string", mutate ("\"schemaVersion\": 1", "\"schemaVersion\": \"1\"") },
-        { "missing engineA", mutate ("\"engineA\"", "\"engineX\"") },
+        { "future schema", mutate ("\"schemaVersion\": 2", "\"schemaVersion\": 3") },
+        { "negative schema", mutate ("\"schemaVersion\": 2", "\"schemaVersion\": -1") },
+        { "schema as string", mutate ("\"schemaVersion\": 2", "\"schemaVersion\": \"2\"") },
+        { "missing engine", mutate ("\"engine\"", "\"engineX\"") },
         { "bad category", mutate ("\"category\": \"Bell\"", "\"category\": \"Kazoo\"") },
         { "bad waveform", mutate ("\"waveform\": \"saw\"", "\"waveform\": \"noise\"") },
         { "ratio out of range", mutate ("\"ratio\": 3.5", "\"ratio\": 1e9") },
@@ -132,8 +126,6 @@ FM_TEST ("integration", "PRS-03 broken, unknown-version and extreme presets are 
         { "fx order not a permutation", mutate ("\"order\": [\"reverb\", \"eq\"", "\"order\": [\"reverb\", \"reverb\"") },
         { "bad gate division", mutate ("\"tranceGate\": {\n      \"enabled\": false,", "\"tranceGate\": {\n      \"enabled\": 5,") },
         { "polyphony 0", mutate ("\"polyphony\": 16", "\"polyphony\": 0") },
-        { "morph amount 2", mutate ("\"amount\": 0.370000005", "\"amount\": 2") },
-        { "engineB without macrosB", mutate ("\"macrosB\": [", "\"macrosX\": [") },
         { "deep nesting", std::string (5000, '[') },
         { "huge number", mutate ("\"ratio\": 3.5", "\"ratio\": 1e999") },
         { "duplicate keys", mutate ("\"author\": \"unit test\"", "\"author\": \"a\", \"author\": \"b\"") },
@@ -156,7 +148,7 @@ FM_TEST ("integration", "PRS-03 broken, unknown-version and extreme presets are 
     Preset cyc = makeCategoryPreset (Category::Bass);
     Json j = presetToJsonValue (cyc);
     Json* edges = nullptr;
-    for (auto& m : j.members) if (m.first == "engineA") for (auto& m2 : m.second.members) if (m2.first == "edges") edges = &m2.second;
+    for (auto& m : j.members) if (m.first == "engine") for (auto& m2 : m.second.members) if (m2.first == "edges") edges = &m2.second;
     CHECK (edges != nullptr);
     Json back = Json::object();
     back.set ("from", 2); back.set ("to", 0); back.set ("index", 1.0f);
@@ -168,9 +160,7 @@ FM_TEST ("integration", "PRS-03 broken, unknown-version and extreme presets are 
 
     // Old schema (0) is migrated; a mod slot with an unknown target is disabled with a warning, not fatal.
     Json old = presetToJsonValue (makeCategoryPreset (Category::Keys));
-    Json engine = *old.find ("engineA");
-    old.remove ("engineA"); old.remove ("engineB"); old.remove ("macrosB"); old.remove ("matrixB"); old.remove ("output");
-    old.set ("engine", engine);
+    old.remove ("output");
     old.set ("schemaVersion", 0);
     std::vector<std::string> warnings;
     Preset migrated;
@@ -179,6 +169,39 @@ FM_TEST ("integration", "PRS-03 broken, unknown-version and extreme presets are 
     PatchData expected = makeCategoryPreset (Category::Keys).data;
     expected.out.levelDb = 0.0f; // schema 0 had no "output" block: the migrated level is the default
     CHECK (patchDataEqual (migrated.data, expected));
+
+    // Schema 1 had a second sound for Morph. Such a preset still loads: the first sound is kept,
+    // everything of the second one is dropped and reported (docs/DECISIONS.md D-055).
+    {
+        const Preset keys = makeCategoryPreset (Category::Keys);
+        Json v1 = presetToJsonValue (keys);
+        Json first = *v1.find ("engine");
+        v1.remove ("engine");
+        v1.set ("engineA", first);
+        v1.set ("engineB", presetToJsonValue (makeCategoryPreset (Category::Bell)).find ("engine") != nullptr ? *presetToJsonValue (makeCategoryPreset (Category::Bell)).find ("engine") : Json());
+        v1.set ("macrosB", *presetToJsonValue (makeCategoryPreset (Category::Bell)).find ("macros"));
+        v1.set ("matrixB", *presetToJsonValue (makeCategoryPreset (Category::Bell)).find ("matrix"));
+        Json morph = Json::object();
+        morph.set ("enabled", true); morph.set ("mode", "dual"); morph.set ("amount", 0.5f);
+        v1.set ("morph", morph);
+        v1.set ("schemaVersion", 1);
+        warnings.clear();
+        Preset from1;
+        CHECK (presetFromJsonValue (v1, from1, &err, &warnings));
+        CHECK (warnings.size() == 1 && warnings[0].find ("Morph") != std::string::npos);
+        CHECK (patchDataEqual (from1.data, keys.data));
+        // without a second sound there is nothing to report
+        v1.set ("engineB", Json());
+        v1.set ("macrosB", Json());
+        v1.set ("matrixB", Json());
+        warnings.clear();
+        CHECK (presetFromJsonValue (v1, from1, &err, &warnings));
+        CHECK (warnings.empty());
+        CHECK (patchDataEqual (from1.data, keys.data));
+        // what is written is schema 2, with a single "engine"
+        const Json written = presetToJsonValue (from1);
+        CHECK (written.find ("engine") != nullptr && written.find ("engineA") == nullptr && written.find ("engineB") == nullptr && written.find ("morph") == nullptr);
+    }
 
     Preset withSlot = makeCategoryPreset (Category::Pad);
     std::string text;
@@ -190,7 +213,7 @@ FM_TEST ("integration", "PRS-03 broken, unknown-version and extreme presets are 
     Preset loaded;
     CHECK (presetFromJson (text, loaded, &err, &warnings));
     CHECK (! warnings.empty());
-    CHECK (! loaded.data.a.matrix[0].enabled);
+    CHECK (! loaded.data.sound.matrix[0].enabled);
 
     // Fixture files on disk: everything under valid/ loads, everything under broken/ is refused.
     const std::string fixtures = std::string (FMLUME_SOURCE_DIR) + "/tests/Fixtures";
@@ -204,7 +227,7 @@ FM_TEST ("integration", "PRS-03 broken, unknown-version and extreme presets are 
     CHECK (brokenCount >= 10);
 }
 
-FM_TEST ("integration", "PRS-02 saved state restores an identical render (single, dual morph, arp, gate)")
+FM_TEST ("integration", "PRS-02 saved state restores an identical render (every category, arp, gate)")
 {
     const double sr = 48000.0;
     std::vector<NoteEvent> seq { { 0.0, noteOn (52, 100) }, { 0.05, noteOn (59, 80) }, { 0.3, cc (1, 90) }, { 0.5, bend (-0.4f) },
@@ -263,6 +286,18 @@ FM_TEST ("integration", "PRS-02 saved state restores an identical render (single
     Preset p;
     HostParams h;
     std::string err;
+    // A project saved before Morph was removed (D-055) still opens: the two host values are ignored.
+    {
+        const Preset keys = makeCategoryPreset (Category::Keys);
+        std::string state;
+        CHECK (stateToJson (keys, keys.data.host, state, &err));
+        const std::string marker = "\"fxBypassAll\"";
+        const size_t at = state.find (marker);
+        CHECK (at != std::string::npos);
+        if (at != std::string::npos) state.insert (at, "\"morphAmount\":0.5,\"morphEnabled\":true,");
+        CHECK (stateFromJson (state, p, h, &err));
+        CHECK (patchDataEqual (p.data, keys.data));
+    }
     CHECK (! stateFromJson ("{}", p, h, &err));
     CHECK (! stateFromJson ("garbage", p, h, &err));
     CHECK (! stateFromJson ("{\"fmlumeState\":7,\"preset\":{},\"host\":{}}", p, h, &err));
@@ -463,7 +498,7 @@ FM_TEST ("integration", "Preset loader: oversized metadata is dropped, out-of-ra
 
     // absurd numbers are rejected before any narrowing conversion
     CHECK (presetToJson (makeInitPreset(), json, &err));
-    const std::string key = "\"schemaVersion\": 1";
+    const std::string key = "\"schemaVersion\": 2";
     const size_t at = json.find (key);
     CHECK (at != std::string::npos);
     if (at != std::string::npos)

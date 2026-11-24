@@ -9,8 +9,8 @@ using namespace fmlume;
 PerformanceTab::PerformanceTab (Ctx& c)
     : ctx (c), portamento (c, pc::portamento, "Glide"),
       bend (c, "Bend Range", 1.0f, 24.0f, 1.0f, 2.0f, " st",
-            [this] (const Preset& p) { return sideOf (p, ctx.sideB()).engine.pitchBendRange; },
-            [this] (Preset& p, float v) { sideOf (p, ctx.sideB()).engine.pitchBendRange = v; }),
+            [this] (const Preset& p) { return p.data.sound.engine.pitchBendRange; },
+            [this] (Preset& p, float v) { p.data.sound.engine.pitchBendRange = v; }),
       presetLevel (c, "Preset Level", -24.0f, 12.0f, 0.1f, 0.0f, " dB",
                    [] (const Preset& p) { return p.data.out.levelDb; }, [] (Preset& p, float v) { p.data.out.levelDb = v; }),
       mono (c, "Mono", "One note at a time, last-note priority",
@@ -75,10 +75,9 @@ void PerformanceTab::refresh (const Preset& p)
     mono.refreshFrom (p);
     legato.refreshFrom (p);
     const HostParams h = ctx.proc.currentHostParams();
-    const bool dual = p.data.hasB && h.morphEnabled && resolveMorphKind (p.data, true) == MorphKind::Dual;
     juce::String t;
-    t << "Max simultaneous notes: " << (p.data.perf.mono ? 1 : SynthEngine::effectiveMaxNotes (h.polyphony, h.unison, dual, h.quality))
-      << "   (budget " << SynthEngine::subVoiceBudget (dual, h.quality) << " unison voices" << (dual ? " per engine in a layered morph)" : ")");
+    t << "Max simultaneous notes: " << (p.data.perf.mono ? 1 : SynthEngine::effectiveMaxNotes (h.polyphony, h.unison))
+      << "   (budget " << kMaxSubVoices << " unison voices)";
     voiceInfo.setText (t, juce::dontSendNotification);
 }
 } // namespace ui

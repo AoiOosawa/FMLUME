@@ -1,5 +1,5 @@
 // Parameter code table: one integer code per continuous patch parameter.
-// Used by macros, mod matrix, Explorer, Compatible Morph, JSON target ids and the UI.
+// Used by macros, mod matrix, Explorer, JSON target ids and the UI.
 #pragma once
 #include "Core/Model.h"
 #include <cmath>
@@ -92,9 +92,9 @@ inline float fromNorm (const ParamDesc& d, float n)
 int findEdge (const EnginePatch& e, int from, int to); // -1 if absent
 
 // Base (stored) value access. Edge codes exist only when the edge is present.
-bool paramExists (const PatchData& d, bool sideB, int code);
-float getParam (const PatchData& d, bool sideB, int code); // physical units; virtual -> neutral
-bool setParam (PatchData& d, bool sideB, int code, float value); // clamps; false if absent
+bool paramExists (const PatchData& d, int code);
+float getParam (const PatchData& d, int code); // physical units; virtual -> neutral
+bool setParam (PatchData& d, int code, float value); // clamps; false if absent
 
 bool isMacroTarget (int code);
 bool isModTarget (int code);

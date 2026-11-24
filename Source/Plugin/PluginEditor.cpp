@@ -9,7 +9,7 @@ FmlumeAudioProcessorEditor::FmlumeAudioProcessorEditor (FmlumeAudioProcessor& p)
     setLookAndFeel (&lookAndFeel);
     ctx.status = [this] (const juce::String& t, bool e) { setStatus (t, e); };
     ctx.refreshAll = [this] { refreshAll(); };
-    ctx.openBrowser = [this] (bool pickForSlotB) { showBrowser (true, pickForSlotB); };
+    ctx.openBrowser = [this] { showBrowser (true); };
 
     addAndMakeVisible (header);
     addAndMakeVisible (simple);
@@ -104,14 +104,14 @@ void FmlumeAudioProcessorEditor::showPage (bool adv)
     showBrowser (false);
 }
 
-void FmlumeAudioProcessorEditor::showBrowser (bool show, bool pickForSlotB)
+void FmlumeAudioProcessorEditor::showBrowser (bool show)
 {
     showingBrowser = show;
     header.browserOpen = show;
     browser.setVisible (show);
     simple.setVisible (! show && ! showingAdvanced);
     advanced.setVisible (! show && showingAdvanced);
-    if (show) browser.open (pickForSlotB);
+    if (show) browser.open();
     refreshAll();
 }
 
@@ -139,10 +139,10 @@ void FmlumeAudioProcessorEditor::timerCallback()
     if (processor.takeMidiPitchBend (wheel)) bendWheel.setDisplayValue (wheel);
     if (processor.takeMidiModWheel (wheel)) modWheel.setDisplayValue (wheel);
     // Refresh on a model change, a tab change, or a change of the host parameters that some
-    // read-outs are derived from (voice budget, morph state); those do not bump the model version.
+    // read-outs are derived from (voice budget); those do not bump the model version.
     const int tab = advanced.tabs.getCurrentTabIndex();
     const fmlume::HostParams h = processor.currentHostParams();
-    const int hostKey = h.polyphony | (h.unison << 6) | (h.quality << 10) | ((h.morphEnabled ? 1 : 0) << 12) | ((h.arpEnabled ? 1 : 0) << 13) | ((h.gateEnabled ? 1 : 0) << 14);
+    const int hostKey = h.polyphony | (h.unison << 6) | (h.quality << 10) | ((h.arpEnabled ? 1 : 0) << 13) | ((h.gateEnabled ? 1 : 0) << 14);
     if (processor.getModelVersion() != seenVersion || tab != seenTab || hostKey != seenHostKey)
     {
         seenTab = tab;

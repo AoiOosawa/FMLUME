@@ -2,7 +2,7 @@
 
 **The Power of FM. Without the Complexity.**
 
-macOS 用 AU（AUv2）/ VST3 / Standalone の6オペレーター FM/PM シンセサイザー。Simple モードの8マクロ・Sound Explorer・A/B Morph で、オペレーターやアルゴリズムを知らなくても音作りができ、Advanced モードでは自由接続FM・Mod Matrix・9種のFXを直接編集できます。
+macOS 用 AU（AUv2）/ VST3 / Standalone の6オペレーター FM/PM シンセサイザー。Simple モードの8マクロと Sound Explorer で、オペレーターやアルゴリズムを知らなくても音作りができ、Advanced モードでは自由接続FM・Mod Matrix・9種のFXを直接編集できます。
 
 - 仕様: [`SPEC.md`](SPEC.md)
 - 実装状況と実測結果: [`docs/IMPLEMENTATION_STATUS.md`](docs/IMPLEMENTATION_STATUS.md)
@@ -83,8 +83,7 @@ auval -v aumu Fmld Chbw   # 開発用。製品版は Fmlu
 2. **MACROS / CHARACTER** — `Brightness / Attack / Release / Character` とカテゴリ別の4マクロ。50%が元の音。
 3. **FX / TRANCE GATE / ARPEGGIATOR** — `Warmth / Width / Space / Echo`、ゲートのパターン（POLYBRISK と同じパターン集）、アルペジオのモードとレート。
 4. **VARIATIONS** — `Generate` で8つのバリエーションを作り、タイル（A〜H）をクリックして試聴、気に入ったら `Keep this sound`（元の音と置き換わります）。`More like this` でさらに派生、`Original` で元の音に戻ります。
-5. **MORPH** — `+ Add a second sound` で2つ目の音（B）を選び、スライダーで A⇄B をブレンド。
-6. **ADVANCED** — Operators（オペレーターカード＋波形・エンベロープのグラフ編集）/ Algorithm（テンプレート一覧と DX 風ダイアグラム、ドラッグで接続）/ Filter & Mod / FX / Rhythm / Performance。
+5. **ADVANCED** — Operators（オペレーターカード＋波形・エンベロープのグラフ編集）/ Algorithm（テンプレート一覧と DX 風ダイアグラム、ドラッグで接続）/ Filter & Mod / FX / Rhythm / Performance。
 
 ロゴとアイコンは `assets/branding/`（`python3 tools/branding/make_assets.py` で SVG を再生成、`fmlume-uisnap --icon` で PNG 化）。
 

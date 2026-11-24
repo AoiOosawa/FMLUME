@@ -22,7 +22,7 @@ constexpr int kGateSteps = 16;
 constexpr int kMaxPolyphony = 32;
 constexpr int kMaxUnison = 8;
 constexpr int kMaxSubVoices = 64;
-constexpr int kSchemaVersion = 1;
+constexpr int kSchemaVersion = 2;
 
 enum class Waveform : uint8_t { Sine, Triangle, Saw, Pulse, Count };
 enum class PitchMode : uint8_t { Ratio, Fixed, Count };
@@ -32,7 +32,6 @@ enum class Curve : uint8_t { Linear, Exp, SCurve, Count };
 enum class Polarity : uint8_t { Bipolar, Unipolar, Count };
 enum class ModSource : uint8_t { None, LFO1, LFO2, ModEnv, Velocity, Keytrack, ModWheel, Aftertouch,
                                  Macro1, Macro2, Macro3, Macro4, Macro5, Macro6, Macro7, Macro8, Count };
-enum class MorphMode : uint8_t { Auto, Compatible, Dual, Count };
 enum class FxType : uint8_t { EQ, Drive, Chorus, Phaser, Flanger, Compressor, Bitcrusher, Delay, Reverb, Count };
 enum class ArpMode : uint8_t { Up, Down, UpDown, Random, AsPlayed, Count };
 // How the arpeggiator walks through its octaves. Range: the note order runs across the whole
@@ -138,17 +137,12 @@ struct ModSlot
     bool enabled = false;
 };
 
-// One morph slot: sound engine + its own macro assignments + its own mod matrix (SPEC §12.1).
-struct EngineSide
+// The sound itself: engine + macro assignments + mod matrix (SPEC §12.1).
+struct SoundPatch
 {
     EnginePatch engine;
     std::array<Macro, kNumMacros> macros {};
     std::array<ModSlot, kNumModSlots> matrix {};
-};
-
-struct MorphState
-{
-    MorphMode mode = MorphMode::Auto;
 };
 
 struct ArpState
@@ -225,8 +219,6 @@ struct HostParams
     float spread = 50.0f;
     int quality = 1;
     std::array<float, kNumMacros> macro { 0.5f, 0.5f, 0.5f, 0.5f, 0.5f, 0.5f, 0.5f, 0.5f };
-    float morphAmount = 0.0f;
-    bool morphEnabled = false;
     bool fxBypassAll = false;
     std::array<float, kNumQuick> quick { 0.5f, 0.5f, 0.5f, 0.5f };
     bool arpEnabled = false;
@@ -235,13 +227,11 @@ struct HostParams
 
 struct PatchData
 {
-    EngineSide a, b;
-    bool hasB = false;
-    MorphState morph;
+    SoundPatch sound;
     PerformanceState perf;
     FxState fx;
     OutputState out;
-    // Preset-stored host values (polyphony, unison, detune, spread, morph, quick, arp/gate enable).
+    // Preset-stored host values (polyphony, unison, detune, spread, quick, arp/gate enable).
     HostParams host;
 };
 
@@ -257,9 +247,6 @@ struct PresetMeta
     std::string createdAt, modifiedAt;
     bool favorite = false;
     std::array<std::string, kNumMacros> macroNames;
-    std::array<std::string, kNumMacros> macroNamesB;
-    // Names of the two morph sounds as shown on the A / B cards. Empty slotNameA = displayName.
-    std::string slotNameA, slotNameB;
     std::string metadataJson = "{}"; // unknown extra metadata, preserved verbatim
 };
 

@@ -16,13 +16,10 @@ struct CompiledEngine
     uint64_t structureHash = 0;
 };
 
-enum class MorphKind : uint8_t { Off, Compatible, Dual };
-
 struct CompiledPatch
 {
     PatchData data;
-    CompiledEngine ea, eb;
-    bool compatible = false;   // A/B structurally compatible (SPEC §9.2)
+    CompiledEngine engine;
     uint64_t structureHash = 0;
     bool forceNewGeneration = false;
 };
@@ -44,9 +41,6 @@ ValidationResult validatePatch (const PatchData& d);
 // Repairs soft problems that validation only warns about (mod slots / macro mappings whose target
 // does not exist, e.g. a removed edge). Returns the number of items disabled.
 int sanitizeTargets (PatchData& d, std::vector<std::string>* warnings = nullptr);
-
-bool morphCompatible (const PatchData& d);
-MorphKind resolveMorphKind (const PatchData& d, bool morphEnabled);
 
 // Compiles a validated patch. Returns false (and leaves `out` untouched) if invalid.
 bool compilePatch (const PatchData& d, CompiledPatch& out, std::string* error = nullptr);

@@ -48,8 +48,6 @@ Layout FmlumeAudioProcessor::createLayout()
                                                          juce::StringArray { "Eco", "Standard", "High" }, 1));
     for (int i = 0; i < 8; ++i)
         l.add (percentParam (kMacroIds[i], "Macro " + juce::String (i + 1), 0.5f)); // host names are fixed (SPEC §6.1)
-    l.add (percentParam ("morph.amount", "Morph Amount", 0.0f));
-    l.add (std::make_unique<juce::AudioParameterBool> (juce::ParameterID { "morph.enabled", 1 }, "Morph Enabled", false));
     l.add (std::make_unique<juce::AudioParameterBool> (juce::ParameterID { "fx.bypassAll", 1 }, "FX Bypass All", false));
     static const char* const quickNames[4] = { "FX Warmth", "FX Width", "FX Space", "FX Echo" };
     for (int i = 0; i < 4; ++i) l.add (percentParam (kQuickIds[i], quickNames[i], 0.5f));
@@ -70,8 +68,6 @@ FmlumeAudioProcessor::FmlumeAudioProcessor()
     pSpread = apvts.getRawParameterValue ("master.spread");
     pQuality = apvts.getRawParameterValue ("master.quality");
     for (int i = 0; i < 8; ++i) pMacro[i] = apvts.getRawParameterValue (kMacroIds[i]);
-    pMorph = apvts.getRawParameterValue ("morph.amount");
-    pMorphOn = apvts.getRawParameterValue ("morph.enabled");
     pFxBypass = apvts.getRawParameterValue ("fx.bypassAll");
     for (int i = 0; i < 4; ++i) pQuick[i] = apvts.getRawParameterValue (kQuickIds[i]);
     pArp = apvts.getRawParameterValue ("arp.enabled");
@@ -119,8 +115,6 @@ HostParams FmlumeAudioProcessor::currentHostParams() const
     h.spread = pSpread->load();
     h.quality = juce::roundToInt (pQuality->load());
     for (int i = 0; i < 8; ++i) h.macro[(size_t) i] = pMacro[i]->load();
-    h.morphAmount = pMorph->load();
-    h.morphEnabled = pMorphOn->load() > 0.5f;
     h.fxBypassAll = pFxBypass->load() > 0.5f;
     for (int i = 0; i < 4; ++i) h.quick[(size_t) i] = pQuick[i]->load();
     h.arpEnabled = pArp->load() > 0.5f;
@@ -150,8 +144,6 @@ void FmlumeAudioProcessor::applyHostValues (const HostParams& h)
     setParam ("master.unison", (float) h.unison);
     setParam ("master.detune", h.detune);
     setParam ("master.spread", h.spread);
-    setParam ("morph.amount", h.morphAmount);
-    setParam ("morph.enabled", h.morphEnabled ? 1.0f : 0.0f);
     setParam ("arp.enabled", h.arpEnabled ? 1.0f : 0.0f);
     setParam ("tranceGate.enabled", h.gateEnabled ? 1.0f : 0.0f);
     // The host parameters now hold the preset's values (as the parameters quantise them).

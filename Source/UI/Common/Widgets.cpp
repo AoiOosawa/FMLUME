@@ -123,14 +123,14 @@ ModelKnob::ModelKnob (Ctx& c, int paramCode, const juce::String& text) : Knob (t
         // Snap applies to dragging only, so a typed value is taken as typed.
         if (slider.isMouseButtonDown() && ctx.snapRatios && fmlume::pc::isOp (code) && code % fmlume::kOpFieldCount == fmlume::kOpRatio)
             v = v < 1.0f ? std::round (v * 8.0f) / 8.0f : std::round (v * 2.0f) / 2.0f; // 0.5 steps (finer below 1)
-        if (! ctx.set (code, side(), v)) refresh();
+        if (! ctx.set (code, v)) refresh();
     };
     slider.onDragEnd = [this] {
         juce::MessageManager::callAsync ([safe = juce::Component::SafePointer<ModelKnob> (this)] { if (safe != nullptr) safe->refresh(); }); // show the stored (snapped) value
     };
     slider.onReset = [this] {
         if (code < 0) return;
-        ctx.set (code, side(), fmlume::paramDesc (code).def);
+        ctx.set (code, fmlume::paramDesc (code).def);
         refresh();
     };
     setCode (paramCode);
@@ -150,12 +150,12 @@ void ModelKnob::setCode (int paramCode)
 
 void ModelKnob::refresh()
 {
-    const bool present = code >= 0 && ctx.exists (code, side());
+    const bool present = code >= 0 && ctx.exists (code);
     setEnabled (present);
     slider.setEnabled (present);
     if (! present || slider.isMouseButtonDown()) return;
     updating = true;
-    slider.setValue (fmlume::toNorm (fmlume::paramDesc (code), ctx.get (code, side())), juce::dontSendNotification);
+    slider.setValue (fmlume::toNorm (fmlume::paramDesc (code), ctx.get (code)), juce::dontSendNotification);
     slider.updateText();
     updating = false;
 }

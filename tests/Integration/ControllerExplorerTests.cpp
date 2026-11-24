@@ -39,35 +39,35 @@ FM_TEST ("integration", "Controller: edits validate; Simple and Advanced share o
 
     // A knob drag = many edits; each reaches the model and marks it dirty.
     const int code = pc::edge (0, 1);
-    for (int i = 0; i < 20; ++i) CHECK (ctl.setParam (false, code, 1.0f + 0.1f * (float) i));
+    for (int i = 0; i < 20; ++i) CHECK (ctl.setParam (code, 1.0f + 0.1f * (float) i));
     CHECK (ctl.isDirty());
-    CHECK_NEAR (ctl.getParam (false, code), 2.9, 1.0e-5);
-    CHECK (ctl.setParam (false, pc::filterCutoff, 800.0f));
-    CHECK_NEAR (ctl.getParam (false, pc::filterCutoff), 800.0, 1.0e-3);
+    CHECK_NEAR (ctl.getParam (code), 2.9, 1.0e-5);
+    CHECK (ctl.setParam (pc::filterCutoff, 800.0f));
+    CHECK_NEAR (ctl.getParam (pc::filterCutoff), 800.0, 1.0e-3);
     CHECK (! patchDataEqual (ctl.data(), original));
 
     // Values are clamped by setParam; structurally invalid edits are refused and leave the model untouched.
-    CHECK (ctl.setParam (false, code, 999.0f));
-    CHECK_NEAR (ctl.getParam (false, code), 16.0, 1.0e-6);
+    CHECK (ctl.setParam (code, 999.0f));
+    CHECK_NEAR (ctl.getParam (code), 16.0, 1.0e-6);
     const PatchData before = ctl.data();
-    CHECK (! ctl.addEdge (false, 1, 0));            // 2>1 would close a loop with 1>2
+    CHECK (! ctl.addEdge (1, 0));            // 2>1 would close a loop with 1>2
     CHECK (! ctl.lastError().empty());
-    CHECK (! ctl.addEdge (false, 0, 1));            // duplicate
-    CHECK (! ctl.edit ([] (Preset& p) { for (auto& op : p.data.a.engine.operators) op.carrierGain = 0.0f; }));
-    CHECK (! ctl.edit ([] (Preset& p) { p.data.a.engine.operators[0].ratio = 1.0e6f; }));
+    CHECK (! ctl.addEdge (0, 1));            // duplicate
+    CHECK (! ctl.edit ([] (Preset& p) { for (auto& op : p.data.sound.engine.operators) op.carrierGain = 0.0f; }));
+    CHECK (! ctl.edit ([] (Preset& p) { p.data.sound.engine.operators[0].ratio = 1.0e6f; }));
     CHECK (patchDataEqual (ctl.data(), before));
-    CHECK (! ctl.setParam (false, pc::edge (4, 5), 1.0f)); // no such edge
+    CHECK (! ctl.setParam (pc::edge (4, 5), 1.0f)); // no such edge
 
     // Graph edits from "Advanced" and macro edits from "Simple" act on the same patch.
-    CHECK (ctl.addEdge (false, 1, 4, 2.0f) == false || true);
-    CHECK (ctl.applyAlgorithmTemplate (false, 2));
-    CHECK (matchAlgorithm (ctl.data().a.engine) == 2);
+    CHECK (ctl.addEdge (1, 4, 2.0f) == false || true);
+    CHECK (ctl.applyAlgorithmTemplate (2));
+    CHECK (matchAlgorithm (ctl.data().sound.engine) == 2);
     CHECK (validatePatch (ctl.data()).ok);
-    for (int m = 0; m < 4; ++m) CHECK (ctl.data().a.macros[(size_t) m].numMappings > 0); // macros still drive the new graph
-    CHECK (ctl.removeEdge (false, 0, 1));
+    for (int m = 0; m < 4; ++m) CHECK (ctl.data().sound.macros[(size_t) m].numMappings > 0); // macros still drive the new graph
+    CHECK (ctl.removeEdge (0, 1));
     CHECK (validatePatch (ctl.data()).ok);
-    CHECK (ctl.setOperatorEnabled (false, 0, false));
-    CHECK (! ctl.setOperatorEnabled (false, 2, false)); // last carrier cannot be disabled
+    CHECK (ctl.setOperatorEnabled (0, false));
+    CHECK (! ctl.setOperatorEnabled (2, false)); // last carrier cannot be disabled
     auto r = rig.play();
     CHECK (allFinite (r.l) && peak (r.l) > 0.01f);
 
@@ -211,8 +211,8 @@ FM_TEST ("integration", "EXP-02 preview / cancel / use / explore-from-this / his
     CHECK (ctl.preview (2));
     CHECK (ctl.useCandidate (2));
     CHECK (ctl.isDirty());
-    CHECK (ctl.data().a.engine.numEdges == pick.a.engine.numEdges);
-    CHECK (ctl.getParam (false, pc::op (1, kOpEnvD)) == getParam (pick, false, pc::op (1, kOpEnvD)));
+    CHECK (ctl.data().sound.engine.numEdges == pick.sound.engine.numEdges);
+    CHECK (ctl.getParam (pc::op (1, kOpEnvD)) == getParam (pick, pc::op (1, kOpEnvD)));
     const auto used = rig.play();
     CHECK (maxAbsDiff (used.l, reference.l) > 1.0e-4);
 
@@ -224,174 +224,15 @@ FM_TEST ("integration", "EXP-02 preview / cancel / use / explore-from-this / his
     CHECK (! ctl.preview (0) && ! ctl.useCandidate (0));
 }
 
-FM_TEST ("integration", "MOR-01 compatible vs dual selection; m = 0 equals A and m = 1 equals B")
-{
-    const double sr = 48000.0;
-    std::vector<NoteEvent> seq { { 0.0, noteOn (55, 100) }, { 0.1, noteOn (62, 90) }, { 0.6, noteOff (55) }, { 0.7, noteOff (62) } };
-    auto render = [&] (const PatchData& d, HostParams h) {
-        SynthEngine e;
-        e.prepare (sr, 256);
-        CHECK (e.setPatch (d));
-        auto r = renderSeq (e, sr, 256, 1.5, seq, h);
-        CHECK (allFinite (r.l));
-        return std::make_pair (r, e.getActiveMorphKind());
-    };
-    // Shared FX / performance come from the morph patch; only the engine side differs.
-    auto asSingle = [] (PatchData d, bool useB) {
-        if (useB) d.a = d.b;
-        d.hasB = false;
-        return d;
-    };
-
-    // --- compatible: same structure, different numbers
-    Preset base = makeCategoryPreset (Category::Keys);
-    PatchData comp = base.data;
-    comp.b = comp.a;
-    comp.hasB = true;
-    comp.b.engine.edges[0].index = 4.5f;
-    comp.b.engine.operators[1].env.d = 0.3f;
-    comp.b.engine.operators[0].ratio = 3.0f;
-    comp.b.engine.operators[3].level = 0.4f;
-    CHECK (morphCompatible (comp));
-    CHECK (resolveMorphKind (comp, true) == MorphKind::Compatible);
-    CHECK (resolveMorphKind (comp, false) == MorphKind::Off);
-
-    // --- dual: different graph
-    PatchData dual = base.data;
-    dual.b = makeCategoryPreset (Category::Bell).data.a;
-    dual.hasB = true;
-    CHECK (! morphCompatible (dual));
-    CHECK (resolveMorphKind (dual, true) == MorphKind::Dual);
-    PatchData forced = comp;
-    forced.morph.mode = MorphMode::Dual;
-    CHECK (resolveMorphKind (forced, true) == MorphKind::Dual);
-    PatchData wantCompat = dual;
-    wantCompat.morph.mode = MorphMode::Compatible; // incompatible -> falls back to dual automatically
-    CHECK (resolveMorphKind (wantCompat, true) == MorphKind::Dual);
-    // Waveform or filter-type mismatch also breaks compatibility.
-    PatchData wave = comp;
-    wave.b.engine.operators[1].waveform = Waveform::Saw;
-    CHECK (! morphCompatible (wave));
-    PatchData filt = comp;
-    filt.b.engine.filter.type = FilterType::LP12;
-    CHECK (! morphCompatible (filt));
-
-    for (auto* patch : { &comp, &dual, &forced })
-    {
-        HostParams h = patch->host;
-        h.morphEnabled = true;
-        h.morphAmount = 0.0f;
-        const auto at0 = render (*patch, h);
-        h.morphAmount = 1.0f;
-        const auto at1 = render (*patch, h);
-        h.morphAmount = 0.5f;
-        const auto mid = render (*patch, h);
-        HostParams off = patch->host;
-        const auto onlyA = render (asSingle (*patch, false), off);
-        const auto onlyB = render (asSingle (*patch, true), off);
-        CHECK (at0.second == resolveMorphKind (*patch, true));
-        CHECK (maxAbsDiff (at0.first.l, onlyA.first.l) < 1.0e-5);
-        CHECK (maxAbsDiff (at0.first.r, onlyA.first.r) < 1.0e-5);
-        CHECK (maxAbsDiff (at1.first.l, onlyB.first.l) < 1.0e-5);
-        CHECK (maxAbsDiff (at1.first.r, onlyB.first.r) < 1.0e-5);
-        CHECK (maxAbsDiff (mid.first.l, onlyA.first.l) > 1.0e-3);
-        CHECK (maxAbsDiff (mid.first.l, onlyB.first.l) > 1.0e-3);
-        CHECK (maxAbsDiff (onlyA.first.l, onlyB.first.l) > 1.0e-3);
-        // morph.enabled = off plays slot A regardless of the amount
-        HostParams disabled = patch->host;
-        disabled.morphAmount = 0.8f;
-        CHECK (maxAbsDiff (render (*patch, disabled).first.l, onlyA.first.l) < 1.0e-5);
-    }
-}
-
-FM_TEST ("integration", "MOR-02 fast morphing, slot management and morph presets")
-{
-    Rig rig;
-    auto& ctl = rig.ctl;
-    ctl.loadPreset (makeCategoryPreset (Category::EPiano));
-    CHECK (! ctl.data().hasB);
-    CHECK (ctl.loadIntoSlot (true, makeCategoryPreset (Category::Brass)));
-    CHECK (ctl.data().hasB);
-    CHECK (ctl.preset().meta.macroNamesB[4] == std::string ("Bite"));
-    CHECK (ctl.preset().meta.macroNames[4] == std::string ("Tine"));
-    // Shared FX / performance stay those of the morph patch (slot A's origin).
-    CHECK (ctl.data().fx.proc[(size_t) FxType::Chorus].p[3] == makeCategoryPreset (Category::EPiano).data.fx.proc[(size_t) FxType::Chorus].p[3]);
-    ctl.setEditingB (true);
-    CHECK (ctl.editingB());
-    CHECK (ctl.setParam (true, pc::op (1, kOpLevel), 0.7f));
-    CHECK_NEAR (ctl.data().b.engine.operators[1].level, 0.7, 1.0e-6);
-
-    // Rapid morph automation with held and re-triggered notes.
-    HostParams h = ctl.data().host;
-    h.morphEnabled = true;
-    h.unison = 2;
-    SynthEngine& e = rig.engine;
-    e.reset();
-    std::vector<float> l (256), r (256);
-    Pcg32 rng (42);
-    bool finite = true;
-    float maxJump = 0.0f, prev = 0.0f, pk = 0.0f;
-    for (int block = 0; block < 1500; ++block)
-    {
-        h.morphAmount = (block % 7 == 0) ? rng.nextFloat() : ((block / 3) % 2 ? 1.0f : 0.0f); // jumps every few blocks
-        if (block % 100 == 50) h.morphEnabled = ! h.morphEnabled;
-        MidiEvent ev[2];
-        int n = 0;
-        if (block % 40 == 0) ev[n++] = noteOn (48 + (block / 40) % 24, 100);
-        if (block % 40 == 30) ev[n++] = noteOff (48 + (block / 40) % 24);
-        e.process (l.data(), r.data(), 256, ev, n, h, {});
-        for (int i = 0; i < 256; ++i)
-        {
-            finite = finite && std::isfinite (l[(size_t) i]) && std::isfinite (r[(size_t) i]);
-            maxJump = std::max (maxJump, std::fabs (l[(size_t) i] - prev));
-            prev = l[(size_t) i];
-            pk = std::max (pk, std::fabs (l[(size_t) i]));
-        }
-    }
-    CHECK (finite);
-    CHECK (pk > 0.01f && pk <= 1.0f);
-    CHECK (maxJump < 0.25f); // crossfade smoothing: no hard steps even when the amount jumps
-    for (int i = 0; i < 2000; ++i) e.process (l.data(), r.data(), 256, nullptr, 0, h, {});
-    CHECK (e.getActiveVoiceCount() == 0); // every note-on got its note-off on both engines
-
-    // Morph preset = A + B + amount, saved and restored as two engines (never baked).
-    h.morphEnabled = true;
-    h.morphAmount = 0.42f;
-    const Preset saved = ctl.presetForSave (h);
-    std::string json;
-    CHECK (presetToJson (saved, json));
-    CHECK (json.find ("\"engineB\": {") != std::string::npos && json.find ("\"macrosB\": [") != std::string::npos);
-    Preset back;
-    CHECK (presetFromJson (json, back));
-    CHECK (back.data.hasB && back.data.host.morphEnabled);
-    CHECK_NEAR (back.data.host.morphAmount, 0.42, 1.0e-6);
-    CHECK (patchDataEqual (back.data, saved.data));
-
-    // Swap / copy / remove.
-    const PatchData beforeSwap = ctl.data();
-    CHECK (ctl.swapSlots());
-    CHECK (ctl.preset().meta.macroNames[4] == std::string ("Bite"));
-    CHECK (ctl.swapSlots());
-    CHECK (patchDataEqual (ctl.data(), beforeSwap));
-    CHECK (ctl.copySlot (false));
-    CHECK (morphCompatible (ctl.data()));
-    CHECK (ctl.removeSlotB());
-    CHECK (! ctl.data().hasB && ! ctl.editingB());
-    CHECK (! ctl.swapSlots());
-}
-
 FM_TEST ("integration", "Real-time safety: process() never allocates; patch hand-over is wait-free for the audio side")
 {
     const double sr = 48000.0;
     SynthEngine e;
     e.prepare (sr, 512);
     Preset p = makeCategoryPreset (Category::Pad);
-    p.data.b = makeCategoryPreset (Category::Bell).data.a;
-    p.data.hasB = true;
     for (auto& pr : p.data.fx.proc) pr.enabled = true;
     CHECK (e.setPatch (p.data));
     HostParams h = p.data.host;
-    h.morphEnabled = true;
     h.arpEnabled = true;
     h.gateEnabled = true;
     h.unison = 4;
@@ -412,7 +253,6 @@ FM_TEST ("integration", "Real-time safety: process() never allocates; patch hand
         if (block % 5 == 0) ev[n++] = noteOn (36 + rng.nextInt (48), 1 + rng.nextInt (127));
         if (block % 5 == 3) { MidiEvent off; off.type = MidiEvent::AllNotesOff; if (block % 50 == 3) ev[n++] = off; else ev[n++] = noteOff (36 + rng.nextInt (48)); }
         if (block % 11 == 0) ev[n++] = bend (rng.nextBipolar());
-        h.morphAmount = rng.nextFloat();
         h.macro[(size_t) rng.nextInt (8)] = rng.nextFloat();
         h.quality = (block / 500) % 3;
         h.unison = 1 + (block / 200) % 8;
@@ -430,36 +270,6 @@ FM_TEST ("integration", "Real-time safety: process() never allocates; patch hand
     CHECK (allocs == 0);
     CHECK (finite);
     CHECK (e.getAppliedGeneration() > 0);
-}
-
-FM_TEST ("integration", "Morph slot names are kept in the preset, travel with a swap and survive a save")
-{
-    Rig rig;
-    auto& ctl = rig.ctl;
-    Preset a = makeCategoryPreset (Category::Keys);
-    a.meta.displayName = "Sound A";
-    ctl.loadPreset (a);
-    Preset b = makeCategoryPreset (Category::Bell);
-    b.meta.displayName = "Sound B";
-    CHECK (ctl.loadIntoSlot (true, b));
-    CHECK (ctl.preset().meta.slotNameB == "Sound B");
-    CHECK (ctl.preset().meta.slotNameA.empty()); // A is the preset itself
-
-    std::string json, err;
-    CHECK (presetToJson (ctl.preset(), json, &err));
-    Preset back;
-    CHECK (presetFromJson (json, back, &err, nullptr));
-    CHECK (back.meta.slotNameB == "Sound B");
-
-    CHECK (ctl.swapSlots());
-    CHECK (ctl.preset().meta.slotNameA == "Sound B");
-    CHECK (ctl.preset().meta.slotNameB == "Sound A");
-    CHECK (ctl.removeSlotB());
-    CHECK (ctl.preset().meta.slotNameA.empty() && ctl.preset().meta.slotNameB.empty());
-
-    // a preset without a B side never carries slot names
-    CHECK (presetToJson (ctl.preset(), json, &err));
-    CHECK (json.find ("slotNames") == std::string::npos);
 }
 
 FM_TEST ("integration", "Controller: moving a preset-stored host value (macro, unison, ...) marks the preset edited")
@@ -483,7 +293,6 @@ FM_TEST ("integration", "Controller: moving a preset-stored host value (macro, u
     HostParams h = live;
     h.unison += 1;          CHECK (ctl.isDirty (h)); h = live;
     h.quick[1] = 0.9f;      CHECK (ctl.isDirty (h)); h = live;
-    h.morphAmount = 0.75f;  CHECK (ctl.isDirty (h)); h = live;
     h.arpEnabled = ! h.arpEnabled; CHECK (ctl.isDirty (h)); h = live;
 
     // session settings are not part of a preset (D-010)

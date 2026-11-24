@@ -16,7 +16,7 @@ const juce::Colour text { 0xffe8e9f3 };
 const juce::Colour textDim { 0xff9a9db8 };
 const juce::Colour accent { 0xff3cd6ff };  // cyan: FMLUME hero colour
 const juce::Colour violet { 0xff8a6bff };  // gradient partner of the hero colour
-const juce::Colour accentB { 0xffff6a3c }; // orange: morph slot B, secondary emphasis
+const juce::Colour accentB { 0xffff6a3c }; // orange: secondary emphasis
 const juce::Colour hot { 0xffff3c8e };     // pink
 const juce::Colour warm { 0xffffd23c };    // yellow
 const juce::Colour good { 0xff5fe0a0 };

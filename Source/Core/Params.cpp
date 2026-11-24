@@ -89,7 +89,7 @@ const ParamDesc kFxDescs[kNumFx][kFxParams] = {
       { "wet", 0, 1, 0.25f, Scale::Linear, W, "" }, kNoParam, kNoParam, kNoParam },
 };
 
-float* enginePtr (EngineSide& s, int code)
+float* enginePtr (SoundPatch& s, int code)
 {
     auto& e = s.engine;
     if (pc::isOp (code))
@@ -138,9 +138,9 @@ float* enginePtr (EngineSide& s, int code)
     return nullptr;
 }
 
-float* dataPtr (PatchData& d, bool sideB, int code)
+float* dataPtr (PatchData& d, int code)
 {
-    if (pc::isEngine (code)) return enginePtr (sideB ? d.b : d.a, code);
+    if (pc::isEngine (code)) return enginePtr (d.sound, code);
     if (pc::isFx (code))
     {
         const int rel = code - pc::fxBase;
@@ -179,23 +179,23 @@ int findEdge (const EnginePatch& e, int from, int to)
     return -1;
 }
 
-bool paramExists (const PatchData& d, bool sideB, int code)
+bool paramExists (const PatchData& d, int code)
 {
     if (code < 0 || code >= pc::total) return false;
     if (paramDesc (code).flags & kFlagVirtual) return true;
-    return dataPtr (const_cast<PatchData&> (d), sideB, code) != nullptr;
+    return dataPtr (const_cast<PatchData&> (d), code) != nullptr;
 }
 
-float getParam (const PatchData& d, bool sideB, int code)
+float getParam (const PatchData& d, int code)
 {
     const auto& desc = paramDesc (code);
-    if (const float* p = dataPtr (const_cast<PatchData&> (d), sideB, code)) return *p;
+    if (const float* p = dataPtr (const_cast<PatchData&> (d), code)) return *p;
     return desc.def;
 }
 
-bool setParam (PatchData& d, bool sideB, int code, float value)
+bool setParam (PatchData& d, int code, float value)
 {
-    float* p = dataPtr (d, sideB, code);
+    float* p = dataPtr (d, code);
     if (p == nullptr) return false;
     const auto& desc = paramDesc (code);
     value = clampf (value, desc.min, desc.max);

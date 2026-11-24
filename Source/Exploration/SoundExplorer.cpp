@@ -20,7 +20,7 @@ const float kMinDistance[] = { 0.004f, 0.010f, 0.018f };
 const float kHarmonicRatios[] = { 0.5f, 1.0f, 2.0f, 3.0f, 4.0f, 5.0f, 6.0f, 7.0f, 8.0f, 10.0f, 14.0f };
 const float kMetallicRatios[] = { 1.41f, 2.76f, 3.5f, 5.19f, 7.07f, 9.23f, 11.3f };
 
-bool macroTargets (const EngineSide& s, int macro, int code)
+bool macroTargets (const SoundPatch& s, int macro, int code)
 {
     const auto& m = s.macros[(size_t) macro];
     for (int k = 0; k < m.numMappings; ++k)
@@ -31,7 +31,7 @@ bool macroTargets (const EngineSide& s, int macro, int code)
 bool lockedByMacro (const PatchData& d, const ExploreLocks& locks, int code)
 {
     for (int i = 0; i < kNumMacros; ++i)
-        if (locks.macros[(size_t) i] && macroTargets (d.a, i, code)) return true;
+        if (locks.macros[(size_t) i] && macroTargets (d.sound, i, code)) return true;
     return false;
 }
 
@@ -53,8 +53,8 @@ bool explorable (const PatchData& d, int code)
     if (code == pc::portamento) return false;
     const auto& desc = paramDesc (code);
     if (desc.name == nullptr || (desc.flags & (kFlagDiscrete | kFlagVirtual))) return false;
-    if (! paramExists (d, false, code)) return false;
-    const auto& e = d.a.engine;
+    if (! paramExists (d, code)) return false;
+    const auto& e = d.sound.engine;
     if (pc::isOp (code))
     {
         const auto& op = e.operators[(size_t) (code / kOpFieldCount)];
@@ -73,18 +73,18 @@ bool explorable (const PatchData& d, int code)
     if (code == pc::filterCutoff || code == pc::filterRes || code == pc::filterDrive) return e.filter.type != FilterType::Off;
     if (code >= pc::matrixDepthBase && code < pc::engineCount)
     {
-        const auto& m = d.a.matrix[(size_t) (code - pc::matrixDepthBase)];
+        const auto& m = d.sound.matrix[(size_t) (code - pc::matrixDepthBase)];
         return m.enabled;
     }
     if (code == pc::lfo1Rate || code == pc::lfo2Rate)
     {
         const ModSource src = code == pc::lfo1Rate ? ModSource::LFO1 : ModSource::LFO2;
-        for (auto& m : d.a.matrix) if (m.enabled && m.source == src) return true;
+        for (auto& m : d.sound.matrix) if (m.enabled && m.source == src) return true;
         return false;
     }
     if (code >= pc::modEnvA && code <= pc::modEnvR)
     {
-        for (auto& m : d.a.matrix) if (m.enabled && m.source == ModSource::ModEnv) return true;
+        for (auto& m : d.sound.matrix) if (m.enabled && m.source == ModSource::ModEnv) return true;
         return false;
     }
     if (pc::isFx (code)) return d.fx.proc[(size_t) ((code - pc::fxBase) / kFxParams)].enabled;
@@ -108,7 +108,7 @@ bool nonInteger (float ratio) { return std::fabs (ratio - std::round (ratio)) > 
 // Direction bias in units of sigma for one parameter.
 float directionBias (ExploreDirection dir, const PatchData& d, int code)
 {
-    const auto& e = d.a.engine;
+    const auto& e = d.sound.engine;
     const uint32_t flags = paramDesc (code).flags;
     const bool isEdgeIdx = pc::isEdge (code);
     const bool isFb = pc::isOp (code) && code % kOpFieldCount == kOpFeedback;
@@ -181,7 +181,6 @@ float renderRms (const PatchData& d, bool& finite, float& peak)
     h.gainDb = 0.0f;
     h.arpEnabled = false;
     h.gateEnabled = false;
-    h.morphEnabled = false;
     h.fxBypassAll = false;
     float l[512], r[512];
     double acc = 0.0;
@@ -234,7 +233,7 @@ const char* exploreStrengthName (ExploreStrength s) { return kStrengthNames[std:
 ExploreScores SoundExplorer::score (const PatchData& d)
 {
     ExploreScores s;
-    const auto& e = d.a.engine;
+    const auto& e = d.sound.engine;
     float idxSum = 0.0f, metal = 0.0f, attack = 0.0f, modDecay = 0.0f;
     int carriers = 0, mods = 0;
     for (int i = 0; i < e.numEdges; ++i)
@@ -264,7 +263,7 @@ ExploreScores SoundExplorer::score (const PatchData& d)
     s.softness = avgAttack - idxSum * 0.3f;
     s.punch = (1.0f - avgAttack) * 0.5f + (mods > 0 ? (1.0f - modDecay / (float) mods) * 0.3f : 0.0f) + idxSum * 0.3f;
     float motion = 0.0f;
-    for (auto& m : d.a.matrix)
+    for (auto& m : d.sound.matrix)
         if (m.enabled && (m.source == ModSource::LFO1 || m.source == ModSource::LFO2))
             motion += std::fabs (m.depth) * (0.5f + toNorm (paramDesc (pc::lfo1Rate), e.lfo[m.source == ModSource::LFO1 ? 0 : 1].rateHz));
     const auto& ch = d.fx.proc[(size_t) FxType::Chorus];
@@ -281,19 +280,19 @@ float SoundExplorer::distance (const PatchData& a, const PatchData& b)
     {
         const auto& d = paramDesc (c);
         if (d.name == nullptr || (d.flags & kFlagVirtual)) continue;
-        const bool ea = paramExists (a, false, c), eb = paramExists (b, false, c);
+        const bool ea = paramExists (a, c), eb = paramExists (b, c);
         if (! ea && ! eb) continue;
         ++n;
         if (ea != eb) { sum += 0.5f; continue; }
-        sum += std::fabs (toNorm (d, getParam (a, false, c)) - toNorm (d, getParam (b, false, c)));
+        sum += std::fabs (toNorm (d, getParam (a, c)) - toNorm (d, getParam (b, c)));
     }
     return n > 0 ? sum / (float) n : 0.0f;
 }
 
 bool SoundExplorer::locksRespected (const PatchData& parent, const PatchData& cand, const ExploreLocks& locks)
 {
-    const auto& pe = parent.a.engine;
-    const auto& ce = cand.a.engine;
+    const auto& pe = parent.sound.engine;
+    const auto& ce = cand.sound.engine;
     if (locks.graph)
     {
         if (pe.numEdges != ce.numEdges) return false;
@@ -313,8 +312,8 @@ bool SoundExplorer::locksRespected (const PatchData& parent, const PatchData& ca
         if (locks.fx && pc::isFx (c)) locked = true;
         if (lockedByMacro (parent, locks, c)) locked = true;
         if (! locked) continue;
-        if (paramExists (parent, false, c) != paramExists (cand, false, c)) return false;
-        if (paramExists (parent, false, c) && getParam (parent, false, c) != getParam (cand, false, c)) return false;
+        if (paramExists (parent, c) != paramExists (cand, c)) return false;
+        if (paramExists (parent, c) && getParam (parent, c) != getParam (cand, c)) return false;
     }
     if (locks.fx)
     {
@@ -325,8 +324,8 @@ bool SoundExplorer::locksRespected (const PatchData& parent, const PatchData& ca
     for (int i = 0; i < kNumMacros; ++i)
         if (locks.macros[(size_t) i])
         {
-            const auto& pm = parent.a.macros[(size_t) i];
-            const auto& cm = cand.a.macros[(size_t) i];
+            const auto& pm = parent.sound.macros[(size_t) i];
+            const auto& cm = cand.sound.macros[(size_t) i];
             if (pm.numMappings != cm.numMappings) return false;
             for (int k = 0; k < pm.numMappings; ++k)
                 if (pm.mappings[(size_t) k].target != cm.mappings[(size_t) k].target || pm.mappings[(size_t) k].amount != cm.mappings[(size_t) k].amount) return false;
@@ -373,7 +372,7 @@ std::vector<ExploreCandidate> SoundExplorer::generate (const PatchData& parent, 
             const uint64_t candSeed = mix64 (seed ^ mix64 ((uint64_t) i * 0x9E3779B97F4A7C15ULL + (uint64_t) attempt * 0xD1B54A32D192ED03ULL + 1u));
             Pcg32 rng (candSeed, (uint64_t) i + 11u);
             PatchData d = parent;
-            auto& e = d.a.engine;
+            auto& e = d.sound.engine;
 
             // 1. Optional routing swap (Wild, unlocked only): another validated template with the same operator count.
             if (mayChangeGraph && rng.nextFloat() < 0.35f)
@@ -392,7 +391,7 @@ std::vector<ExploreCandidate> SoundExplorer::generate (const PatchData& parent, 
                 {
                     applyAlgorithm (e, options[rng.nextInt (numOptions)], 1.5f);
                     sanitizeTargets (d);
-                    assignCommonMacros (d, false);
+                    assignCommonMacros (d);
                 }
             }
 
@@ -418,7 +417,7 @@ std::vector<ExploreCandidate> SoundExplorer::generate (const PatchData& parent, 
                 int freeSlot = -1;
                 for (int s = 0; s < kNumModSlots; ++s)
                 {
-                    const auto& m = d.a.matrix[(size_t) s];
+                    const auto& m = d.sound.matrix[(size_t) s];
                     if (m.enabled && (m.source == ModSource::LFO1 || m.source == ModSource::LFO2) && std::fabs (m.depth) > 0.005f) hasLfo = true;
                     if (! m.enabled && freeSlot < 0) freeSlot = s;
                 }
@@ -427,7 +426,7 @@ std::vector<ExploreCandidate> SoundExplorer::generate (const PatchData& parent, 
                     int target = e.filter.type != FilterType::Off ? pc::filterCutoff : -1;
                     for (int k = 0; k < e.numEdges && target < 0; ++k) target = pc::edge (e.edges[(size_t) k].from, e.edges[(size_t) k].to);
                     if (target < 0) target = pc::pan;
-                    setModSlot (d.a, freeSlot, ModSource::LFO1, target, 0.04f + 0.08f * rng.nextFloat());
+                    setModSlot (d.sound, freeSlot, ModSource::LFO1, target, 0.04f + 0.08f * rng.nextFloat());
                     if (! lockedByMacro (parent, settings.locks, pc::lfo1Rate)) e.lfo[0].rateHz = 0.2f * std::pow (20.0f, rng.nextFloat());
                 }
             }
@@ -445,7 +444,7 @@ std::vector<ExploreCandidate> SoundExplorer::generate (const PatchData& parent, 
                 const bool chosen = rng.nextFloat() < pick;
                 const float noise = rng.nextGaussian();
                 if (! chosen && bias == 0.0f) continue;
-                float n = toNorm (desc, getParam (d, false, c));
+                float n = toNorm (desc, getParam (d, c));
                 float delta = (chosen ? noise * sigma * scale * (bias != 0.0f ? 0.5f : 1.0f) : 0.0f) + bias * sigma * scale;
                 if (settings.direction == ExploreDirection::MoreMotion && c >= pc::matrixDepthBase && c < pc::engineCount)
                 {
@@ -460,8 +459,8 @@ std::vector<ExploreCandidate> SoundExplorer::generate (const PatchData& parent, 
                 {
                     const int f = c % kOpFieldCount;
                     if (f == kOpCarrierGain) n = std::max (n, 0.25f);
-                    if (f == kOpLevel) n = std::max (n, d.a.engine.operators[(size_t) (c / kOpFieldCount)].carrierGain > 0.0f ? 0.4f : 0.05f);
-                    if (f == kOpEnvS && d.a.engine.operators[(size_t) (c / kOpFieldCount)].carrierGain > 0.0f) n = std::max (n, 0.0f);
+                    if (f == kOpLevel) n = std::max (n, d.sound.engine.operators[(size_t) (c / kOpFieldCount)].carrierGain > 0.0f ? 0.4f : 0.05f);
+                    if (f == kOpEnvS && d.sound.engine.operators[(size_t) (c / kOpFieldCount)].carrierGain > 0.0f) n = std::max (n, 0.0f);
                     if (f == kOpDetune) n = clampf (n, 0.35f, 0.65f);
                 }
                 if (pc::isEdge (c)) n = std::min (n, 0.75f);                 // <= 12 rad
@@ -469,7 +468,7 @@ std::vector<ExploreCandidate> SoundExplorer::generate (const PatchData& parent, 
                 if (c == pc::filterRes) n = std::min (n, 0.9f);
                 if (c == pc::fx (FxType::Delay, 3) || c == pc::fx (FxType::Phaser, 2) || c == pc::fx (FxType::Flanger, 2)) n = std::min (n, 0.85f);
                 if (c == pc::fx (FxType::Drive, 3) || c == pc::fx (FxType::Compressor, 4)) continue; // output trims stay put
-                setParam (d, false, c, fromNorm (desc, n));
+                setParam (d, c, fromNorm (desc, n));
             }
 
             // 5. Validate, check locks / safety / uniqueness, normalise loudness.
@@ -499,12 +498,12 @@ std::vector<ExploreCandidate> SoundExplorer::generate (const PatchData& parent, 
                 if (! explorable (d, c) || lockedByMacro (parent, settings.locks, c)) continue;
                 if ((settings.locks.envelopes && isEnvCode (c)) || (settings.locks.fx && pc::isFx (c))) continue;
                 const auto& desc = paramDesc (c);
-                const float n = toNorm (desc, getParam (d, false, c));
+                const float n = toNorm (desc, getParam (d, c));
                 const float n2 = clampf (n + step, 0.05f, 0.75f);
                 if (pc::isOp (c) && c % kOpFieldCount == kOpCarrierGain) continue;
                 if (std::fabs (n2 - n) < 1.0e-4f) continue;
                 PatchData trial = d;
-                setParam (trial, false, c, fromNorm (desc, n2));
+                setParam (trial, c, fromNorm (desc, n2));
                 if (isSafe (trial)) { d = trial; changed = true; }
             }
             best.data = d;

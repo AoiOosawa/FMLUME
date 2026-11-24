@@ -12,12 +12,9 @@ struct Refreshable
     virtual void refreshFrom (const fmlume::Preset&) = 0;
 };
 
-inline fmlume::EngineSide& sideOf (fmlume::Preset& p, bool b) { return b ? p.data.b : p.data.a; }
-inline const fmlume::EngineSide& sideOf (const fmlume::Preset& p, bool b) { return b ? p.data.b : p.data.a; }
-
-// The operator selected in the Operators / Algorithm tabs, in the slot being edited.
-inline fmlume::OperatorState& selectedOperator (fmlume::Preset& p, Ctx& ctx) { return sideOf (p, ctx.sideB()).engine.operators[(size_t) ctx.selectedOp]; }
-inline const fmlume::OperatorState& selectedOperator (const fmlume::Preset& p, Ctx& ctx) { return sideOf (p, ctx.sideB()).engine.operators[(size_t) ctx.selectedOp]; }
+// The operator selected in the Operators / Algorithm tabs.
+inline fmlume::OperatorState& selectedOperator (fmlume::Preset& p, Ctx& ctx) { return p.data.sound.engine.operators[(size_t) ctx.selectedOp]; }
+inline const fmlume::OperatorState& selectedOperator (const fmlume::Preset& p, Ctx& ctx) { return p.data.sound.engine.operators[(size_t) ctx.selectedOp]; }
 
 // Horizontal slider with caption for a float field.
 class BoundSlider final : public juce::Component, public Refreshable

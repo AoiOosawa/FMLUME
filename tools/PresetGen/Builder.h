@@ -23,7 +23,7 @@ struct B
     Preset p;
     explicit B (Category c) : p (makeCategoryPreset (c)) {}
     PatchData& d() { return p.data; }
-    EnginePatch& e() { return p.data.a.engine; }
+    EnginePatch& e() { return p.data.sound.engine; }
     OperatorState& o (int k) { return e().operators[(size_t) (k - 1)]; }
 
     B& name (const char* n) { p.meta.displayName = n; return *this; }
@@ -31,7 +31,7 @@ struct B
     B& tags (std::initializer_list<const char*> t) { p.meta.tags.assign (t.begin(), t.end()); return *this; }
 
     // ---- operators / routing
-    B& clear() { for (auto& op : e().operators) op = OperatorState {}; e().numEdges = 0; for (auto& m : d().a.matrix) m = ModSlot {}; for (int i = 4; i < 8; ++i) d().a.macros[(size_t) i] = Macro {}; return *this; }
+    B& clear() { for (auto& op : e().operators) op = OperatorState {}; e().numEdges = 0; for (auto& m : d().sound.matrix) m = ModSlot {}; for (int i = 4; i < 8; ++i) d().sound.macros[(size_t) i] = Macro {}; return *this; }
     B& op (int k, float ratio, float level, float a, float dcy, float s, float r, float carrier = 0.0f) { o (k) = makeOp (ratio, level, a, dcy, s, r, carrier); return *this; }
     B& ratio (int k, float v) { o (k).ratio = v; return *this; }
     B& level (int k, float v) { o (k).level = v; return *this; }
@@ -56,12 +56,12 @@ struct B
     B& lfo (int i, float rate, LfoShape shape = LfoShape::Sine, bool retrig = false) { auto& l = e().lfo[(size_t) (i - 1)]; l.rateHz = rate; l.shape = shape; l.retrig = retrig; l.sync = false; return *this; }
     B& lfoSync (int i, int div, LfoShape shape = LfoShape::Sine) { auto& l = e().lfo[(size_t) (i - 1)]; l.sync = true; l.syncDiv = (uint8_t) div; l.shape = shape; l.retrig = true; return *this; }
     B& modEnv (float a, float dcy, float s, float r) { e().modEnv = { a, dcy, s, r }; return *this; }
-    B& mod (int slot, ModSource src, int target, float depth) { setModSlot (d().a, slot, src, target, depth); return *this; }
+    B& mod (int slot, ModSource src, int target, float depth) { setModSlot (d().sound, slot, src, target, depth); return *this; }
     B& bend (float semis) { e().pitchBendRange = semis; return *this; }
 
     // ---- macros 5..8 (category macros). u = unipolar "add from zero" mappings.
-    B& m (int macro, Map maps) { auto& mc = d().a.macros[(size_t) (macro - 1)]; mc = Macro {}; for (auto& kv : maps) addMapping (mc, kv.first, kv.second); return *this; }
-    B& mu (int macro, Map maps) { auto& mc = d().a.macros[(size_t) (macro - 1)]; for (auto& kv : maps) addMapping (mc, kv.first, kv.second, Curve::Linear, Polarity::Unipolar, 0.5f, 1.0f); return *this; }
+    B& m (int macro, Map maps) { auto& mc = d().sound.macros[(size_t) (macro - 1)]; mc = Macro {}; for (auto& kv : maps) addMapping (mc, kv.first, kv.second); return *this; }
+    B& mu (int macro, Map maps) { auto& mc = d().sound.macros[(size_t) (macro - 1)]; for (auto& kv : maps) addMapping (mc, kv.first, kv.second, Curve::Linear, Polarity::Unipolar, 0.5f, 1.0f); return *this; }
     B& mname (int macro, const char* n) { p.meta.macroNames[(size_t) (macro - 1)] = n; return *this; }
 
     // ---- performance

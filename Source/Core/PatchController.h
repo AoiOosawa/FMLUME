@@ -1,5 +1,5 @@
 // Single owner of the editable patch (Canonical Model) on the non-realtime side.
-// Every UI edit, preset load, Explorer action and morph-slot operation goes through here, so
+// Every UI edit, preset load and Explorer action goes through here, so
 // Simple and Advanced always edit the same state (SPEC §6.4). Message-thread only.
 #pragma once
 #include "Core/Model.h"
@@ -27,7 +27,7 @@ public:
     const Preset& preset() const { return current; }
     const PatchData& data() const { return current.data; }
     bool isDirty() const { return dirty; }
-    // The preset also stores host values (macros, quick FX, unison, morph amount, ...) that live in
+    // The preset also stores host values (macros, quick FX, unison, ...) that live in
     // the host parameters, not in the model. The owner records them whenever they match the preset
     // (after a load / state restore / save); moving one of them afterwards makes the preset dirty too.
     void setHostBaseline (const HostParams& h) { hostBaseline = h; }
@@ -39,14 +39,14 @@ public:
     // Applies an edit. The mutated copy is validated first; invalid results are rejected and
     // never reach the engine. There is no undo history (docs/DECISIONS.md D-042).
     bool edit (const std::function<void (Preset&)>& fn, bool forceNew = false);
-    bool setParam (bool sideB, int code, float value);
-    float getParam (bool sideB, int code) const;
+    bool setParam (int code, float value);
+    float getParam (int code) const;
 
     // Graph editing helpers (Advanced > Algorithm). All keep the patch valid.
-    bool addEdge (bool sideB, int from, int to, float index = 1.5f);
-    bool removeEdge (bool sideB, int from, int to);
-    bool setOperatorEnabled (bool sideB, int op, bool enabled);
-    bool applyAlgorithmTemplate (bool sideB, int templateIndex);
+    bool addEdge (int from, int to, float index = 1.5f);
+    bool removeEdge (int from, int to);
+    bool setOperatorEnabled (int op, bool enabled);
+    bool applyAlgorithmTemplate (int templateIndex);
 
     // ---- presets --------------------------------------------------------------------------
     void loadPreset (const Preset& p);
@@ -55,14 +55,6 @@ public:
     // The current preset with live host values folded in (what gets written to disk / state).
     Preset presetForSave (const HostParams& live) const;
     bool setState (const Preset& p); // host project state: not dirty
-
-    // ---- morph slots (SPEC §9, §12.1) -------------------------------------------------------
-    bool loadIntoSlot (bool sideB, const Preset& source); // copies engine + macros + matrix only
-    bool removeSlotB();
-    bool swapSlots();
-    bool copySlot (bool fromB);                            // duplicate one slot into the other
-    bool editingB() const { return editB && current.data.hasB; }
-    void setEditingB (bool b);
 
     // ---- Sound Explorer (SPEC §8, §14.3) ----------------------------------------------------
     ExploreSettings exploreSettings;
@@ -97,7 +89,6 @@ private:
     bool dirty = false;
     HostParams hostBaseline;
     std::string error;
-    bool editB = false;
 
     PatchData exploreParent;
     bool exploreActive = false;

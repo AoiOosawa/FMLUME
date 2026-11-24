@@ -1,12 +1,12 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "https://fmlume.invalid/schemas/fmlume-preset.schema.json",
-  "title": "FMLUME preset (.fmlume), schemaVersion 1",
+  "title": "FMLUME preset (.fmlume), schemaVersion 2",
   "description": "Structural schema. Rules a JSON Schema cannot express are enforced by the loader: the operator graph must be acyclic with no self or duplicate edges; at least one enabled operator needs carrierGain > 0 and level > 0; fx.processors must contain each effect type exactly once; macro targets must be continuous parameters; mapping min <= max. See docs/PRESET_SCHEMA.md.",
   "type": "object",
   "properties": {
     "schemaVersion": {
-      "const": 1
+      "const": 2
     },
     "pluginVersion": {
       "type": "string"
@@ -54,44 +54,8 @@
     "favorite": {
       "type": "boolean"
     },
-    "engineA": {
+    "engine": {
       "$ref": "#/$defs/EnginePatch"
-    },
-    "engineB": {
-      "oneOf": [
-        {
-          "type": "null"
-        },
-        {
-          "$ref": "#/$defs/EnginePatch"
-        }
-      ]
-    },
-    "morph": {
-      "type": "object",
-      "properties": {
-        "enabled": {
-          "type": "boolean"
-        },
-        "mode": {
-          "enum": [
-            "auto",
-            "compatible",
-            "dual"
-          ]
-        },
-        "amount": {
-          "type": "number",
-          "minimum": 0,
-          "maximum": 1
-        }
-      },
-      "required": [
-        "enabled",
-        "mode",
-        "amount"
-      ],
-      "additionalProperties": false
     },
     "macros": {
       "type": "array",
@@ -108,36 +72,6 @@
       },
       "minItems": 8,
       "maxItems": 8
-    },
-    "macrosB": {
-      "oneOf": [
-        {
-          "type": "null"
-        },
-        {
-          "type": "array",
-          "items": {
-            "$ref": "#/$defs/Macro"
-          },
-          "minItems": 8,
-          "maxItems": 8
-        }
-      ]
-    },
-    "matrixB": {
-      "oneOf": [
-        {
-          "type": "null"
-        },
-        {
-          "type": "array",
-          "items": {
-            "$ref": "#/$defs/ModSlot"
-          },
-          "minItems": 8,
-          "maxItems": 8
-        }
-      ]
     },
     "performance": {
       "type": "object",
@@ -1046,20 +980,6 @@
     },
     "metadata": {
       "type": "object"
-    },
-    "slotNames": {
-      "type": "object",
-      "properties": {
-        "a": {
-          "type": "string",
-          "maxLength": 200
-        },
-        "b": {
-          "type": "string",
-          "maxLength": 200
-        }
-      },
-      "additionalProperties": false
     }
   },
   "required": [
@@ -1071,9 +991,7 @@
     "category",
     "tags",
     "description",
-    "engineA",
-    "engineB",
-    "morph",
+    "engine",
     "macros",
     "matrix",
     "performance",
@@ -1082,44 +1000,6 @@
     "metadata"
   ],
   "additionalProperties": true,
-  "allOf": [
-    {
-      "if": {
-        "properties": {
-          "engineB": {
-            "type": "object"
-          }
-        },
-        "required": [
-          "engineB"
-        ]
-      },
-      "then": {
-        "properties": {
-          "macrosB": {
-            "type": "array"
-          },
-          "matrixB": {
-            "type": "array"
-          }
-        },
-        "required": [
-          "macrosB",
-          "matrixB"
-        ]
-      },
-      "else": {
-        "properties": {
-          "macrosB": {
-            "type": "null"
-          },
-          "matrixB": {
-            "type": "null"
-          }
-        }
-      }
-    }
-  ],
   "$defs": {
     "ADSR": {
       "type": "object",

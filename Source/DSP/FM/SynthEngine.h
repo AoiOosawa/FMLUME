@@ -37,10 +37,7 @@ public:
     static int latencyForQuality (int quality); // host samples, includes the FX chain's fixed latency
     int getLatencySamples() const { return latencyForQuality (activeQuality.load()); }
     // Largest number of simultaneous notes for a polyphony / unison setting (SPEC §5.1 budget).
-    static int effectiveMaxNotes (int polyphony, int unison, bool dualMorph = false, int quality = 1);
-    // Unison voices allowed per engine. Halved for Dual Morph at High (4x) quality so the worst case
-    // limits the note count instead of overloading the CPU (SPEC §17.3).
-    static int subVoiceBudget (bool dualMorph, int quality) { return dualMorph && quality >= 2 ? kMaxSubVoices / 2 : kMaxSubVoices; }
+    static int effectiveMaxNotes (int polyphony, int unison);
 
     // ---- realtime API -----------------------------------------------------------------
     // Renders n frames. Events must be sorted by offset; offsets are clamped to the block.
@@ -53,13 +50,12 @@ public:
     float getPeak (int channel) const { return meterPeak[channel & 1].load (std::memory_order_relaxed); }
     uint32_t getAppliedGeneration() const { return consumedGen.load (std::memory_order_acquire); }
     int getActiveQuality() const { return activeQuality.load(); }
-    MorphKind getActiveMorphKind() const { return (MorphKind) meterMorph.load (std::memory_order_relaxed); }
 
 private:
     struct Impl;
     std::unique_ptr<Impl> impl;
 
-    std::atomic<int> meterNotes { 0 }, meterSubs { 0 }, meterMorph { 0 };
+    std::atomic<int> meterNotes { 0 }, meterSubs { 0 };
     std::atomic<float> meterPeak[2] { { 0.0f }, { 0.0f } };
     std::atomic<uint32_t> consumedGen { 0 };
     std::atomic<int> activeQuality { 1 };

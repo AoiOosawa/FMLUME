@@ -106,8 +106,8 @@ private:
     // Parameter atomics (owned by APVTS)
     std::atomic<float>* pGain = nullptr; std::atomic<float>* pPan = nullptr; std::atomic<float>* pPoly = nullptr;
     std::atomic<float>* pUnison = nullptr; std::atomic<float>* pDetune = nullptr; std::atomic<float>* pSpread = nullptr;
-    std::atomic<float>* pQuality = nullptr; std::atomic<float>* pMacro[8] {}; std::atomic<float>* pMorph = nullptr;
-    std::atomic<float>* pMorphOn = nullptr; std::atomic<float>* pFxBypass = nullptr; std::atomic<float>* pQuick[4] {};
+    std::atomic<float>* pQuality = nullptr; std::atomic<float>* pMacro[8] {};
+    std::atomic<float>* pFxBypass = nullptr; std::atomic<float>* pQuick[4] {};
     std::atomic<float>* pArp = nullptr; std::atomic<float>* pGate = nullptr;
 
     // UI -> audio note queue

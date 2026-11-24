@@ -217,7 +217,7 @@ bool addMapping (Macro& m, int target, float amount, Curve curve, Polarity pol, 
     return true;
 }
 
-void setModSlot (EngineSide& s, int slot, ModSource src, int target, float depth)
+void setModSlot (SoundPatch& s, int slot, ModSource src, int target, float depth)
 {
     auto& m = s.matrix[(size_t) slot];
     m.source = src;
@@ -227,9 +227,9 @@ void setModSlot (EngineSide& s, int slot, ModSource src, int target, float depth
     m.enabled = true;
 }
 
-void assignCommonMacros (PatchData& d, bool sideB)
+void assignCommonMacros (PatchData& d)
 {
-    EngineSide& s = sideB ? d.b : d.a;
+    SoundPatch& s = d.sound;
     const EnginePatch& e = s.engine;
     for (int i = 0; i < 4; ++i) s.macros[(size_t) i].numMappings = 0;
     auto& bright = s.macros[0];
@@ -320,7 +320,7 @@ Preset makeCategoryPreset (Category c)
     p.meta.patchId = std::string ("template.") + categoryName (c);
     p.meta.description = std::string ("Starting point for ") + categoryName (c) + " sounds.";
     PatchData& d = p.data;
-    EngineSide& s = d.a;
+    SoundPatch& s = d.sound;
     EnginePatch& e = s.engine;
     auto& ops = e.operators;
     for (auto& op : ops) op = OperatorState {};
@@ -527,9 +527,8 @@ Preset makeCategoryPreset (Category c)
             break;
     }
 
-    assignCommonMacros (d, false);
+    assignCommonMacros (d);
     assignQuickControls (d);
-    d.b = d.a;
     // Preset level of each starting point, so that "Init" is as loud as the factory presets
     // (phrase peak around -6 dBFS at master 0 dB). Measured with `fmlume-presetgen --template-trims`;
     // re-measure when a template above changes.
@@ -550,10 +549,7 @@ Preset makeCategoryPreset (Category c)
         d.perf.arp.octaves = 2;
     }
     for (int i = 0; i < kNumMacros; ++i)
-    {
         p.meta.macroNames[(size_t) i] = categoryMacroName (c, i);
-        p.meta.macroNamesB[(size_t) i] = p.meta.macroNames[(size_t) i];
-    }
     return p;
 }
 } // namespace fmlume

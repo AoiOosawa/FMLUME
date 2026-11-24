@@ -35,10 +35,10 @@ bool addEdge (EnginePatch& e, int from, int to, float index);
 bool removeEdge (EnginePatch& e, int from, int to);
 bool addMapping (Macro& m, int target, float amount, Curve curve = Curve::Linear, Polarity pol = Polarity::Bipolar,
                  float min = 0.0f, float max = 1.0f);
-void setModSlot (EngineSide& s, int slot, ModSource src, int target, float depth);
+void setModSlot (SoundPatch& s, int slot, ModSource src, int target, float depth);
 
 // Rebuilds macros 1-4 (Brightness / Attack / Release / Character) from the engine's current graph.
-void assignCommonMacros (PatchData& d, bool sideB);
+void assignCommonMacros (PatchData& d);
 // Default FX quick controls: Warmth (Drive/EQ), Width (Chorus), Space (Reverb), Echo (Delay).
 void assignQuickControls (PatchData& d);
 

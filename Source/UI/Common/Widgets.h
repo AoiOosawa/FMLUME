@@ -49,10 +49,8 @@ public:
     void setCode (int paramCode);
     int getCode() const { return code; }
     void refresh();
-    std::function<bool()> useSideB; // default: the slot being edited
 
 private:
-    bool side() { return useSideB ? useSideB() : ctx.sideB(); }
     Ctx& ctx;
     int code = -1;
     bool updating = false;

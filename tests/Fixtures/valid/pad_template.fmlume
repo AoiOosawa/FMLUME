@@ -1,5 +1,5 @@
 {
-  "schemaVersion": 1,
+  "schemaVersion": 2,
   "pluginVersion": "0.1.0",
   "patchId": "template.Pad",
   "displayName": "Init Pad",
@@ -10,7 +10,7 @@
   "createdAt": "",
   "modifiedAt": "",
   "favorite": false,
-  "engineA": {
+  "engine": {
     "operators": [
       {
         "enabled": true,
@@ -188,12 +188,6 @@
       "r": 0.300000012
     },
     "pitchBendRange": 2
-  },
-  "engineB": null,
-  "morph": {
-    "enabled": false,
-    "mode": "auto",
-    "amount": 0
   },
   "macros": [
     {
@@ -511,8 +505,6 @@
       "enabled": false
     }
   ],
-  "macrosB": null,
-  "matrixB": null,
   "performance": {
     "polyphony": 16,
     "unison": {
@@ -526,6 +518,7 @@
     "arp": {
       "enabled": false,
       "mode": "up",
+      "octaveMode": "range",
       "rate": "1/16",
       "gate": 0.800000012,
       "octaves": 1,
@@ -750,7 +743,7 @@
     ]
   },
   "output": {
-    "levelDb": 0
+    "levelDb": -5.5999999
   },
   "metadata": {}
 }
