@@ -16,6 +16,15 @@ set(CMAKE_CXX_EXTENSIONS OFF)
 set(CMAKE_POSITION_INDEPENDENT_CODE ON)
 set(CMAKE_XCODE_GENERATE_SCHEME OFF)
 
+# Windows (MSVC): ソースは UTF-8 (日本語のコメントを含む)。この指定がないと、Windows が文字を読み違える。
+# NOMINMAX: Windows の min / max と std::min / std::max がぶつかるのを防ぐ。
+# _USE_MATH_DEFINES: M_PI などの数学の定数を使えるようにする。
+# JUCE を add_subdirectory する前に設定する (JUCE 側のターゲットにも効かせるため)。
+if(MSVC)
+    add_compile_options(/utf-8)
+    add_compile_definitions(NOMINMAX _USE_MATH_DEFINES)
+endif()
+
 option(FMLUME_BUILD_PLUGIN "Build the AU/VST3 plug-in (requires external/JUCE)" ON)
 option(FMLUME_BUILD_TESTS  "Build unit tests and tools" ON)
 option(FMLUME_COPY_PLUGIN  "Copy plug-ins to ~/Library/Audio/Plug-Ins after build" ON)
@@ -36,9 +45,14 @@ file(GLOB_RECURSE FMLUME_CORE_SOURCES CONFIGURE_DEPENDS
 add_library(FMLUMECore STATIC ${FMLUME_CORE_SOURCES})
 target_include_directories(FMLUMECore PUBLIC Source)
 target_compile_definitions(FMLUMECore PUBLIC FMLUME_VERSION_STRING="${PROJECT_VERSION}")
-target_compile_options(FMLUMECore PRIVATE -Wall -Wextra -Wno-unused-parameter)
-if(NOT CMAKE_BUILD_TYPE STREQUAL "Debug")
-    target_compile_options(FMLUMECore PRIVATE $<$<NOT:$<CONFIG:Debug>>:-O3>)
+if(MSVC)
+    # MSVC には -Wextra / -O3 などの指定がない。Windows では /W4 を使う (最適化は Release の既定で入る)。
+    target_compile_options(FMLUMECore PRIVATE /W4)
+else()
+    target_compile_options(FMLUMECore PRIVATE -Wall -Wextra -Wno-unused-parameter)
+    if(NOT CMAKE_BUILD_TYPE STREQUAL "Debug")
+        target_compile_options(FMLUMECore PRIVATE $<$<NOT:$<CONFIG:Debug>>:-O3>)
+    endif()
 endif()
 
 # ---------------------------------------------------------------- Plug-in
