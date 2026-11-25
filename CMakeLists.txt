@@ -47,7 +47,8 @@ target_include_directories(FMLUMECore PUBLIC Source)
 target_compile_definitions(FMLUMECore PUBLIC FMLUME_VERSION_STRING="${PROJECT_VERSION}")
 if(MSVC)
     # MSVC には -Wextra / -O3 などの指定がない。Windows では /W4 を使う (最適化は Release の既定で入る)。
-    target_compile_options(FMLUMECore PRIVATE /W4)
+    # /Zc:preprocessor enables the conforming preprocessor required for __VA_OPT__.
+    target_compile_options(FMLUMECore PRIVATE /W4 /Zc:preprocessor)
 else()
     target_compile_options(FMLUMECore PRIVATE -Wall -Wextra -Wno-unused-parameter)
     if(NOT CMAKE_BUILD_TYPE STREQUAL "Debug")
