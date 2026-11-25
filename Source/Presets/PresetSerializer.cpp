@@ -913,7 +913,13 @@ std::string nowIso8601()
 {
     const std::time_t t = std::time (nullptr);
     std::tm tm {};
+
+#if defined(_WIN32)
+    gmtime_s (&tm, &t);
+#else
     gmtime_r (&t, &tm);
+#endif
+
     char buf[32];
     std::strftime (buf, sizeof (buf), "%Y-%m-%dT%H:%M:%SZ", &tm);
     return buf;
