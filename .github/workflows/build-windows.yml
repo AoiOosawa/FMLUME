@@ -1,0 +1,33 @@
+name: Build Windows VST3
+
+on:
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          submodules: recursive
+
+      - name: Configure
+        run: cmake -B build -DCMAKE_BUILD_TYPE=Release -DFMLUME_DEV_BUILD=OFF -DFMLUME_COPY_PLUGIN=OFF -DFMLUME_BUILD_TESTS=OFF
+
+      - name: Build VST3
+        shell: pwsh
+        run: |
+          cmake --build build --config Release --target FMLUME_VST3 2>&1 | Tee-Object -FilePath build.log
+          if ($LASTEXITCODE -ne 0) { exit 1 }
+
+      - name: Show errors
+        if: failure()
+        shell: pwsh
+        run: |
+          Select-String -Path build.log -Pattern 'error [A-Z]+\d+' | ForEach-Object { $_.Line }
+
+      - name: Upload VST3
+        uses: actions/upload-artifact@v4
+        with:
+          name: FMLUME-Windows-VST3
+          path: build/FMLUME_artefacts/Release/VST3/
